@@ -1,0 +1,211 @@
+/* =========================================================
+   GST MASTER — Design Tokens & Base Theme
+   Palette: Professional Navy / Steel Blue / Ledger Gold
+   Signature motif: "ledger stitching" — perforated tear-line
+   edges + punch-hole dots, evoking a physical challan/receipt.
+   ========================================================= */
+
+:root {
+  /* --- Brand palette (softened, lower-saturation) --- */
+  --navy-950: #11212f;
+  --navy-900: #16293a;
+  --navy-800: #1a3049;
+  --blue-700: #2c5170;
+  --blue-600: #375f7d;
+  --blue-500: #4a7a97;
+  --gold-600: #a8823f;
+  --gold-500: #bc9a54;
+  --gold-100: #f3ead4;
+
+  /* --- Semantic (muted, non-alarming) --- */
+  --success: #3d8462;
+  --success-100: #e7f2ec;
+  --warning: #bc9a54;
+  --warning-100: #f7f0df;
+  --danger: #b25849;
+  --danger-100: #f6e8e4;
+  --info: #4a7a97;
+  --info-100: #e9f0f3;
+
+  /* --- Surfaces (light mode) — warm, low-glare neutrals --- */
+  --bg-canvas: #f3f1ec;
+  --surface: #fdfcf9;
+  --surface-raised: #ffffff;
+  --border: #e4e0d6;
+  --border-strong: #d2ccbe;
+  --text-primary: #2a2f33;
+  --text-muted: #6b6d68;
+  --text-faint: #96958d;
+
+  /* --- Typography --- */
+  --font-display: "Sora", "Segoe UI", sans-serif;
+  --font-body: "Inter", "Segoe UI", sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+
+  /* --- Layout --- */
+  --sidebar-w: 264px;
+  --topbar-h: 64px;
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --shadow-sm: 0 1px 2px rgba(30, 28, 20, 0.05);
+  --shadow-md: 0 6px 18px rgba(30, 28, 20, 0.07);
+  --shadow-lg: 0 20px 40px rgba(20, 18, 14, 0.14);
+
+  --transition: 180ms cubic-bezier(.4,0,.2,1);
+}
+
+[data-theme="dark"] {
+  --bg-canvas: #14181c;
+  --surface: #1a2024;
+  --surface-raised: #1f2629;
+  --border: #2c3337;
+  --border-strong: #3a4247;
+  --text-primary: #e6e4de;
+  --text-muted: #a3a49d;
+  --text-faint: #797a73;
+  --success-100: #1c2b23;
+  --warning-100: #2a2519;
+  --danger-100: #2c2019;
+  --info-100: #1a2529;
+  --gold-100: #2a2418;
+}
+
+* { box-sizing: border-box; }
+
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+html, body {
+  height: 100%;
+}
+
+body {
+  font-family: var(--font-body);
+  background: var(--bg-canvas);
+  color: var(--text-primary);
+  transition: background var(--transition), color var(--transition);
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3, h4, h5, h6, .font-display {
+  font-family: var(--font-display);
+  letter-spacing: -0.01em;
+}
+
+.font-mono, .gstin, .ledger-number {
+  font-family: var(--font-mono);
+  letter-spacing: 0.02em;
+}
+
+a { text-decoration: none; }
+
+/* Visible keyboard focus everywhere */
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2px solid var(--gold-500);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * { animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; }
+}
+
+/* =========================================================
+   Signature motif — perforated / ledger-stitched edge
+   Used on the login role-cards and the dashboard summary
+   cards to evoke a tear-off GST challan / receipt.
+   ========================================================= */
+.ledger-card {
+  position: relative;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+  transition: box-shadow var(--transition), border-color var(--transition), transform var(--transition);
+}
+
+a .ledger-card:hover,
+.ledger-card.is-hoverable:hover {
+  box-shadow: var(--shadow-md);
+  border-color: var(--border-strong);
+  transform: translateY(-1px);
+}
+
+.ledger-card::before {
+  content: "";
+  position: absolute;
+  top: -6px;
+  left: 20px;
+  right: 20px;
+  height: 12px;
+  background-image: radial-gradient(circle, var(--bg-canvas) 3px, transparent 3.2px);
+  background-size: 16px 12px;
+  background-repeat: repeat-x;
+  background-position: left center;
+  pointer-events: none;
+}
+
+.ledger-card > .ledger-tear {
+  border-top: 1.5px dashed var(--border-strong);
+  margin: 0 16px;
+}
+
+/* Brand mark used across login + sidebar */
+.brand-mark {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.25rem;
+  color: inherit;
+}
+.brand-mark .brand-icon {
+  width: 38px;
+  height: 38px;
+  flex-shrink: 0;
+}
+.brand-mark .brand-sub {
+  display: block;
+  font-family: var(--font-body);
+  font-weight: 500;
+  font-size: 0.68rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--gold-500);
+  margin-top: 1px;
+}
+
+/* Utility badges */
+.badge-soft-success { background: var(--success-100); color: var(--success); }
+.badge-soft-warning { background: var(--warning-100); color: var(--gold-600); }
+.badge-soft-danger  { background: var(--danger-100); color: var(--danger); }
+.badge-soft-info    { background: var(--info-100); color: var(--blue-600); }
+
+.btn-navy {
+  background: var(--navy-800);
+  border: 1px solid var(--navy-800);
+  color: #fff;
+}
+.btn-navy:hover { background: var(--navy-900); border-color: var(--navy-900); color: #fff; }
+
+.btn-gold {
+  background: var(--gold-500);
+  border: 1px solid var(--gold-500);
+  color: var(--navy-950);
+  font-weight: 600;
+}
+.btn-gold:hover { background: var(--gold-600); border-color: var(--gold-600); color: #fff; }
+
+.text-muted-soft { color: var(--text-muted) !important; }
+
+/* Scrollbar (light touch) */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 8px; }
+::-webkit-scrollbar-track { background: transparent; }

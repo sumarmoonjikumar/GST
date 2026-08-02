@@ -1,0 +1,25 @@
+rules_version = '2';
+
+/**
+ * GST MASTER — Firebase Storage Security Rules
+ *
+ * Same honest limitation as firestore.rules: this only proves "the
+ * request came from the GST Master app" (via anonymous sign-in in
+ * firebase.js), not which role/staff member is making it. See
+ * firestore.rules for the full explanation and the real fix
+ * (migrate to Firebase Auth custom claims) if you need server-enforced
+ * per-role access later.
+ *
+ * Used for client KYC / IT document uploads, stored under
+ * clients/{clientId}/…  — see assets/js/clients.js.
+ */
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /{allPaths=**} {
+      allow read, delete: if request.auth != null;
+      allow create, update: if request.auth != null
+        && request.resource.size < 8 * 1024 * 1024
+        && request.resource.contentType.matches('application/pdf|image/jpeg|image/png');
+    }
+  }
+}

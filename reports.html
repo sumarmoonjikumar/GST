@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>Reports — GST Master</title>
+<meta name="theme-color" content="#1a3049" />
+<link rel="icon" href="assets/icons/logo-icon.svg" type="image/svg+xml" />
+<link rel="manifest" href="manifest.json" />
+
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
+
+<link rel="stylesheet" href="assets/css/theme.css">
+<link rel="stylesheet" href="assets/css/dashboard.css">
+</head>
+<body>
+
+<div class="app-shell">
+  <div id="sidebarBackdrop" class="sidebar-backdrop"></div>
+
+  <!-- Sidebar -->
+  <aside class="app-sidebar" id="appSidebar">
+    <div class="sidebar-brand">
+      <span class="brand-mark">
+        <svg class="brand-icon" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <rect width="64" height="64" rx="14" fill="#ffffff" fill-opacity="0.08"/>
+          <path d="M32 8 L54 8 L54 40 C54 49.9 45.9 58 36 58 L32 58 Z" fill="#bc9a54"/>
+          <path d="M10 8 L32 8 L32 58 L28 58 C17.5 58 10 49.9 10 40 Z" fill="#ffffff" fill-opacity="0.16"/>
+          <path d="M22 33 L29 40 L43 24" fill="none" stroke="#f5f1e8" stroke-width="4.2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <span>
+          GST MASTER
+          <span class="brand-sub">Office Management</span>
+        </span>
+      </span>
+    </div>
+
+    <nav class="sidebar-nav">
+      <a href="dashboard.html" class="nav-link"><i class="fa-solid fa-gauge-high"></i> Dashboard</a>
+
+      <div class="nav-section-label">Practice</div>
+      <a href="clients.html" class="nav-link" data-staff-plus><i class="fa-solid fa-users"></i> Clients</a>
+      <a href="gst-filing.html" class="nav-link" data-staff-plus><i class="fa-solid fa-file-invoice"></i> GST Filing</a>
+      <a href="payments.html" class="nav-link" data-staff-plus><i class="fa-solid fa-indian-rupee-sign"></i> Payments</a>
+
+      <div class="nav-section-label" data-admin-only>Team</div>
+      <a href="staff.html" class="nav-link" data-admin-only><i class="fa-solid fa-user-tie"></i> Staff</a>
+      <a href="#" class="nav-link" data-admin-only><i class="fa-solid fa-building-user"></i> Customers</a>
+
+      <div class="nav-section-label" data-admin-only>System</div>
+      <a href="reports.html" class="nav-link active" data-admin-only><i class="fa-solid fa-chart-column"></i> Reports</a>
+      <a href="settings.html" class="nav-link" data-admin-only><i class="fa-solid fa-gear"></i> Settings</a>
+      <a href="backup.html" class="nav-link" data-admin-only><i class="fa-solid fa-box-archive"></i> Backup</a>
+    </nav>
+
+    <div class="sidebar-foot">
+      <div class="sidebar-user">
+        <div class="avatar" id="sidebarUserAvatar">GM</div>
+        <div>
+          <div class="name" id="sidebarUserName">—</div>
+          <div class="role" id="sidebarUserRole">—</div>
+        </div>
+      </div>
+      <a href="#" id="logoutBtn" class="nav-link mt-2 mb-0 px-0"><i class="fa-solid fa-right-from-bracket"></i> Logout</a>
+    </div>
+  </aside>
+
+  <div class="app-main-wrap flex-grow-1 d-flex flex-column" style="min-width:0;">
+
+    <!-- Topbar -->
+    <header class="app-topbar">
+      <div class="d-flex align-items-center gap-3" style="min-width:0;">
+        <button id="sidebarBurger" class="sidebar-burger" aria-label="Open menu"><i class="fa-solid fa-bars"></i></button>
+        <div class="topbar-search d-none d-md-block">
+          <i class="fa-solid fa-magnifying-glass"></i>
+          <input type="search" class="form-control form-control-sm" placeholder="Quick search clients, GSTIN, invoices…">
+        </div>
+      </div>
+      <div class="d-flex align-items-center gap-3">
+        <span class="small text-muted-soft d-none d-sm-inline" id="topbarWelcome">Welcome</span>
+        <button id="themeToggleBtn" type="button" class="theme-toggle-btn" title="Toggle dark mode" aria-label="Toggle dark mode">
+          <i class="fa-solid fa-moon"></i>
+        </button>
+      </div>
+    </header>
+
+    <!-- Main content -->
+    <main class="app-main">
+      <div class="page-heading d-flex align-items-start justify-content-between flex-wrap gap-2">
+        <div>
+          <div class="breadcrumb-lite mb-1">GST Master / Reports</div>
+          <h2>Client-wise Report</h2>
+        </div>
+        <button class="btn btn-outline-secondary" id="exportCsvBtn">
+          <i class="fa-solid fa-file-arrow-down me-2"></i>Export CSV
+        </button>
+      </div>
+
+      <div class="ledger-card page-toolbar p-3">
+        <div class="toolbar-filters">
+          <select class="form-select form-select-sm" id="fyFilter"></select>
+          <select class="form-select form-select-sm" id="staffFilter">
+            <option value="">All Staff</option>
+          </select>
+          <input type="search" class="form-control form-control-sm" id="clientSearch" placeholder="Search client or GSTIN…">
+        </div>
+        <span class="small text-muted-soft" id="reportCountLabel">0 clients</span>
+      </div>
+
+      <div class="ledger-card data-table-card">
+        <div class="table-responsive">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Client</th>
+                <th>Staff</th>
+                <th>GSTR-1 (Filed / Pending)</th>
+                <th>GSTR-3B (Filed / Pending)</th>
+                <th>Payments Paid</th>
+                <th>Payments Pending</th>
+                <th>Overall Status</th>
+              </tr>
+            </thead>
+            <tbody id="reportTableBody"></tbody>
+          </table>
+        </div>
+        <div id="reportEmptyState" class="empty-state d-none">
+          <i class="fa-solid fa-chart-column"></i>
+          <h6>No clients yet</h6>
+          <p class="small mb-0">Add a client to see them in the report.</p>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script type="module" src="assets/js/reports.js"></script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', function () {
+        navigator.serviceWorker.register('./service-worker.js').catch(function (err) {
+          console.warn('Service worker registration failed:', err);
+        });
+      });
+    }
+  </script>
+</body>
+</html>

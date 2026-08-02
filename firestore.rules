@@ -1,0 +1,33 @@
+rules_version = '2';
+
+/**
+ * GST MASTER — Firestore Security Rules
+ *
+ * HONEST LIMITATION: GST Master's Admin/Staff/Customer login is a custom
+ * username/password system stored inside Firestore itself (the `users`
+ * collection), not Firebase Authentication. Firestore rules can only
+ * check the Firebase Auth token attached to a request — they cannot see
+ * your custom login at all. That means these rules can enforce ONE
+ * thing: "this request came from the GST Master app" (via anonymous
+ * sign-in in firebase.js), NOT "this request came from an admin" vs
+ * "this request came from staff member X". Anyone who opens the app,
+ * signs in anonymously, and then edits requests in devtools could, in
+ * principle, read or write any client's data — the role restrictions
+ * you see in the UI (e.g. staff only seeing their assigned clients) are
+ * enforced in the JavaScript, not the server.
+ *
+ * If you later store real client secrets (GST portal passwords, etc.)
+ * and need the server itself to enforce "only this staff member's
+ * clients", the fix is to migrate logins to real Firebase Authentication
+ * with custom claims for role/staffId, then rewrite these rules to
+ * check request.auth.token.role / request.auth.token.staffId. Until
+ * then, treat this app the way you'd treat any app whose real security
+ * boundary is "only people I've given the URL and Firebase project to."
+ */
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if request.auth != null;
+    }
+  }
+}

@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>GST Filing — GST Master</title>
+<meta name="theme-color" content="#1a3049" />
+<link rel="icon" href="assets/icons/logo-icon.svg" type="image/svg+xml" />
+<link rel="manifest" href="manifest.json" />
+
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
+
+<link rel="stylesheet" href="assets/css/theme.css">
+<link rel="stylesheet" href="assets/css/dashboard.css">
+<style>
+  /* =========================================================
+     GST Filing — page-scoped design
+     Signature: "quarterly ledger" — the matrix is grouped into
+     Q1–Q4 blocks with a stamped-seal pill for each return, echoing
+     the perforated-challan motif used across the app.
+     ========================================================= */
+
+  /* ---- Stat strip ---- */
+  .gst-stat-card {
+    padding: 16px 18px 15px;
+    height: 100%;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .gst-stat-card .stat-top { display: flex; align-items: center; justify-content: space-between; }
+  .gst-stat-card .stat-icon-ring {
+    width: 34px; height: 34px; border-radius: 999px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.85rem; flex-shrink: 0;
+  }
+  .gst-stat-card .stat-icon-ring.tone-info { background: var(--info-100); color: var(--blue-600); }
+  .gst-stat-card .stat-icon-ring.tone-success { background: var(--success-100); color: var(--success); }
+  .gst-stat-card .stat-icon-ring.tone-danger { background: var(--danger-100); color: var(--danger); }
+  .gst-stat-card .stat-icon-ring.tone-warning { background: var(--warning-100); color: var(--gold-600); }
+  .gst-stat-card .stat-value { font-family: var(--font-display); font-size: 1.9rem; font-weight: 800; line-height: 1; }
+  .gst-stat-card .stat-label { font-size: 0.78rem; color: var(--text-muted); }
+  .gst-stat-card .stat-bar-track { height: 4px; border-radius: 999px; background: var(--border); overflow: hidden; margin-top: auto; }
+  .gst-stat-card .stat-bar-fill { height: 100%; border-radius: 999px; transition: width 500ms ease; }
+  .gst-stat-card.tone-info .stat-bar-fill { background: var(--blue-500); }
+  .gst-stat-card.tone-success .stat-bar-fill { background: var(--success); }
+  .gst-stat-card.tone-danger .stat-bar-fill { background: var(--danger); }
+  .gst-stat-card.tone-warning .stat-bar-fill { background: var(--gold-500); }
+
+  /* ---- Toolbar ---- */
+  .filing-toolbar { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
+  .filing-toolbar .toolbar-filters .form-select,
+  .filing-toolbar .toolbar-filters .form-control { max-width: 190px; }
+  .filing-legend { display: flex; align-items: center; gap: 16px; white-space: nowrap; }
+  .legend-dot { display: inline-block; width: 9px; height: 9px; border-radius: 3px; margin-right: 6px; }
+
+  /* ---- Segmented tabs ---- */
+  .segmented-tabs {
+    display: inline-flex; gap: 2px; padding: 4px; background: var(--bg-canvas);
+    border: 1px solid var(--border); border-radius: 999px; margin-bottom: 16px;
+  }
+  .segmented-tabs .seg-btn {
+    border: none; background: transparent; color: var(--text-muted);
+    font-size: 0.83rem; font-weight: 600; padding: 7px 18px; border-radius: 999px;
+    display: inline-flex; align-items: center; gap: 7px; cursor: pointer;
+    transition: background var(--transition), color var(--transition);
+  }
+  .segmented-tabs .seg-btn:hover { color: var(--text-primary); }
+  .segmented-tabs .seg-btn.active { background: var(--navy-800); color: #fff; box-shadow: var(--shadow-sm); }
+  .segmented-tabs .seg-btn .badge { font-size: 0.68rem; }
+
+  /* ---- Matrix ---- */
+  .filing-matrix-wrap { overflow-x: auto; }
+  .filing-matrix { border-collapse: separate; border-spacing: 0; min-width: 1520px; width: 100%; table-layout: fixed; }
+  .filing-matrix th, .filing-matrix td { white-space: nowrap; }
+  .filing-matrix thead th {
+    position: sticky; top: 0; z-index: 2;
+    background: var(--bg-canvas); color: var(--text-muted);
+    font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 700;
+    border-bottom: 1px solid var(--border); padding: 8px 6px;
+  }
+  .filing-matrix th.client-col, .filing-matrix td.client-col {
+    position: sticky; left: 0; z-index: 1; background: var(--surface); min-width: 232px; white-space: normal;
+    box-shadow: 2px 0 0 var(--border);
+  }
+  .filing-matrix thead th.client-col { z-index: 3; background: var(--bg-canvas); }
+  .filing-matrix .quarter-row th {
+    position: sticky; top: 0; z-index: 2;
+    background: var(--navy-800); color: #d9c58f;
+    font-size: 0.64rem; letter-spacing: 0.08em; font-weight: 700;
+    padding: 5px 6px; border-bottom: none; text-align: center;
+  }
+  .filing-matrix .quarter-row th.client-col { background: var(--navy-900); color: #7e93a8; z-index: 3; text-align: left; }
+  .filing-matrix .quarter-row th.q-divider { border-left: 2px dashed rgba(255,255,255,0.25); }
+  .filing-matrix tbody tr:hover td { background: #ffffff !important; }
+  .filing-matrix tbody tr:hover td.client-col { background: #ffffff !important; }
+  .filing-matrix td { border-bottom: 1px solid var(--border); }
+  .filing-matrix tbody tr:last-child td { border-bottom: none; }
+
+  .client-cell { display: flex; align-items: center; gap: 10px; padding: 8px 4px; }
+  .client-cell .avatar-chip { width: 30px; height: 30px; font-size: 0.68rem; }
+
+  .month-cell { text-align: center; padding: 6px 5px !important; }
+  .month-head-label { font-size: 10.5px; }
+  .filing-pill-group { display: flex; gap: 5px; justify-content: center; }
+
+  .filing-pill {
+    border: 1.5px solid transparent; border-radius: 8px; font-size: 11px; font-weight: 800;
+    font-family: var(--font-mono);
+    width: 42px; height: 32px; padding: 0; cursor: pointer; letter-spacing: 0.02em;
+    display: inline-flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+    transition: transform var(--transition), filter var(--transition), box-shadow var(--transition);
+  }
+  .filing-pill i { font-size: 9px; }
+  .filing-pill.is-filed { background: #d7f3e3; color: #0f7a45; border-color: #9de3ba; }
+  .filing-pill.is-pending { background: #fdecc8; color: #96660a; border-color: #f7d693; }
+  .filing-pill.is-overdue { background: #dc2626; color: #fff; border-color: #b91c1c; box-shadow: 0 0 0 2px rgba(220,38,38,0.22); }
+  .filing-pill:hover { filter: brightness(0.95); transform: translateY(-1px); box-shadow: var(--shadow-sm); }
+  .filing-pill:active { transform: translateY(0); }
+
+  /* Quarterly (QRMP) clients — one merged stamp per quarter instead of 3 monthly ones */
+  .quarterly-cell { text-align: right !important; padding-right: 14px !important; }
+  .quarterly-cell .filing-pill-group { justify-content: flex-end; }
+  .quarterly-cell .filing-pill { width: 56px; }
+  .quarterly-cell .filing-pill .qtr-sub { font-size: 7.5px; font-weight: 600; opacity: 0.8; }
+  .not-due-cell { color: var(--text-faint, var(--text-muted)); font-size: 10px; }
+  td.month-cell.not-due-qtr { text-align: right !important; padding-right: 14px !important; }
+  .freq-tag {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 15px; height: 15px; border-radius: 4px; font-size: 8.5px; font-weight: 800;
+    background: var(--gold-100, #f6e6b8); color: var(--gold-700, #8a6a10); flex-shrink: 0;
+  }
+
+  /* ---- Pending list ---- */
+  .pending-row td { border-bottom: 1px solid var(--border); position: relative; }
+  .pending-row .urgency-bar { position: absolute; left: 0; top: 8px; bottom: 8px; width: 3px; border-radius: 3px; }
+  .pending-row .urgency-bar.tone-overdue { background: var(--danger); }
+  .pending-row .urgency-bar.tone-soon { background: var(--gold-500); }
+  .pending-row .urgency-bar.tone-normal { background: var(--border-strong); }
+  .pending-row td:first-child { padding-left: 20px; }
+  .return-chip {
+    display: inline-flex; align-items: center; gap: 5px;
+    font-family: var(--font-mono); font-size: 0.7rem; font-weight: 700;
+    padding: 3px 9px; border-radius: 999px; background: var(--info-100); color: var(--blue-600);
+  }
+</style>
+</head>
+<body>
+
+<div class="app-shell">
+  <div id="sidebarBackdrop" class="sidebar-backdrop"></div>
+
+  <!-- Sidebar -->
+  <aside class="app-sidebar" id="appSidebar">
+    <div class="sidebar-brand">
+      <span class="brand-mark">
+        <svg class="brand-icon" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <rect width="64" height="64" rx="14" fill="#ffffff" fill-opacity="0.08"/>
+          <path d="M32 8 L54 8 L54 40 C54 49.9 45.9 58 36 58 L32 58 Z" fill="#bc9a54"/>
+          <path d="M10 8 L32 8 L32 58 L28 58 C17.5 58 10 49.9 10 40 Z" fill="#ffffff" fill-opacity="0.16"/>
+          <path d="M22 33 L29 40 L43 24" fill="none" stroke="#f5f1e8" stroke-width="4.2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <span>
+          GST MASTER
+          <span class="brand-sub">Office Management</span>
+        </span>
+      </span>
+    </div>
+
+    <nav class="sidebar-nav">
+      <a href="dashboard.html" class="nav-link"><i class="fa-solid fa-gauge-high"></i> Dashboard</a>
+
+      <div class="nav-section-label">Practice</div>
+      <a href="clients.html" class="nav-link" data-staff-plus><i class="fa-solid fa-users"></i> Clients</a>
+      <a href="gst-filing.html" class="nav-link active" data-staff-plus><i class="fa-solid fa-file-invoice"></i> GST Filing</a>
+      <a href="payments.html" class="nav-link" data-staff-plus><i class="fa-solid fa-indian-rupee-sign"></i> Payments</a>
+
+      <div class="nav-section-label" data-admin-only>Team</div>
+      <a href="staff.html" class="nav-link" data-admin-only><i class="fa-solid fa-user-tie"></i> Staff</a>
+      <a href="#" class="nav-link" data-admin-only><i class="fa-solid fa-building-user"></i> Customers</a>
+
+      <div class="nav-section-label" data-admin-only>System</div>
+      <a href="reports.html" class="nav-link" data-admin-only><i class="fa-solid fa-chart-column"></i> Reports</a>
+      <a href="settings.html" class="nav-link" data-admin-only><i class="fa-solid fa-gear"></i> Settings</a>
+      <a href="backup.html" class="nav-link" data-admin-only><i class="fa-solid fa-box-archive"></i> Backup</a>
+    </nav>
+
+    <div class="sidebar-foot">
+      <div class="sidebar-user">
+        <div class="avatar" id="sidebarUserAvatar">GM</div>
+        <div>
+          <div class="name" id="sidebarUserName">—</div>
+          <div class="role" id="sidebarUserRole">—</div>
+        </div>
+      </div>
+      <a href="#" id="logoutBtn" class="nav-link mt-2 mb-0 px-0"><i class="fa-solid fa-right-from-bracket"></i> Logout</a>
+    </div>
+  </aside>
+
+  <div class="app-main-wrap flex-grow-1 d-flex flex-column" style="min-width:0;">
+
+    <!-- Topbar -->
+    <header class="app-topbar">
+      <div class="d-flex align-items-center gap-3" style="min-width:0;">
+        <button id="sidebarBurger" class="sidebar-burger" aria-label="Open menu"><i class="fa-solid fa-bars"></i></button>
+        <div class="topbar-search d-none d-md-block">
+          <i class="fa-solid fa-magnifying-glass"></i>
+          <input type="search" class="form-control form-control-sm" placeholder="Quick search clients, GSTIN, invoices…">
+        </div>
+      </div>
+      <div class="d-flex align-items-center gap-3">
+        <span class="small text-muted-soft d-none d-sm-inline" id="topbarWelcome">Welcome</span>
+        <button id="themeToggleBtn" type="button" class="theme-toggle-btn" title="Toggle dark mode" aria-label="Toggle dark mode">
+          <i class="fa-solid fa-moon"></i>
+        </button>
+      </div>
+    </header>
+
+    <!-- Main content -->
+    <main class="app-main">
+      <div class="page-heading d-flex align-items-start justify-content-between flex-wrap gap-2">
+        <div>
+          <div class="breadcrumb-lite mb-1">GST Master / GST Filing</div>
+          <h2>GST Filing — GSTR-1 &amp; GSTR-3B</h2>
+        </div>
+      </div>
+
+      <!-- Summary strip -->
+      <div class="row g-3 mb-3">
+        <div class="col-6 col-md-3">
+          <div class="ledger-card gst-stat-card tone-info">
+            <div class="stat-top">
+              <span class="stat-icon-ring tone-info"><i class="fa-solid fa-file-lines"></i></span>
+            </div>
+            <div>
+              <div class="stat-value" id="statTotalFilings">0</div>
+              <div class="stat-label">Total Filings (FY)</div>
+            </div>
+            <div class="stat-bar-track"><div class="stat-bar-fill" style="width:100%"></div></div>
+          </div>
+        </div>
+        <div class="col-6 col-md-3">
+          <div class="ledger-card gst-stat-card tone-success">
+            <div class="stat-top">
+              <span class="stat-icon-ring tone-success"><i class="fa-solid fa-circle-check"></i></span>
+            </div>
+            <div>
+              <div class="stat-value" id="statFiledCount">0</div>
+              <div class="stat-label">Filed</div>
+            </div>
+            <div class="stat-bar-track"><div class="stat-bar-fill" id="statFiledBar" style="width:0%"></div></div>
+          </div>
+        </div>
+        <div class="col-6 col-md-3">
+          <div class="ledger-card gst-stat-card tone-danger">
+            <div class="stat-top">
+              <span class="stat-icon-ring tone-danger"><i class="fa-solid fa-triangle-exclamation"></i></span>
+            </div>
+            <div>
+              <div class="stat-value" id="statPendingCount">0</div>
+              <div class="stat-label">Pending</div>
+            </div>
+            <div class="stat-bar-track"><div class="stat-bar-fill" id="statPendingBar" style="width:0%"></div></div>
+          </div>
+        </div>
+        <div class="col-6 col-md-3">
+          <div class="ledger-card gst-stat-card tone-warning">
+            <div class="stat-top">
+              <span class="stat-icon-ring tone-warning"><i class="fa-solid fa-hourglass-half"></i></span>
+            </div>
+            <div>
+              <div class="stat-value" id="statOverdueCount">0</div>
+              <div class="stat-label">Overdue</div>
+            </div>
+            <div class="stat-bar-track"><div class="stat-bar-fill" id="statOverdueBar" style="width:0%"></div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Filters -->
+      <div class="ledger-card page-toolbar filing-toolbar p-3">
+        <div class="toolbar-filters">
+          <select class="form-select form-select-sm" id="fyFilter"></select>
+          <select class="form-select form-select-sm" id="monthFilter">
+            <option value="">All Months</option>
+          </select>
+          <select class="form-select form-select-sm" id="typeFilter">
+            <option value="">GSTR-1 &amp; GSTR-3B</option>
+            <option value="GSTR-1">GSTR-1 only</option>
+            <option value="GSTR-3B">GSTR-3B only</option>
+          </select>
+          <select class="form-select form-select-sm" id="staffFilter" data-admin-only>
+            <option value="">All Staff</option>
+          </select>
+          <input type="search" class="form-control form-control-sm" id="clientSearch" placeholder="Search client or GSTIN…">
+        </div>
+        <span class="small text-muted-soft filing-legend">
+          <span><span class="legend-dot" style="background:var(--success)"></span>Filed</span>
+          <span><span class="legend-dot" style="background:var(--danger)"></span>Pending</span>
+          <span><span class="legend-dot" style="background:var(--navy-800)"></span>Overdue</span>
+        </span>
+      </div>
+
+      <!-- Tabs: Matrix / Pending list -->
+      <div class="segmented-tabs" id="filingTabs">
+        <button class="seg-btn active" data-tab="matrix" type="button"><i class="fa-solid fa-table-cells"></i> Filing Matrix</button>
+        <button class="seg-btn" data-tab="pending" type="button"><i class="fa-solid fa-list-check"></i> Pending List <span class="badge badge-soft-danger rounded-pill" id="pendingTabCount">0</span></button>
+      </div>
+
+      <!-- Matrix view -->
+      <div id="matrixPane" class="ledger-card data-table-card">
+        <div class="filing-matrix-wrap">
+          <table class="table filing-matrix">
+            <colgroup id="matrixColgroup"></colgroup>
+            <thead id="matrixHead"></thead>
+            <tbody id="matrixBody"></tbody>
+          </table>
+        </div>
+        <div id="matrixEmptyState" class="empty-state d-none">
+          <i class="fa-solid fa-file-invoice"></i>
+          <h6>No clients yet</h6>
+          <p class="small mb-0">Add a client in Client Master to start tracking GST filings.</p>
+        </div>
+      </div>
+
+      <!-- Pending list view -->
+      <div id="pendingPane" class="ledger-card data-table-card d-none">
+        <div class="table-responsive">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Client</th>
+                <th>Staff</th>
+                <th>Period</th>
+                <th>Return</th>
+                <th>Due Date</th>
+                <th>Days</th>
+                <th class="text-end">Action</th>
+              </tr>
+            </thead>
+            <tbody id="pendingTableBody"></tbody>
+          </table>
+        </div>
+        <div id="pendingEmptyState" class="empty-state d-none">
+          <i class="fa-solid fa-circle-check"></i>
+          <h6>Nothing pending</h6>
+          <p class="small mb-0">Every return in this view is filed. Great work!</p>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<!-- Mark filed / pending modal -->
+<div class="modal fade" id="filingStatusModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title font-display" id="filingModalTitle">Update Filing Status</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <form id="filingStatusForm">
+          <input type="hidden" id="fClientId">
+          <input type="hidden" id="fMonthKey">
+          <input type="hidden" id="fType">
+          <div class="mb-3">
+            <div class="small text-muted-soft">Client</div>
+            <div class="fw-semibold" id="fClientLabel">—</div>
+          </div>
+          <div class="mb-3">
+            <div class="small text-muted-soft">Return &amp; Period</div>
+            <div class="fw-semibold" id="fPeriodLabel">—</div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label" for="fJsonUpload">Upload GSTR JSON <span class="text-muted-soft small">(from GST portal export)</span></label>
+            <input type="file" class="form-control form-control-sm" id="fJsonUpload" accept=".json,application/json">
+            <div class="form-text">GSTR-3B fills Sales/Tax totals below. GSTR-1 also lists every B2B invoice plus B2C (unregistered) totals, with a month total.</div>
+          </div>
+          <div class="mb-3 d-none" id="fInvoiceBreakdownWrap">
+            <label class="form-label mb-1">Invoice-wise Breakdown (B2B + B2C Unregistered)</label>
+            <div class="table-responsive" style="max-height: 280px; overflow-y: auto; border: 1px solid var(--border); border-radius: 8px;">
+              <table class="table table-sm mb-0" style="font-size: 0.76rem;">
+                <thead class="table-light" style="position: sticky; top: 0;">
+                  <tr>
+                    <th>Invoice No</th>
+                    <th>Date</th>
+                    <th>Party Trade Name</th>
+                    <th>GSTIN</th>
+                    <th class="text-end">Taxable Value</th>
+                    <th class="text-end">IGST</th>
+                    <th class="text-end">CGST</th>
+                    <th class="text-end">SGST</th>
+                    <th class="text-end">Total</th>
+                  </tr>
+                </thead>
+                <tbody id="fInvoiceBreakdownBody"></tbody>
+                <tfoot>
+                  <tr class="fw-bold" style="border-top: 2px solid var(--text-primary);">
+                    <td colspan="4">Month Total</td>
+                    <td class="text-end" id="fSumTaxable">—</td>
+                    <td class="text-end" id="fSumIgst">—</td>
+                    <td class="text-end" id="fSumCgst">—</td>
+                    <td class="text-end" id="fSumSgst">—</td>
+                    <td class="text-end" id="fSumTotal">—</td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          </div>
+          <div class="row">
+            <div class="col-6 mb-3">
+              <label class="form-label" for="fTaxableValue">Taxable Value / Sales (₹)</label>
+              <input type="number" step="0.01" min="0" class="form-control" id="fTaxableValue">
+            </div>
+            <div class="col-6 mb-3">
+              <label class="form-label" for="fTaxAmount">Total Tax (₹)</label>
+              <input type="number" step="0.01" min="0" class="form-control" id="fTaxAmount">
+            </div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Status</label>
+            <select class="form-select" id="fStatus">
+              <option value="Pending">Pending</option>
+              <option value="Filed">Filed</option>
+            </select>
+          </div>
+          <div class="mb-3" id="fFiledDateWrap">
+            <label class="form-label" for="fFiledDate">Filed Date</label>
+            <input type="date" class="form-control" id="fFiledDate">
+          </div>
+          <div class="mb-3">
+            <label class="form-label" for="fNotes">Notes</label>
+            <textarea class="form-control" id="fNotes" rows="2"></textarea>
+          </div>
+          <button type="submit" class="btn btn-navy w-100">Save Status</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script type="module" src="assets/js/gst-filing.js"></script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', function () {
+        navigator.serviceWorker.register('./service-worker.js').catch(function (err) {
+          console.warn('Service worker registration failed:', err);
+        });
+      });
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,265 @@
+/* =========================================================
+   GST MASTER — Sign In
+   A single centered "challan slip" card, with a slow-travelling
+   neon light animated around its outline.
+   ========================================================= */
+
+.login-shell {
+  --stamp-red: #a1584a;
+  --stamp-red-dark: #c98a76;
+  --rule-line: rgba(42, 47, 51, 0.06);
+  --neon-a: #5a8aa3;
+  --neon-b: #bc9a54;
+
+  min-height: 100vh;
+  min-height: 100svh;
+  overflow-y: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  background:
+    repeating-linear-gradient(
+      to bottom,
+      transparent 0,
+      transparent 27px,
+      var(--rule-line) 27px,
+      var(--rule-line) 28px
+    ),
+    var(--bg-canvas);
+}
+
+[data-theme="dark"] .login-shell {
+  --rule-line: rgba(255, 255, 255, 0.045);
+}
+
+/* ---------- Neon travelling border ---------- */
+.challan-wrap {
+  position: relative;
+  width: 100%;
+  max-width: 480px;
+  border-radius: calc(var(--radius-lg) + 3px);
+}
+
+.neon-ring {
+  position: absolute;
+  inset: -2.5px;
+  border-radius: inherit;
+  overflow: hidden;
+  z-index: 0;
+}
+.neon-ring::before {
+  content: "";
+  position: absolute;
+  inset: -60%;
+  opacity: 0.55;
+  background: conic-gradient(
+    from 0deg,
+    transparent 0deg,
+    transparent 250deg,
+    var(--neon-a) 300deg,
+    var(--neon-b) 335deg,
+    transparent 360deg
+  );
+  animation: neonSpin 8s linear infinite;
+}
+
+@keyframes neonSpin {
+  to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .neon-ring::before { animation: none; }
+}
+
+.challan {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  background: var(--surface);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  overflow: hidden;
+}
+
+/* Perforation strips top/bottom of the card */
+.perf {
+  height: 14px;
+  background-image: radial-gradient(circle, var(--bg-canvas) 3.4px, transparent 3.6px);
+  background-size: 18px 14px;
+  background-repeat: repeat-x;
+  background-position: center;
+}
+.perf-top { margin-top: -1px; }
+.perf-bottom { margin-bottom: -1px; }
+
+/* ---------- The login panel itself ---------- */
+.challan-applicant {
+  padding: 26px 28px 22px;
+  background: var(--surface);
+  display: flex;
+  flex-direction: column;
+}
+
+.challan-applicant .brand-mark {
+  display: block;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.05rem;
+  color: var(--text-primary);
+  letter-spacing: 0.02em;
+  text-align: center;
+  margin-bottom: 14px;
+}
+.challan-applicant .brand-mark .brand-sub {
+  display: block;
+  font-family: var(--font-body);
+  font-weight: 500;
+  font-size: 0.62rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--gold-600);
+  margin-top: 3px;
+}
+
+.applicant-topline {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  border-top: 1px dashed var(--border-strong);
+  padding-top: 14px;
+}
+.applicant-topline h2 {
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  margin-top: 4px;
+}
+.applicant-hint {
+  margin-top: 2px;
+  margin-bottom: 14px;
+  font-size: 0.8rem;
+}
+
+.theme-toggle-btn {
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+  color: var(--text-primary);
+  width: 34px; height: 34px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.role-stamps {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.role-card {
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 6px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  transition: transform var(--transition), background var(--transition);
+}
+.role-card:hover { background: var(--bg-canvas); }
+.role-card:focus-visible { outline: 2px solid var(--gold-500); outline-offset: 2px; }
+
+.stamp-ring {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  border: 2px solid var(--border-strong);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.95rem;
+  color: var(--text-muted);
+  transition: transform var(--transition), border-color var(--transition), color var(--transition), box-shadow var(--transition);
+}
+
+.role-card.active .stamp-ring {
+  border-color: var(--stamp-red);
+  color: var(--stamp-red);
+  transform: rotate(-8deg) scale(1.06);
+  box-shadow: 0 0 0 3px rgba(162, 59, 46, 0.12);
+}
+[data-theme="dark"] .role-card.active .stamp-ring { color: var(--stamp-red-dark); border-color: var(--stamp-red-dark); }
+
+.role-card .role-title {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+.role-card.active .role-title { color: var(--text-primary); }
+
+.role-desc {
+  text-align: center;
+  font-size: 0.74rem;
+  color: var(--text-muted);
+  margin-bottom: 12px;
+  min-height: 1.2em;
+}
+
+.login-form-card {
+  border-top: 1px dashed var(--border-strong);
+  padding-top: 14px;
+}
+
+.login-form-card .mb-3 { margin-bottom: 10px !important; }
+
+.form-floating > label { color: var(--text-muted); }
+.form-floating > .form-control { min-height: calc(2.6rem + 2px); padding: 0.9rem 0.75rem; }
+.form-floating > label { padding: 0.9rem 0.75rem; }
+
+#loginSubmitBtn { padding-top: 0.55rem; padding-bottom: 0.55rem; }
+
+.login-footnote {
+  text-align: center;
+  font-size: 0.7rem;
+  color: var(--text-faint);
+  margin-top: 10px;
+}
+
+@media (max-width: 480px) {
+  .login-shell { padding: 14px 10px; }
+  .challan-applicant { padding: 20px 16px 16px; }
+  .brand-mark { display: none; }
+  .applicant-topline { border-top: none; padding-top: 0; }
+  .role-stamps { gap: 6px; }
+  .brand-mark { font-size: 0.95rem; margin-bottom: 10px; }
+  .applicant-topline h2 { font-size: 1rem; }
+  .stamp-ring { width: 38px; height: 38px; font-size: 0.85rem; }
+  .role-card { padding: 8px 4px; }
+  .role-desc { margin-bottom: 10px; }
+}
+
+@media (max-height: 750px) {
+  .login-shell { padding: 12px 10px; }
+  .challan-applicant { padding: 18px 16px 14px; }
+  .brand-mark { margin-bottom: 8px; }
+  .applicant-topline { padding-top: 10px; }
+  .applicant-hint { margin-bottom: 8px; }
+  .role-stamps { margin-bottom: 6px; }
+  .role-desc { margin-bottom: 8px; }
+  .login-form-card { padding-top: 10px; }
+  .login-form-card .mb-3 { margin-bottom: 8px !important; }
+  .login-footnote { margin-top: 6px; }
+}
+
+@media (max-height: 620px) {
+  .stamp-ring { width: 34px; height: 34px; font-size: 0.8rem; }
+  .role-card .role-title { font-size: 0.68rem; }
+  .role-desc { display: none; }
+  .applicant-hint { display: none; }
+}

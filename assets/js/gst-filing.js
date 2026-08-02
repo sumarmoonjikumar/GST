@@ -1,0 +1,675 @@
+import DB from "./db.js";
+import { requireSession } from "./auth.js";
+import { applyStoredTheme, toast, formatDate, currentFY, fyList, fyMonths, initials } from "./utils.js";
+import { initAppChrome } from "./chrome.js";
+import { buildFilingMap, getFilingStatus, filingRecordId, periodHasStarted, daysBetween, isQuarterEndMonth } from "./gst-status.js";
+
+applyStoredTheme();
+const session = requireSession(["admin", "staff"]);
+
+let allClients = [];
+let allStaff = [];
+let allGstRecords = [];
+let filingMap = new Map();
+let currentInvoiceBreakdown = [];
+let statusModal;
+let activeTab = "matrix";
+
+async function init() {
+  if (!session) return;
+  initAppChrome(session);
+  statusModal = new bootstrap.Modal(document.getElementById("filingStatusModal"));
+
+  populateFYFilter();
+  await loadData();
+  populateStaffFilter();
+  applyQueryParams();
+  populateMonthFilter();
+  render();
+  wireEvents();
+}
+
+function populateFYFilter() {
+  const sel = document.getElementById("fyFilter");
+  fyList(6).forEach((fy, idx) => sel.add(new Option(fy + (idx === 0 ? " (Current)" : ""), fy)));
+  sel.value = currentFY();
+}
+
+function populateMonthFilter() {
+  const sel = document.getElementById("monthFilter");
+  sel.innerHTML = '<option value="">All Months</option>';
+  fyMonths(document.getElementById("fyFilter").value).forEach((m) => sel.add(new Option(m.label, m.key)));
+}
+
+function populateStaffFilter() {
+  const sel = document.getElementById("staffFilter");
+  if (!sel) return;
+  allStaff.forEach((s) => sel.add(new Option(s.name, s.id)));
+}
+
+function applyQueryParams() {
+  const params = new URLSearchParams(window.location.search);
+  const type = params.get("type");
+  const status = params.get("status");
+  const due = params.get("due");
+  if (type) document.getElementById("typeFilter").value = type;
+  if (status === "Pending") switchTab("pending");
+  if (due === "today") {
+    // leave "All Months" selected — the pending list itself sorts soonest-due first
+    switchTab("pending");
+  }
+}
+
+async function loadData() {
+  const [clients, staff, gstRecords] = await Promise.all([
+    DB.getAll(DB.STORES.clients),
+    DB.getAll(DB.STORES.staff),
+    DB.getAll(DB.STORES.gstRecords),
+  ]);
+  allClients = clients;
+  allStaff = staff;
+  allGstRecords = gstRecords;
+  filingMap = buildFilingMap(allGstRecords);
+}
+
+function visibleClients() {
+  const base = session.role === "staff" ? allClients.filter((c) => c.assignedStaffId === session.id) : allClients;
+  const q = document.getElementById("clientSearch").value.trim().toLowerCase();
+  const staffId = document.getElementById("staffFilter")?.value || "";
+  return base.filter((c) => {
+    if (q && !`${c.businessName} ${c.gstin}`.toLowerCase().includes(q)) return false;
+    if (staffId && c.assignedStaffId !== staffId) return false;
+    return true;
+  });
+}
+
+function activeTypes() {
+  const t = document.getElementById("typeFilter").value;
+  return t ? [t] : ["GSTR-1", "GSTR-3B"];
+}
+
+function activeMonths() {
+  const fy = document.getElementById("fyFilter").value;
+  const months = fyMonths(fy);
+  const chosen = document.getElementById("monthFilter").value;
+  return chosen ? months.filter((m) => m.key === chosen) : months;
+}
+
+/** "Monthly" (default) or "Quarterly" (QRMP) — drives due dates and how the matrix/pending list group a client's periods. */
+function clientFrequency(c) {
+  return c.gstFrequency === "Quarterly" ? "Quarterly" : "Monthly";
+}
+
+/** Quarterly clients only have a filing obligation on the quarter-end month (Jun/Sep/Dec/Mar) — every other month in view is filtered out. Monthly clients pass through unchanged. */
+function applicablePeriods(client, months) {
+  if (clientFrequency(client) !== "Quarterly") return months;
+  return months.filter((m) => isQuarterEndMonth(m.month));
+}
+
+const QUARTER_RANGE_LABEL = { Jun: "Q1 (Apr–Jun)", Sep: "Q2 (Jul–Sep)", Dec: "Q3 (Oct–Dec)", Mar: "Q4 (Jan–Mar)" };
+function quarterlyPeriodLabel(m) {
+  return `${QUARTER_RANGE_LABEL[m.month] || m.month} ${m.year}`;
+}
+
+function render() {
+  renderMatrix();
+  renderPendingList();
+  renderSummary();
+}
+
+function renderSummary() {
+  const clients = visibleClients();
+  const months = activeMonths();
+  const types = activeTypes();
+  let total = 0, filed = 0, pending = 0, overdue = 0;
+  const today = new Date().toISOString().slice(0, 10);
+
+  clients.forEach((c) => {
+    const freq = clientFrequency(c);
+    applicablePeriods(c, months).forEach((m) => {
+      if (!periodHasStarted(m.month, m.year)) return;
+      types.forEach((type) => {
+        total++;
+        const rec = getFilingStatus(filingMap, c.id, m.key, type, freq);
+        if (rec.status === "Filed") filed++;
+        else {
+          pending++;
+          if (rec.dueDate && rec.dueDate < today) overdue++;
+        }
+      });
+    });
+  });
+
+  document.getElementById("statTotalFilings").textContent = total;
+  document.getElementById("statFiledCount").textContent = filed;
+  document.getElementById("statPendingCount").textContent = pending;
+  document.getElementById("statOverdueCount").textContent = overdue;
+  document.getElementById("pendingTabCount").textContent = pending;
+
+  const pct = (n) => (total ? Math.round((n / total) * 100) : 0);
+  const bar = (id, value) => {
+    const el = document.getElementById(id);
+    if (el) el.style.width = `${value}%`;
+  };
+  bar("statFiledBar", pct(filed));
+  bar("statPendingBar", pct(pending));
+  bar("statOverdueBar", pct(overdue));
+}
+
+function renderMatrix() {
+  const clients = visibleClients();
+  const months = activeMonths();
+  const types = activeTypes();
+  const head = document.getElementById("matrixHead");
+  const body = document.getElementById("matrixBody");
+  const empty = document.getElementById("matrixEmptyState");
+
+  if (clients.length === 0) {
+    head.innerHTML = "";
+    body.innerHTML = "";
+    empty.classList.remove("d-none");
+    return;
+  }
+  empty.classList.add("d-none");
+
+  // Fixed column widths (via colgroup) so the quarter-group header row and
+  // the month header row below it always line up exactly, even with merged
+  // (colspan) cells for quarterly clients.
+  const colgroup = document.getElementById("matrixColgroup");
+  if (colgroup) {
+    colgroup.innerHTML = `<col style="width:232px">${months.map(() => `<col style="width:108px">`).join("")}`;
+  }
+
+  // Quarterly ledger divider — only meaningful once the full FY is on
+  // screen; a single filtered month has nothing to group.
+  const quarterRow =
+    months.length === 12
+      ? `<tr class="quarter-row">
+          <th class="client-col">FY Quarter</th>
+          ${["Q1 · Apr–Jun", "Q2 · Jul–Sep", "Q3 · Oct–Dec", "Q4 · Jan–Mar"]
+            .map((label, i) => `<th colspan="3" class="${i > 0 ? "q-divider" : ""}">${label}</th>`)
+            .join("")}
+        </tr>`
+      : "";
+
+  head.innerHTML = `${quarterRow}<tr>
+    <th class="client-col">Client</th>
+    ${months.map((m, i) => `<th class="month-cell${months.length === 12 && i % 3 === 0 ? " q-divider" : ""}"><span class="month-head-label">${m.label}</span></th>`).join("")}
+  </tr>`;
+
+  const today = new Date().toISOString().slice(0, 10);
+
+  const pillHtml = (c, monthKey, monthLabel, type, freq) => {
+    const rec = getFilingStatus(filingMap, c.id, monthKey, type, freq);
+    const overdue = rec.status !== "Filed" && rec.dueDate && rec.dueDate < today;
+    const cls = rec.status === "Filed" ? "is-filed" : overdue ? "is-overdue" : "is-pending";
+    const icon = rec.status === "Filed" ? "fa-check" : overdue ? "fa-exclamation" : "fa-clock";
+    const label = type === "GSTR-1" ? "G1" : "3B";
+    const statusLabel = rec.status === "Filed" ? "Filed" : overdue ? "Overdue" : "Pending";
+    const valueNote = rec.taxableValue ? ` · Sales ₹${Number(rec.taxableValue).toLocaleString("en-IN")}` : "";
+    const sub = freq === "Quarterly" ? `<span class="qtr-sub">QTR</span>` : "";
+    return `<button type="button" class="filing-pill ${cls}" data-client="${c.id}" data-month="${monthKey}" data-type="${type}" title="${type} · ${monthLabel} · ${escapeHtml(c.businessName)} — ${statusLabel}${valueNote}"><i class="fa-solid ${icon}"></i>${label}${sub}</button>`;
+  };
+
+  body.innerHTML = clients
+    .map((c) => {
+      const freq = clientFrequency(c);
+      let cells = "";
+
+      if (freq === "Quarterly" && months.length === 12) {
+        // Full FY view: merge each 3-month block into one quarter-end stamp.
+        for (let i = 0; i < 12; i += 3) {
+          const qEnd = months[i + 2];
+          const qDivider = i > 0 ? " q-divider" : "";
+          if (!periodHasStarted(qEnd.month, qEnd.year)) {
+            cells += `<td colspan="3" class="month-cell not-due-qtr${qDivider}"><span class="not-due-cell">Not due yet</span></td>`;
+            continue;
+          }
+          const pills = types.map((type) => pillHtml(c, qEnd.key, quarterlyPeriodLabel(qEnd), type, "Quarterly")).join("");
+          cells += `<td colspan="3" class="month-cell quarterly-cell${qDivider}"><div class="filing-pill-group">${pills}</div></td>`;
+        }
+      } else {
+        cells = months
+          .map((m, i) => {
+            const qDivider = months.length === 12 && i % 3 === 0 ? " q-divider" : "";
+            if (freq === "Quarterly" && !isQuarterEndMonth(m.month)) {
+              return `<td class="month-cell${qDivider}"><span class="not-due-cell">Quarterly</span></td>`;
+            }
+            if (!periodHasStarted(m.month, m.year)) {
+              return `<td class="month-cell${qDivider}"><span class="small text-muted-soft">—</span></td>`;
+            }
+            const label = freq === "Quarterly" ? quarterlyPeriodLabel(m) : m.label;
+            const pills = types.map((type) => pillHtml(c, m.key, label, type, freq)).join("");
+            const qtrClass = freq === "Quarterly" ? " quarterly-cell" : "";
+            return `<td class="month-cell${qDivider}${qtrClass}"><div class="filing-pill-group">${pills}</div></td>`;
+          })
+          .join("");
+      }
+
+      return `<tr>
+        <td class="client-col">
+          <div class="client-cell">
+            <span class="avatar-chip">${initials(c.businessName) || "GM"}</span>
+            <div>
+              <div class="cell-primary">${escapeHtml(c.businessName)}${freq === "Quarterly" ? ` <span class="freq-tag" title="Quarterly filer (QRMP)">Q</span>` : ""}</div>
+              <div class="cell-sub font-mono">${escapeHtml(c.gstin)}</div>
+            </div>
+          </div>
+        </td>
+        ${cells}
+      </tr>`;
+    })
+    .join("");
+
+  body.querySelectorAll(".filing-pill").forEach((btn) =>
+    btn.addEventListener("click", () => openStatusModal(btn.dataset.client, btn.dataset.month, btn.dataset.type))
+  );
+}
+
+function renderPendingList() {
+  const clients = visibleClients();
+  const months = activeMonths();
+  const types = activeTypes();
+  const today = new Date().toISOString().slice(0, 10);
+  const rows = [];
+
+  clients.forEach((c) => {
+    const freq = clientFrequency(c);
+    applicablePeriods(c, months).forEach((m) => {
+      if (!periodHasStarted(m.month, m.year)) return;
+      types.forEach((type) => {
+        const rec = getFilingStatus(filingMap, c.id, m.key, type, freq);
+        if (rec.status === "Filed") return;
+        const staffMember = allStaff.find((s) => s.id === c.assignedStaffId);
+        rows.push({
+          client: c,
+          staffName: staffMember?.name || "Unassigned",
+          monthLabel: freq === "Quarterly" ? quarterlyPeriodLabel(m) : m.label,
+          monthKey: m.key,
+          type,
+          dueDate: rec.dueDate,
+          overdue: rec.dueDate ? rec.dueDate < today : false,
+        });
+      });
+    });
+  });
+
+  rows.sort((a, b) => (a.dueDate || "").localeCompare(b.dueDate || ""));
+
+  const tbody = document.getElementById("pendingTableBody");
+  const empty = document.getElementById("pendingEmptyState");
+  if (rows.length === 0) {
+    tbody.innerHTML = "";
+    empty.classList.remove("d-none");
+    return;
+  }
+  empty.classList.add("d-none");
+
+  tbody.innerHTML = rows
+    .map((r) => {
+      const days = r.dueDate ? daysBetween(today, r.dueDate) : null;
+      const daysLabel =
+        days === null ? "—" : days < 0 ? `${Math.abs(days)}d overdue` : days === 0 ? "Due today" : `${days}d left`;
+      const daysBadge = r.overdue ? "badge-soft-danger" : days !== null && days <= 3 ? "badge-soft-warning" : "badge-soft-info";
+      const urgencyTone = r.overdue ? "tone-overdue" : days !== null && days <= 3 ? "tone-soon" : "tone-normal";
+      return `<tr class="pending-row">
+        <td>
+          <span class="urgency-bar ${urgencyTone}"></span>
+          <div class="client-cell">
+            <span class="avatar-chip">${initials(r.client.businessName) || "GM"}</span>
+            <div>
+              <div class="cell-primary">${escapeHtml(r.client.businessName)}</div>
+              <div class="cell-sub font-mono">${escapeHtml(r.client.gstin)}</div>
+            </div>
+          </div>
+        </td>
+        <td>${escapeHtml(r.staffName)}</td>
+        <td>${r.monthLabel}</td>
+        <td><span class="return-chip"><i class="fa-solid fa-file-invoice"></i>${r.type}</span></td>
+        <td>${formatDate(r.dueDate)}</td>
+        <td><span class="badge ${daysBadge} rounded-pill">${daysLabel}</span></td>
+        <td class="text-end">
+          <button class="btn btn-outline-success btn-sm" data-mark="${r.client.id}|${r.monthKey}|${r.type}">
+            <i class="fa-solid fa-check me-1"></i>Mark Filed
+          </button>
+        </td>
+      </tr>`;
+    })
+    .join("");
+
+  tbody.querySelectorAll("[data-mark]").forEach((btn) =>
+    btn.addEventListener("click", () => {
+      const [clientId, monthKey, type] = btn.dataset.mark.split("|");
+      openStatusModal(clientId, monthKey, type, "Filed");
+    })
+  );
+}
+
+function openStatusModal(clientId, monthKey, type, presetStatus) {
+  const client = allClients.find((c) => c.id === clientId);
+  const rec = getFilingStatus(filingMap, clientId, monthKey, type);
+  const [monthName, year] = monthKey.split("-");
+
+  document.getElementById("fClientId").value = clientId;
+  document.getElementById("fMonthKey").value = monthKey;
+  document.getElementById("fType").value = type;
+  document.getElementById("fClientLabel").textContent = `${client?.businessName || "Unknown"} (${client?.gstin || ""})`;
+  document.getElementById("fPeriodLabel").textContent = `${type} — ${monthName} ${year}`;
+  document.getElementById("fStatus").value = presetStatus || rec.status;
+  document.getElementById("fFiledDate").value = rec.filedDate ? rec.filedDate.slice(0, 10) : new Date().toISOString().slice(0, 10);
+  document.getElementById("fNotes").value = rec.notes || "";
+  document.getElementById("fTaxableValue").value = rec.taxableValue ?? "";
+  document.getElementById("fTaxAmount").value = rec.taxAmount ?? "";
+  document.getElementById("fJsonUpload").value = "";
+  renderInvoiceBreakdown(rec.invoiceBreakdown || []);
+  toggleFiledDateVisibility();
+  statusModal.show();
+}
+
+/** Recursively sums the given numeric field names anywhere in a GST return
+ * JSON tree, skipping the HSN summary / doc-issue sections since those
+ * re-aggregate the same invoices already counted elsewhere in the file
+ * (summing them too would double-count sales). */
+function sumGstFields(node, fieldNames, keyName = "") {
+  if (keyName === "hsn" || keyName === "doc_issue") return 0;
+  let total = 0;
+  if (Array.isArray(node)) {
+    node.forEach((item) => (total += sumGstFields(item, fieldNames, keyName)));
+  } else if (node && typeof node === "object") {
+    fieldNames.forEach((f) => {
+      if (typeof node[f] === "number") total += node[f];
+    });
+    Object.entries(node).forEach(([k, v]) => (total += sumGstFields(v, fieldNames, k)));
+  }
+  return total;
+}
+
+/** Best-effort extraction of taxable value (sales) and total tax from a
+ * GST portal GSTR-1 / GSTR-3B JSON export. GSTR-3B has a fixed
+ * `sup_details` shape we read exactly; GSTR-1's b2b/b2cl/b2cs/etc.
+ * sections vary, so we fall back to summing the standard `txval` /
+ * `iamt`+`camt`+`samt`+`csamt` field names wherever they appear. */
+function parseGstReturnJson(json) {
+  if (json && typeof json === "object" && json.sup_details && typeof json.sup_details === "object") {
+    let taxable = 0;
+    let tax = 0;
+    Object.values(json.sup_details).forEach((sec) => {
+      if (sec && typeof sec === "object") {
+        taxable += Number(sec.txval) || 0;
+        tax += (Number(sec.iamt) || 0) + (Number(sec.camt) || 0) + (Number(sec.samt) || 0) + (Number(sec.csamt) || 0);
+      }
+    });
+    return { taxable, tax };
+  }
+  return {
+    taxable: sumGstFields(json, ["txval"]),
+    tax: sumGstFields(json, ["iamt", "camt", "samt", "csamt"]),
+  };
+}
+
+/** Every invoice/summary line from a GSTR-1 JSON export — B2B (registered),
+ * B2CL (large unregistered, invoice-wise), and B2CS (small unregistered,
+ * state+rate summary — no invoice no./date, GST doesn't require them here). */
+function parseB2bInvoices(json) {
+  if (!json || typeof json !== "object") return [];
+  const rows = [];
+
+  (json.b2b || []).forEach((party) => {
+    const gstin = party.ctin || "";
+    const partyName = party.trdnm || gstin || "Unknown party";
+    (party.inv || []).forEach((inv) => {
+      let taxable = 0, igst = 0, cgst = 0, sgst = 0, cess = 0;
+      (inv.itms || []).forEach((item) => {
+        const d = item.itm_det || {};
+        taxable += Number(d.txval) || 0;
+        igst += Number(d.iamt) || 0;
+        cgst += Number(d.camt) || 0;
+        sgst += Number(d.samt) || 0;
+        cess += Number(d.csamt) || 0;
+      });
+      const total = inv.val != null ? Number(inv.val) : taxable + igst + cgst + sgst + cess;
+      rows.push({ invoiceNo: inv.inum || "—", date: inv.idt || "—", partyName, gstin, taxable, igst, cgst, sgst, total });
+    });
+  });
+
+  // B2CL — large unregistered (inter-state, invoice value > ₹2.5L), invoice-wise, IGST only.
+  (json.b2cl || []).forEach((posGroup) => {
+    (posGroup.inv || []).forEach((inv) => {
+      let taxable = 0, igst = 0, cess = 0;
+      (inv.itms || []).forEach((item) => {
+        const d = item.itm_det || {};
+        taxable += Number(d.txval) || 0;
+        igst += Number(d.iamt) || 0;
+        cess += Number(d.csamt) || 0;
+      });
+      const total = inv.val != null ? Number(inv.val) : taxable + igst + cess;
+      rows.push({ invoiceNo: inv.inum || "—", date: inv.idt || "—", partyName: "Unregistered (B2C Large)", gstin: "—", taxable, igst, cgst: 0, sgst: 0, total });
+    });
+  });
+
+  // B2CS — small unregistered, no invoice-wise detail: one summary line per state+tax rate.
+  (json.b2cs || []).forEach((line) => {
+    const taxable = Number(line.txval) || 0;
+    const igst = Number(line.iamt) || 0;
+    const cgst = Number(line.camt) || 0;
+    const sgst = Number(line.samt) || 0;
+    const cess = Number(line.csamt) || 0;
+    rows.push({
+      invoiceNo: "—",
+      date: "—",
+      partyName: `Unregistered (B2C Small — ${line.sply_ty === "INTER" ? "Inter-state" : "Intra-state"}, POS ${line.pos || "—"})`,
+      gstin: "—",
+      taxable,
+      igst,
+      cgst,
+      sgst,
+      total: taxable + igst + cgst + sgst + cess,
+    });
+  });
+
+  return rows;
+}
+
+function formatInr(n) {
+  return `₹${Number(n || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
+function renderInvoiceBreakdown(rows) {
+  currentInvoiceBreakdown = rows || [];
+  const wrap = document.getElementById("fInvoiceBreakdownWrap");
+  const body = document.getElementById("fInvoiceBreakdownBody");
+
+  if (!rows || rows.length === 0) {
+    wrap.classList.add("d-none");
+    body.innerHTML = "";
+    return;
+  }
+  wrap.classList.remove("d-none");
+
+  body.innerHTML = rows
+    .map(
+      (r) => `<tr>
+        <td class="font-mono">${escapeHtml(r.invoiceNo)}</td>
+        <td>${escapeHtml(r.date)}</td>
+        <td>${escapeHtml(r.partyName)}</td>
+        <td class="font-mono">${escapeHtml(r.gstin)}</td>
+        <td class="text-end">${formatInr(r.taxable)}</td>
+        <td class="text-end">${formatInr(r.igst)}</td>
+        <td class="text-end">${formatInr(r.cgst)}</td>
+        <td class="text-end">${formatInr(r.sgst)}</td>
+        <td class="text-end">${formatInr(r.total)}</td>
+      </tr>`
+    )
+    .join("");
+
+  const sum = (key) => rows.reduce((s, r) => s + (Number(r[key]) || 0), 0);
+  document.getElementById("fSumTaxable").textContent = formatInr(sum("taxable"));
+  document.getElementById("fSumIgst").textContent = formatInr(sum("igst"));
+  document.getElementById("fSumCgst").textContent = formatInr(sum("cgst"));
+  document.getElementById("fSumSgst").textContent = formatInr(sum("sgst"));
+  document.getElementById("fSumTotal").textContent = formatInr(sum("total"));
+}
+
+async function onJsonUpload(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  try {
+    const text = await file.text();
+    const json = JSON.parse(text);
+    const { taxable, tax } = parseGstReturnJson(json);
+    document.getElementById("fTaxableValue").value = taxable ? taxable.toFixed(2) : "";
+    document.getElementById("fTaxAmount").value = tax ? tax.toFixed(2) : "";
+    renderInvoiceBreakdown(parseB2bInvoices(json));
+    if (document.getElementById("fStatus").value !== "Filed") {
+      document.getElementById("fStatus").value = "Filed";
+      toggleFiledDateVisibility();
+    }
+    const invoiceNote = currentInvoiceBreakdown.length ? ` across ${currentInvoiceBreakdown.length} B2B/B2C line${currentInvoiceBreakdown.length === 1 ? "" : "s"}` : "";
+    toast(`Parsed from JSON — Sales ₹${taxable.toLocaleString("en-IN")}, Tax ₹${tax.toLocaleString("en-IN")}${invoiceNote}.`, "success");
+  } catch (err) {
+    console.error(err);
+    toast("Couldn't read that file — please upload a valid GSTR JSON export.", "danger");
+  } finally {
+    e.target.value = "";
+  }
+}
+
+function toggleFiledDateVisibility() {
+  const isFiled = document.getElementById("fStatus").value === "Filed";
+  document.getElementById("fFiledDateWrap").classList.toggle("d-none", !isFiled);
+}
+
+async function onSaveStatus(e) {
+  e.preventDefault();
+  const clientId = document.getElementById("fClientId").value;
+  const monthKey = document.getElementById("fMonthKey").value;
+  const type = document.getElementById("fType").value;
+  const status = document.getElementById("fStatus").value;
+  const client = allClients.find((c) => c.id === clientId);
+  const wasAlreadyFiled = getFilingStatus(filingMap, clientId, monthKey, type).status === "Filed";
+
+  const record = {
+    id: filingRecordId(clientId, monthKey, type),
+    clientId,
+    monthKey,
+    type,
+    status,
+    filedDate: status === "Filed" ? document.getElementById("fFiledDate").value : null,
+    dueDate: getFilingStatus(filingMap, clientId, monthKey, type).dueDate,
+    notes: document.getElementById("fNotes").value.trim(),
+    taxableValue: document.getElementById("fTaxableValue").value ? Number(document.getElementById("fTaxableValue").value) : null,
+    taxAmount: document.getElementById("fTaxAmount").value ? Number(document.getElementById("fTaxAmount").value) : null,
+    invoiceBreakdown: currentInvoiceBreakdown.length ? currentInvoiceBreakdown : null,
+    updatedAt: new Date().toISOString(),
+  };
+
+  await DB.put(DB.STORES.gstRecords, record);
+  await DB.logActivity(
+    `${status === "Filed" ? "Marked filed" : "Marked pending"}: ${type} (${monthKey}) for "${client?.businessName || "client"}"`,
+    status === "Filed" ? "fa-circle-check" : "fa-triangle-exclamation",
+    status === "Filed" ? "success" : "warning"
+  );
+
+  toast(`${type} for ${monthKey} marked ${status}.`, "success");
+
+  // GSTR-3B being filed for the first time: drop it into Payments as
+  // Pending (if that client/month doesn't already have a payment record)
+  // and open just this month's own invoice — not the party's whole
+  // outstanding list.
+  let invoiceInfo = null;
+  if (type === "GSTR-3B" && status === "Filed" && !wasAlreadyFiled) {
+    invoiceInfo = await ensurePendingPayment(clientId, monthKey, client);
+  }
+
+  statusModal.hide();
+  await loadData();
+  render();
+
+  if (invoiceInfo) {
+    // Same window, not a new tab — a new browsing context opened from an
+    // installed PWA doesn't reliably share this app's session storage,
+    // which was bouncing users to the login page.
+    const url = `invoice.html?client=${encodeURIComponent(invoiceInfo.clientId)}&invoice=${encodeURIComponent(invoiceInfo.invoiceNo)}`;
+    window.location.href = url;
+  }
+}
+
+/** Billing-period label matching the payments module's format, e.g. "Jul-2026" -> "Jul 2026". */
+function billingPeriodLabel(monthKey) {
+  return monthKey.replace("-", " ");
+}
+
+/** Creates a Pending payment record for this client/month if one doesn't already exist, and always returns that specific record's own invoice number (minting one if it's missing) so the caller can open exactly this month's invoice — never the party's whole outstanding list. */
+async function ensurePendingPayment(clientId, monthKey, client) {
+  const period = billingPeriodLabel(monthKey);
+  const existingPayments = await DB.getAll(DB.STORES.payments);
+  let record = existingPayments.find((p) => p.clientId === clientId && p.billingPeriod === period);
+
+  if (!record) {
+    const now = new Date().toISOString();
+    const fixedFee = client?.monthlyFee != null && client.monthlyFee !== "" ? Number(client.monthlyFee) : 0;
+    record = {
+      id: DB.uid("pay"),
+      clientId,
+      billingPeriod: period,
+      amount: fixedFee,
+      date: now.slice(0, 10),
+      mode: "UPI",
+      status: "Pending",
+      invoiceRef: "",
+      invoiceNo: await DB.getNextInvoiceNumber(),
+      notes: fixedFee
+        ? "Auto-created on GSTR-3B filing — amount from client's fixed fee."
+        : "Auto-created on GSTR-3B filing — no fixed fee set for client, update the amount.",
+      createdAt: now,
+      updatedAt: now,
+    };
+    await DB.put(DB.STORES.payments, record);
+    await DB.logActivity(
+      `Payment marked Pending for "${client?.businessName || "client"}" — ${period} (GSTR-3B filed)`,
+      "fa-indian-rupee-sign",
+      "warning"
+    );
+  } else if (!record.invoiceNo) {
+    record.invoiceNo = await DB.getNextInvoiceNumber();
+    await DB.put(DB.STORES.payments, record);
+  }
+
+  return { clientId, invoiceNo: record.invoiceNo };
+}
+
+function switchTab(tab) {
+  activeTab = tab;
+  document.querySelectorAll("#filingTabs .seg-btn").forEach((btn) => btn.classList.toggle("active", btn.dataset.tab === tab));
+  document.getElementById("matrixPane").classList.toggle("d-none", tab !== "matrix");
+  document.getElementById("pendingPane").classList.toggle("d-none", tab !== "pending");
+}
+
+function escapeHtml(str = "") {
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+function wireEvents() {
+  document.getElementById("fyFilter").addEventListener("change", () => {
+    populateMonthFilter();
+    render();
+  });
+  document.getElementById("monthFilter").addEventListener("change", render);
+  document.getElementById("typeFilter").addEventListener("change", render);
+  document.getElementById("staffFilter")?.addEventListener("change", render);
+  document.getElementById("clientSearch").addEventListener("input", render);
+
+  document.querySelectorAll("#filingTabs .seg-btn").forEach((btn) =>
+    btn.addEventListener("click", () => switchTab(btn.dataset.tab))
+  );
+
+  document.getElementById("fStatus").addEventListener("change", toggleFiledDateVisibility);
+  document.getElementById("filingStatusForm").addEventListener("submit", onSaveStatus);
+  document.getElementById("fJsonUpload").addEventListener("change", onJsonUpload);
+}
+
+document.addEventListener("DOMContentLoaded", init);

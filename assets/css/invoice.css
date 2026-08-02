@@ -1,0 +1,197 @@
+/* =========================================================
+   GST MASTER — Tax Invoice (Tally-style bordered layout)
+   Classic all-bordered invoice grid: seller/buyer boxes,
+   ruled item table, tax breakup, amount in words, bank
+   details and signatory block.
+   ========================================================= */
+
+.invoice-wrap { max-width: 820px; margin: 32px auto; padding: 0 16px 60px; }
+
+.tally-invoice {
+  background: var(--surface);
+  border: 1.5px solid var(--text-primary);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  margin-bottom: 24px;
+}
+
+.tally-title {
+  text-align: center;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 1.05rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 10px 12px;
+  border-bottom: 1.5px solid var(--text-primary);
+  background: var(--bg-canvas);
+}
+.tally-title .tally-title-sub {
+  display: block;
+  font-family: var(--font-body);
+  font-weight: 500;
+  font-size: 0.68rem;
+  letter-spacing: 0.04em;
+  text-transform: none;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+/* Generic bordered grid: any number of boxes side by side.
+   display:table (not flex) — table-cell height-stretch is rock solid in
+   print/PDF export, whereas flexbox "stretch" has historically fallen
+   short on the tall side when printed, leaving the divider line short. */
+.tally-grid {
+  display: table;
+  width: 100%;
+  table-layout: fixed;
+  border-bottom: 1px solid var(--text-primary);
+}
+.tally-grid > .tally-box {
+  display: table-cell;
+  width: 50%;
+  padding: 12px 16px;
+  vertical-align: top;
+  border-right: 1px solid var(--text-primary);
+}
+.tally-grid > .tally-box:last-child { border-right: none; }
+
+.tally-label {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+.tally-name { font-family: var(--font-display); font-weight: 700; font-size: 0.98rem; }
+.tally-line { font-size: 0.83rem; color: var(--text-muted); }
+.tally-line + .tally-line { margin-top: 1px; }
+.tally-line .font-mono { color: var(--text-primary); }
+
+.tally-meta-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 0.83rem;
+  padding: 2px 0;
+}
+.tally-meta-row .k { color: var(--text-muted); }
+.tally-meta-row .v { font-weight: 600; text-align: right; }
+
+/* Item table */
+.tally-table-wrap { border-bottom: 1px solid var(--text-primary); }
+.tally-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+  margin: 0;
+}
+.tally-table th, .tally-table td {
+  border-right: 1px solid var(--border-strong);
+  border-bottom: 1px solid var(--border-strong);
+  padding: 8px 12px;
+  vertical-align: top;
+}
+.tally-table th:last-child, .tally-table td:last-child { border-right: none; }
+.tally-table thead th {
+  background: var(--bg-canvas);
+  text-transform: uppercase;
+  font-size: 0.68rem;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  font-weight: 700;
+  white-space: nowrap;
+}
+.tally-table tbody tr:last-child td { border-bottom: none; }
+.tally-table .text-end { text-align: right; }
+.tally-table .text-center { text-align: center; }
+.tally-table tfoot td {
+  border-top: 1.5px solid var(--text-primary);
+  border-bottom: none;
+  font-weight: 600;
+}
+.tally-table tfoot tr:first-child td { border-top: 1.5px solid var(--text-primary); }
+.tally-table tfoot .tally-grand-total td {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 0.95rem;
+  border-top: 1.5px solid var(--text-primary);
+}
+
+.tally-words {
+  padding: 10px 16px;
+  font-size: 0.83rem;
+  border-bottom: 1px solid var(--text-primary);
+  background: var(--bg-canvas);
+}
+.tally-words .tally-label { display: inline; margin-right: 6px; }
+
+.tally-bottom-grid {
+  display: table;
+  width: 100%;
+}
+.tally-bottom-grid > .tally-box {
+  display: table-cell;
+  padding: 14px 16px;
+  vertical-align: top;
+  border-right: 1px solid var(--text-primary);
+}
+.tally-bottom-grid > .tally-box:last-child { border-right: none; }
+
+.tally-qr-box { text-align: center; }
+.tally-qr-box img { border-radius: 8px; border: 1px solid var(--border); background: #fff; padding: 5px; }
+.tally-qr-box .tally-line { margin-top: 6px; }
+
+.tally-signatory {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  text-align: center;
+}
+.tally-signatory .for-line { font-size: 0.8rem; color: var(--text-muted); text-align: center; }
+.tally-signatory .sign-space { flex: 1; min-height: 40px; }
+.tally-signatory .sign-caption {
+  border-top: 1px dashed var(--border-strong);
+  padding-top: 6px;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.tally-footer-note {
+  text-align: center;
+  font-size: 0.72rem;
+  color: var(--text-faint);
+  padding: 8px 12px;
+  border-top: 1px solid var(--text-primary);
+}
+
+.all-paid-box { text-align: center; padding: 40px 20px; }
+.all-paid-box i { font-size: 2.2rem; color: var(--success); margin-bottom: 10px; }
+
+@media (max-width: 640px) {
+  .tally-grid > .tally-box,
+  .tally-bottom-grid > .tally-box {
+    flex: 1 1 100%;
+    border-right: none;
+    border-bottom: 1px solid var(--border-strong);
+  }
+  .tally-grid > .tally-box:last-child,
+  .tally-bottom-grid > .tally-box:last-child { border-bottom: none; }
+  .tally-table { font-size: 0.78rem; }
+  .tally-table th, .tally-table td { padding: 6px 8px; }
+}
+
+@media print {
+  @page { margin: 0; }
+  .no-print { display: none !important; }
+  body { background: #fff; margin: 12mm 10mm; }
+  .invoice-wrap { margin: 0; max-width: 100%; padding: 0; }
+  .tally-invoice { border-color: #000; box-shadow: none !important; page-break-after: always; }
+  .tally-invoice:last-child { page-break-after: auto; }
+  .tally-title, .tally-grid > .tally-box, .tally-table thead th, .tally-words, .tally-footer-note {
+    border-color: #000 !important;
+    background: #fff !important;
+  }
+  .tally-table th, .tally-table td, .tally-bottom-grid > .tally-box { border-color: #000 !important; }
+}
