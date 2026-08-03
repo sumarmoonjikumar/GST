@@ -358,116 +358,9 @@ function openStatusModal(clientId, monthKey, type, presetStatus) {
   document.getElementById("fStatus").value = presetStatus || rec.status;
   document.getElementById("fFiledDate").value = rec.filedDate ? rec.filedDate.slice(0, 10) : new Date().toISOString().slice(0, 10);
   document.getElementById("fNotes").value = rec.notes || "";
-  document.getElementById("fTaxableValue").value = rec.taxableValue ?? "";
-  document.getElementById("fTaxAmount").value = rec.taxAmount ?? "";
-  document.getElementById("fJsonUpload").value = "";
   renderInvoiceBreakdown(rec.invoiceBreakdown || []);
   toggleFiledDateVisibility();
   statusModal.show();
-}
-
-/** Recursively sums the given numeric field names anywhere in a GST return
- * JSON tree, skipping the HSN summary / doc-issue sections since those
- * re-aggregate the same invoices already counted elsewhere in the file
- * (summing them too would double-count sales). */
-function sumGstFields(node, fieldNames, keyName = "") {
-  if (keyName === "hsn" || keyName === "doc_issue") return 0;
-  let total = 0;
-  if (Array.isArray(node)) {
-    node.forEach((item) => (total += sumGstFields(item, fieldNames, keyName)));
-  } else if (node && typeof node === "object") {
-    fieldNames.forEach((f) => {
-      if (typeof node[f] === "number") total += node[f];
-    });
-    Object.entries(node).forEach(([k, v]) => (total += sumGstFields(v, fieldNames, k)));
-  }
-  return total;
-}
-
-/** Best-effort extraction of taxable value (sales) and total tax from a
- * GST portal GSTR-1 / GSTR-3B JSON export. GSTR-3B has a fixed
- * `sup_details` shape we read exactly; GSTR-1's b2b/b2cl/b2cs/etc.
- * sections vary, so we fall back to summing the standard `txval` /
- * `iamt`+`camt`+`samt`+`csamt` field names wherever they appear. */
-function parseGstReturnJson(json) {
-  if (json && typeof json === "object" && json.sup_details && typeof json.sup_details === "object") {
-    let taxable = 0;
-    let tax = 0;
-    Object.values(json.sup_details).forEach((sec) => {
-      if (sec && typeof sec === "object") {
-        taxable += Number(sec.txval) || 0;
-        tax += (Number(sec.iamt) || 0) + (Number(sec.camt) || 0) + (Number(sec.samt) || 0) + (Number(sec.csamt) || 0);
-      }
-    });
-    return { taxable, tax };
-  }
-  return {
-    taxable: sumGstFields(json, ["txval"]),
-    tax: sumGstFields(json, ["iamt", "camt", "samt", "csamt"]),
-  };
-}
-
-/** Every invoice/summary line from a GSTR-1 JSON export — B2B (registered),
- * B2CL (large unregistered, invoice-wise), and B2CS (small unregistered,
- * state+rate summary — no invoice no./date, GST doesn't require them here). */
-function parseB2bInvoices(json) {
-  if (!json || typeof json !== "object") return [];
-  const rows = [];
-
-  (json.b2b || []).forEach((party) => {
-    const gstin = party.ctin || "";
-    const partyName = party.trdnm || gstin || "Unknown party";
-    (party.inv || []).forEach((inv) => {
-      let taxable = 0, igst = 0, cgst = 0, sgst = 0, cess = 0;
-      (inv.itms || []).forEach((item) => {
-        const d = item.itm_det || {};
-        taxable += Number(d.txval) || 0;
-        igst += Number(d.iamt) || 0;
-        cgst += Number(d.camt) || 0;
-        sgst += Number(d.samt) || 0;
-        cess += Number(d.csamt) || 0;
-      });
-      const total = inv.val != null ? Number(inv.val) : taxable + igst + cgst + sgst + cess;
-      rows.push({ invoiceNo: inv.inum || "—", date: inv.idt || "—", partyName, gstin, taxable, igst, cgst, sgst, total });
-    });
-  });
-
-  // B2CL — large unregistered (inter-state, invoice value > ₹2.5L), invoice-wise, IGST only.
-  (json.b2cl || []).forEach((posGroup) => {
-    (posGroup.inv || []).forEach((inv) => {
-      let taxable = 0, igst = 0, cess = 0;
-      (inv.itms || []).forEach((item) => {
-        const d = item.itm_det || {};
-        taxable += Number(d.txval) || 0;
-        igst += Number(d.iamt) || 0;
-        cess += Number(d.csamt) || 0;
-      });
-      const total = inv.val != null ? Number(inv.val) : taxable + igst + cess;
-      rows.push({ invoiceNo: inv.inum || "—", date: inv.idt || "—", partyName: "Unregistered (B2C Large)", gstin: "—", taxable, igst, cgst: 0, sgst: 0, total });
-    });
-  });
-
-  // B2CS — small unregistered, no invoice-wise detail: one summary line per state+tax rate.
-  (json.b2cs || []).forEach((line) => {
-    const taxable = Number(line.txval) || 0;
-    const igst = Number(line.iamt) || 0;
-    const cgst = Number(line.camt) || 0;
-    const sgst = Number(line.samt) || 0;
-    const cess = Number(line.csamt) || 0;
-    rows.push({
-      invoiceNo: "—",
-      date: "—",
-      partyName: `Unregistered (B2C Small — ${line.sply_ty === "INTER" ? "Inter-state" : "Intra-state"}, POS ${line.pos || "—"})`,
-      gstin: "—",
-      taxable,
-      igst,
-      cgst,
-      sgst,
-      total: taxable + igst + cgst + sgst + cess,
-    });
-  });
-
-  return rows;
 }
 
 function formatInr(n) {
@@ -510,30 +403,6 @@ function renderInvoiceBreakdown(rows) {
   document.getElementById("fSumTotal").textContent = formatInr(sum("total"));
 }
 
-async function onJsonUpload(e) {
-  const file = e.target.files[0];
-  if (!file) return;
-  try {
-    const text = await file.text();
-    const json = JSON.parse(text);
-    const { taxable, tax } = parseGstReturnJson(json);
-    document.getElementById("fTaxableValue").value = taxable ? taxable.toFixed(2) : "";
-    document.getElementById("fTaxAmount").value = tax ? tax.toFixed(2) : "";
-    renderInvoiceBreakdown(parseB2bInvoices(json));
-    if (document.getElementById("fStatus").value !== "Filed") {
-      document.getElementById("fStatus").value = "Filed";
-      toggleFiledDateVisibility();
-    }
-    const invoiceNote = currentInvoiceBreakdown.length ? ` across ${currentInvoiceBreakdown.length} B2B/B2C line${currentInvoiceBreakdown.length === 1 ? "" : "s"}` : "";
-    toast(`Parsed from JSON — Sales ₹${taxable.toLocaleString("en-IN")}, Tax ₹${tax.toLocaleString("en-IN")}${invoiceNote}.`, "success");
-  } catch (err) {
-    console.error(err);
-    toast("Couldn't read that file — please upload a valid GSTR JSON export.", "danger");
-  } finally {
-    e.target.value = "";
-  }
-}
-
 function toggleFiledDateVisibility() {
   const isFiled = document.getElementById("fStatus").value === "Filed";
   document.getElementById("fFiledDateWrap").classList.toggle("d-none", !isFiled);
@@ -547,6 +416,7 @@ async function onSaveStatus(e) {
   const status = document.getElementById("fStatus").value;
   const client = allClients.find((c) => c.id === clientId);
   const wasAlreadyFiled = getFilingStatus(filingMap, clientId, monthKey, type).status === "Filed";
+  const existingRec = getFilingStatus(filingMap, clientId, monthKey, type);
 
   const record = {
     id: filingRecordId(clientId, monthKey, type),
@@ -555,10 +425,10 @@ async function onSaveStatus(e) {
     type,
     status,
     filedDate: status === "Filed" ? document.getElementById("fFiledDate").value : null,
-    dueDate: getFilingStatus(filingMap, clientId, monthKey, type).dueDate,
+    dueDate: existingRec.dueDate,
     notes: document.getElementById("fNotes").value.trim(),
-    taxableValue: document.getElementById("fTaxableValue").value ? Number(document.getElementById("fTaxableValue").value) : null,
-    taxAmount: document.getElementById("fTaxAmount").value ? Number(document.getElementById("fTaxAmount").value) : null,
+    taxableValue: existingRec.taxableValue ?? null,
+    taxAmount: existingRec.taxAmount ?? null,
     invoiceBreakdown: currentInvoiceBreakdown.length ? currentInvoiceBreakdown : null,
     updatedAt: new Date().toISOString(),
   };
@@ -669,7 +539,6 @@ function wireEvents() {
 
   document.getElementById("fStatus").addEventListener("change", toggleFiledDateVisibility);
   document.getElementById("filingStatusForm").addEventListener("submit", onSaveStatus);
-  document.getElementById("fJsonUpload").addEventListener("change", onJsonUpload);
 }
 
 document.addEventListener("DOMContentLoaded", init);
