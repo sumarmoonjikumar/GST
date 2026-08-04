@@ -221,12 +221,22 @@ function renderPendingListForClient() {
 /* =========================================================
    Fullscreen builder modal
    ========================================================= */
+function populateB2BDefaults() {
+  const posSel = document.getElementById("b2bDefaultPos");
+  posSel.innerHTML = Object.entries(STATE_CODES).map(([code, name]) => `<option value="${code}">${code} — ${name}</option>`).join("");
+  const clientStateCode = String(selectedClient?.gstin || "").slice(0, 2);
+  if (STATE_CODES[clientStateCode]) posSel.value = clientStateCode;
+  document.getElementById("b2bDefaultRchrg").value = "N";
+  document.getElementById("b2bDefaultHsn").value = "";
+}
+
 function openBuilder(period) {
   selectedPeriod = period;
   Object.keys(parsedRows).forEach((k) => {
     parsedRows[k] = [];
     sectionHasErrors[k] = false;
   });
+  populateB2BDefaults();
   ["pasteB2B", "pasteB2CS", "pasteHSN", "pasteDOC"].forEach((id) => (document.getElementById(id).value = ""));
   ["previewB2B", "previewB2CS", "previewHSN", "previewDOC"].forEach((id) => (document.getElementById(id).innerHTML = ""));
   ["errB2B", "errB2CS", "errHSN", "errDOC"].forEach((id) => {
@@ -305,32 +315,81 @@ function normalizeDate(v) {
 /* =========================================================
    Section parsers — each returns { rows: [...], errors: [...] }
    ========================================================= */
+/** Snaps a computed tax% to the nearest official GST slab (within a small tolerance for rounding in the source sheet). */
+function nearestValidRate(computed) {
+  if (VALID_RATES.includes(computed)) return computed;
+  let nearest = VALID_RATES[0];
+  VALID_RATES.forEach((r) => {
+    if (Math.abs(r - computed) < Math.abs(nearest - computed)) nearest = r;
+  });
+  return Math.abs(nearest - computed) <= 0.3 ? nearest : null;
+}
+
+const DATE_RE = /^\d{1,2}[/-]\d{1,2}[/-]\d{4}$/;
+
+/**
+ * Deliberately loose about what sits between the GSTIN and the numbers —
+ * real ledger exports often carry a party name and/or a billing-period
+ * column (e.g. "SRV ENGINEERING", "Dec-25") that this tool doesn't need.
+ * It locates the actual date cell by pattern instead of by fixed position,
+ * and reads the trailing numeric cells as Taxable/IGST/CGST/SGST/Invoice
+ * Value — or just Taxable/CGST/SGST/Invoice Value when the sheet has no
+ * separate IGST column (typical for an all-intrastate client).
+ */
 function parseB2B(raw) {
   let rows = splitPastedText(raw);
   rows = stripHeaderRow(rows, true);
+
+  const defaultPos = resolvePosCode(document.getElementById("b2bDefaultPos").value);
+  const defaultRchrg = document.getElementById("b2bDefaultRchrg").value === "Y" ? "Y" : "N";
+  const defaultHsn = String(document.getElementById("b2bDefaultHsn").value || "").replace(/\s/g, "");
+  const posValid = /^\d{2}$/.test(defaultPos) && !!STATE_CODES[defaultPos];
+  const hsnValid = /^\d{4,8}$/.test(defaultHsn) && [4, 6, 8].includes(defaultHsn.length);
+
   const out = [];
   const errors = [];
   rows.forEach((cells, i) => {
-    const [gstin, inum, idt, val, pos, rchrg, hsn, txval, rt, igst, cgst, sgst] = cells;
     const rowErrors = [];
-    const g = String(gstin || "").trim().toUpperCase();
-    if (!GSTIN_RE.test(g)) rowErrors.push("Invalid recipient GSTIN");
+    const inum = String(cells[0] || "").trim();
+    const gstin = String(cells[1] || "").trim().toUpperCase();
+    if (!GSTIN_RE.test(gstin)) rowErrors.push("Invalid recipient GSTIN");
     if (!inum) rowErrors.push("Invoice No missing");
-    const posCode = resolvePosCode(pos);
-    if (!/^\d{2}$/.test(posCode) || !STATE_CODES[posCode]) rowErrors.push("Invalid Place of Supply");
-    const h = String(hsn || "").replace(/\s/g, "");
-    if (!/^\d{4,8}$/.test(h) || ![4, 6, 8].includes(h.length)) rowErrors.push("HSN code must be numeric, 4/6/8 digits");
-    const rateNum = num(rt);
-    if (isNaN(rateNum) || !VALID_RATES.includes(rateNum)) rowErrors.push(`Rate ${rt} is not a valid GST slab`);
-    const txvalNum = num(txval);
-    if (isNaN(txvalNum) || txvalNum < 0) rowErrors.push("Taxable Value invalid");
-    const valNum = num(val);
-    if (isNaN(valNum) || valNum < 0) rowErrors.push("Invoice Value invalid");
-    const igstNum = num(igst), cgstNum = num(cgst), sgstNum = num(sgst);
-    if ([igstNum, cgstNum, sgstNum].some((n) => isNaN(n) || n < 0)) rowErrors.push("Tax amounts invalid");
+
+    let dateIdx = -1;
+    for (let c = 2; c < cells.length; c++) {
+      if (DATE_RE.test(String(cells[c] || "").trim())) { dateIdx = c; break; }
+    }
+    const idt = dateIdx >= 0 ? normalizeDate(cells[dateIdx]) : "";
+    if (dateIdx === -1) rowErrors.push("Couldn't find an Invoice Date (DD-MM-YYYY) in this row");
+
+    const tail = (dateIdx >= 0 ? cells.slice(dateIdx + 1) : cells.slice(2))
+      .map((c) => num(c))
+      .filter((n) => !isNaN(n));
+    let txvalNum = 0, igstNum = 0, cgstNum = 0, sgstNum = 0, valNum = 0;
+    if (tail.length >= 5) {
+      [txvalNum, igstNum, cgstNum, sgstNum, valNum] = tail.slice(-5);
+    } else if (tail.length === 4) {
+      [txvalNum, cgstNum, sgstNum, valNum] = tail; // no IGST column on this sheet
+    } else {
+      rowErrors.push("Couldn't find Taxable Value / tax / Invoice Value figures in this row");
+    }
+    if (!valNum) valNum = round2(txvalNum + igstNum + cgstNum + sgstNum);
+
+    if (!posValid) rowErrors.push("Pick a valid Place of Supply above");
+    if (!hsnValid) rowErrors.push("Set a valid default HSN/SAC code above (numeric, 4/6/8 digits)");
+    if (txvalNum < 0 || igstNum < 0 || cgstNum < 0 || sgstNum < 0) rowErrors.push("Amounts can't be negative");
+    if (igstNum > 0 && (cgstNum > 0 || sgstNum > 0)) rowErrors.push("A row can't have both IGST and CGST/SGST");
+
+    let rateNum = 0;
+    if (!rowErrors.length && txvalNum > 0) {
+      const computed = Math.round(((igstNum + cgstNum + sgstNum) / txvalNum) * 400) / 4; // nearest 0.25%
+      const snapped = nearestValidRate(computed);
+      if (snapped === null) rowErrors.push(`Tax works out to ${computed}% of taxable value — not a valid GST slab, check the figures`);
+      else rateNum = snapped;
+    }
 
     out.push({
-      raw: { gstin: g, inum, idt: normalizeDate(idt), val: valNum, pos: posCode, rchrg: String(rchrg || "N").trim().toUpperCase() === "Y" ? "Y" : "N", hsn: h, txval: txvalNum, rt: rateNum, igst: igstNum, cgst: cgstNum, sgst: sgstNum },
+      raw: { gstin, inum, idt, val: valNum, pos: defaultPos, rchrg: defaultRchrg, hsn: defaultHsn, txval: txvalNum, rt: rateNum, igst: igstNum, cgst: cgstNum, sgst: sgstNum },
       errors: rowErrors,
     });
     rowErrors.forEach((e) => errors.push(`Row ${i + 1}: ${e}`));

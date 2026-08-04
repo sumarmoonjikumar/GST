@@ -241,9 +241,28 @@
         <!-- B2B -->
         <div class="g1-section-card active ledger-card p-3" data-section-card="b2b">
           <h6 class="font-display">B2B Invoices (Table 4)</h6>
+          <p class="col-hint mb-2">These 3 are usually the same for the whole batch — set once, applied to every pasted row:</p>
+          <div class="row g-2 mb-3">
+            <div class="col-6 col-md-4">
+              <label class="form-label small mb-1">Place of Supply</label>
+              <select class="form-select form-select-sm" id="b2bDefaultPos"></select>
+            </div>
+            <div class="col-6 col-md-4">
+              <label class="form-label small mb-1">Reverse Charge</label>
+              <select class="form-select form-select-sm" id="b2bDefaultRchrg">
+                <option value="N" selected>No</option>
+                <option value="Y">Yes</option>
+              </select>
+            </div>
+            <div class="col-12 col-md-4">
+              <label class="form-label small mb-1">Default HSN/SAC Code</label>
+              <input type="text" class="form-control form-control-sm" id="b2bDefaultHsn" placeholder="e.g. 998314" maxlength="8">
+            </div>
+          </div>
+          <div class="small text-muted-soft mb-2">Need more than one HSN for this client? Generate this batch first, then paste the rows for the other HSN separately with a different default — additional per-row HSN mapping can be added later.</div>
           <p class="col-hint mb-2">
-            Paste columns in this order (tab-separated, straight copy from Excel — one row per invoice line/rate):<br>
-            <b>GSTIN</b> · <b>Invoice No</b> · <b>Invoice Date (DD-MM-YYYY)</b> · <b>Invoice Value</b> · <b>Place of Supply (code)</b> · <b>Reverse Charge (Y/N)</b> · <b>HSN Code</b> · <b>Taxable Value</b> · <b>Rate %</b> · <b>IGST</b> · <b>CGST</b> · <b>SGST</b>
+            Paste straight from your ledger export (tab-separated, one row per invoice) — start with <b>Invoice No</b> then <b>GSTIN</b>, and end with <b>Taxable Value</b>, <b>IGST</b> (optional), <b>CGST</b>, <b>SGST</b>, <b>Invoice Value</b>.<br>
+            Anything in between — party name, billing period, etc. — is ignored automatically; the tool finds the date cell itself and reads the numbers after it. No separate IGST column? That's fine too, it's treated as 0. Rate % is worked out from the tax amounts — no need to paste it.
           </p>
           <textarea class="paste-area" id="pasteB2B" placeholder="Paste your Excel rows here (Ctrl+V)…"></textarea>
           <div class="d-flex gap-2 mt-2">
