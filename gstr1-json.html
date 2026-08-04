@@ -66,6 +66,29 @@
   .col-hint { font-size: 0.72rem; color: var(--text-muted); font-family: var(--font-mono); }
   .col-hint b { color: var(--text-primary); }
 
+  .b2b-grid-wrap { max-height: 440px; overflow: auto; border: 1px solid var(--border); border-radius: 8px; }
+  .b2b-grid-table { width: 100%; border-collapse: collapse; font-size: 0.76rem; min-width: 1220px; }
+  .b2b-grid-table thead th {
+    position: sticky; top: 0; background: var(--bg-canvas); z-index: 1; font-size: 0.66rem;
+    text-transform: uppercase; letter-spacing: .02em; color: var(--text-muted); padding: 7px 8px;
+    border-bottom: 1px solid var(--border); white-space: nowrap; text-align: left;
+  }
+  .b2b-grid-table td { border-bottom: 1px solid var(--border); padding: 0; vertical-align: middle; }
+  .b2b-grid-table tr.row-error td { background: #fde8e8; }
+  .b2b-grid-table tr:hover td { background: var(--bg-canvas); }
+  .b2b-grid-table tr.row-error:hover td { background: #fbdada; }
+  .b2b-cell-input {
+    width: 100%; border: none; background: transparent; padding: 7px 8px;
+    font-family: var(--font-mono); font-size: 0.76rem; color: var(--text-primary);
+  }
+  .b2b-cell-input:focus { outline: 2px solid var(--blue-500); outline-offset: -2px; background: #fff; position: relative; z-index: 2; }
+  .b2b-cell-select { width: 100%; border: none; background: transparent; padding: 6px 4px; font-size: 0.72rem; color: var(--text-primary); }
+  .b2b-cell-select:focus { outline: 2px solid var(--blue-500); outline-offset: -2px; background: #fff; }
+  .b2b-rate-cell { padding: 7px 8px; font-family: var(--font-mono); text-align: right; color: var(--text-muted); white-space: nowrap; }
+  .b2b-row-num { text-align: center; font-size: 0.68rem; color: var(--text-muted); }
+  .b2b-row-del { border: none; background: transparent; color: var(--text-muted); cursor: pointer; padding: 6px; }
+  .b2b-row-del:hover { color: var(--danger); }
+
   .preview-table-wrap { max-height: 320px; overflow: auto; border: 1px solid var(--border); border-radius: 8px; margin-top: 12px; }
   .preview-table-wrap table { font-size: 0.74rem; margin-bottom: 0; }
   .preview-table-wrap th { position: sticky; top: 0; background: var(--bg-canvas); z-index: 1; white-space: nowrap; }
@@ -241,36 +264,62 @@
         <!-- B2B -->
         <div class="g1-section-card active ledger-card p-3" data-section-card="b2b">
           <h6 class="font-display">B2B Invoices (Table 4)</h6>
-          <p class="col-hint mb-2">These 3 are usually the same for the whole batch — set once, applied to every pasted row:</p>
-          <div class="row g-2 mb-3">
-            <div class="col-6 col-md-4">
-              <label class="form-label small mb-1">Place of Supply</label>
+          <p class="col-hint mb-2">Type directly into the boxes below, or paste straight from Excel (Ctrl+V) — paste fills across the row and adds new rows automatically. Each invoice can have its own Place of Supply, Reverse Charge and HSN/SAC — Rate % is worked out live from the tax amounts.</p>
+
+          <div class="row g-2 mb-2 align-items-end">
+            <div class="col-6 col-md-3">
+              <label class="form-label small mb-1">Quick-fill Place of Supply</label>
               <select class="form-select form-select-sm" id="b2bDefaultPos"></select>
             </div>
-            <div class="col-6 col-md-4">
-              <label class="form-label small mb-1">Reverse Charge</label>
+            <div class="col-6 col-md-3">
+              <label class="form-label small mb-1">Quick-fill Reverse Charge</label>
               <select class="form-select form-select-sm" id="b2bDefaultRchrg">
                 <option value="N" selected>No</option>
                 <option value="Y">Yes</option>
               </select>
             </div>
-            <div class="col-12 col-md-4">
-              <label class="form-label small mb-1">Default HSN/SAC Code</label>
+            <div class="col-6 col-md-3">
+              <label class="form-label small mb-1">Quick-fill HSN/SAC Code</label>
               <input type="text" class="form-control form-control-sm" id="b2bDefaultHsn" placeholder="e.g. 998314" maxlength="8">
             </div>
+            <div class="col-6 col-md-3">
+              <button type="button" class="btn btn-sm btn-outline-secondary w-100" id="b2bApplyDefaults" title="Fills these 3 into every row below — each row can still be changed individually">
+                <i class="fa-solid fa-arrow-down me-1"></i>Apply to all rows
+              </button>
+            </div>
           </div>
-          <div class="small text-muted-soft mb-2">Need more than one HSN for this client? Generate this batch first, then paste the rows for the other HSN separately with a different default — additional per-row HSN mapping can be added later.</div>
-          <p class="col-hint mb-2">
-            Paste straight from your ledger export (tab-separated, one row per invoice) — start with <b>Invoice No</b> then <b>GSTIN</b>, and end with <b>Taxable Value</b>, <b>IGST</b> (optional), <b>CGST</b>, <b>SGST</b>, <b>Invoice Value</b>.<br>
-            Anything in between — party name, billing period, etc. — is ignored automatically; the tool finds the date cell itself and reads the numbers after it. No separate IGST column? That's fine too, it's treated as 0. Rate % is worked out from the tax amounts — no need to paste it.
-          </p>
-          <textarea class="paste-area" id="pasteB2B" placeholder="Paste your Excel rows here (Ctrl+V)…"></textarea>
-          <div class="d-flex gap-2 mt-2">
-            <button type="button" class="btn btn-sm btn-navy" data-parse="b2b"><i class="fa-solid fa-arrows-rotate me-1"></i>Parse &amp; Preview</button>
-            <button type="button" class="btn btn-sm btn-outline-secondary" data-clear="b2b">Clear</button>
+          <div class="small text-muted-soft mb-2">This is just a quick-fill shortcut — every row's Place of Supply, Reverse Charge and HSN/SAC can still be edited individually, so mixed POS / HSN in the same batch is fine.</div>
+
+          <div class="b2b-grid-wrap">
+            <table class="b2b-grid-table" id="b2bGridTable">
+              <thead>
+                <tr>
+                  <th style="width:26px;">#</th>
+                  <th style="min-width:110px;">Invoice Number</th>
+                  <th style="min-width:150px;">GSTIN</th>
+                  <th style="min-width:150px;">Customer Name</th>
+                  <th style="min-width:100px;">Invoice Date</th>
+                  <th style="min-width:100px;">Taxable Amount</th>
+                  <th style="min-width:80px;">IGST</th>
+                  <th style="min-width:80px;">CGST</th>
+                  <th style="min-width:80px;">SGST</th>
+                  <th style="min-width:90px;">Total</th>
+                  <th style="min-width:130px;">Place of Supply</th>
+                  <th style="min-width:100px;">Reverse Charge</th>
+                  <th style="min-width:100px;">HSN/SAC Code</th>
+                  <th style="min-width:70px;">Rate %</th>
+                  <th style="width:30px;"></th>
+                </tr>
+              </thead>
+              <tbody id="b2bGridBody"></tbody>
+            </table>
+          </div>
+          <div class="d-flex gap-2 mt-2 flex-wrap">
+            <button type="button" class="btn btn-sm btn-outline-secondary" id="b2bAddRows"><i class="fa-solid fa-plus me-1"></i>Add 5 rows</button>
+            <button type="button" class="btn btn-sm btn-navy" data-parse="b2b"><i class="fa-solid fa-arrows-rotate me-1"></i>Validate rows</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary" data-clear="b2b">Clear all</button>
           </div>
           <div class="g1-error-banner" id="errB2B"></div>
-          <div class="preview-table-wrap" id="previewB2B"></div>
         </div>
 
         <!-- B2CS -->

@@ -237,8 +237,9 @@ function openBuilder(period) {
     sectionHasErrors[k] = false;
   });
   populateB2BDefaults();
-  ["pasteB2B", "pasteB2CS", "pasteHSN", "pasteDOC"].forEach((id) => (document.getElementById(id).value = ""));
-  ["previewB2B", "previewB2CS", "previewHSN", "previewDOC"].forEach((id) => (document.getElementById(id).innerHTML = ""));
+  initB2BGrid(8);
+  ["pasteB2CS", "pasteHSN", "pasteDOC"].forEach((id) => (document.getElementById(id).value = ""));
+  ["previewB2CS", "previewHSN", "previewDOC"].forEach((id) => (document.getElementById(id).innerHTML = ""));
   ["errB2B", "errB2CS", "errHSN", "errDOC"].forEach((id) => {
     const el = document.getElementById(id);
     el.classList.remove("show");
@@ -336,49 +337,178 @@ const DATE_RE = /^\d{1,2}[/-]\d{1,2}[/-]\d{4}$/;
  * Value — or just Taxable/CGST/SGST/Invoice Value when the sheet has no
  * separate IGST column (typical for an all-intrastate client).
  */
-function parseB2B(raw) {
-  let rows = splitPastedText(raw);
-  rows = stripHeaderRow(rows, true);
+/* ---------------------------------------------------------
+   B2B editable grid — Invoice Number, GSTIN, Customer Name,
+   Invoice Date, Taxable Amount, IGST, CGST, SGST, Total,
+   Place of Supply, Reverse Charge, HSN/SAC — set per row,
+   with Rate % worked out live. Paste from Excel fills across
+   the row and adds new rows automatically.
+   --------------------------------------------------------- */
+const B2B_COLS = ["inum", "gstin", "cname", "idt", "txval", "igst", "cgst", "sgst", "val", "pos", "rchrg", "hsn"];
 
-  const defaultPos = resolvePosCode(document.getElementById("b2bDefaultPos").value);
-  const defaultRchrg = document.getElementById("b2bDefaultRchrg").value === "Y" ? "Y" : "N";
-  const defaultHsn = String(document.getElementById("b2bDefaultHsn").value || "").replace(/\s/g, "");
-  const posValid = /^\d{2}$/.test(defaultPos) && !!STATE_CODES[defaultPos];
-  const hsnValid = /^\d{4,8}$/.test(defaultHsn) && [4, 6, 8].includes(defaultHsn.length);
+function defaultClientPos() {
+  const code = String(selectedClient?.gstin || "").slice(0, 2);
+  return STATE_CODES[code] ? code : "33";
+}
 
+function createB2BRow() {
+  const tr = document.createElement("tr");
+  tr.innerHTML = `
+    <td class="b2b-row-num"></td>
+    <td><input type="text" class="b2b-cell-input" data-col="inum" placeholder="INV-001"></td>
+    <td><input type="text" class="b2b-cell-input" data-col="gstin" placeholder="33ABCDE1234F1Z5" style="text-transform:uppercase;"></td>
+    <td><input type="text" class="b2b-cell-input" data-col="cname" placeholder="Customer name"></td>
+    <td><input type="text" class="b2b-cell-input" data-col="idt" placeholder="DD-MM-YYYY"></td>
+    <td><input type="text" class="b2b-cell-input" data-col="txval" placeholder="0"></td>
+    <td><input type="text" class="b2b-cell-input" data-col="igst" placeholder="0"></td>
+    <td><input type="text" class="b2b-cell-input" data-col="cgst" placeholder="0"></td>
+    <td><input type="text" class="b2b-cell-input" data-col="sgst" placeholder="0"></td>
+    <td><input type="text" class="b2b-cell-input" data-col="val" placeholder="auto"></td>
+    <td><select class="b2b-cell-select" data-col="pos"></select></td>
+    <td><select class="b2b-cell-select" data-col="rchrg"><option value="N">No</option><option value="Y">Yes</option></select></td>
+    <td><input type="text" class="b2b-cell-input" data-col="hsn" placeholder="998314"></td>
+    <td class="b2b-rate-cell" data-rate>—</td>
+    <td><button type="button" class="b2b-row-del" data-del title="Remove row"><i class="fa-solid fa-xmark"></i></button></td>
+  `;
+  const posSel = tr.querySelector('[data-col="pos"]');
+  posSel.innerHTML = Object.entries(STATE_CODES).map(([code, name]) => `<option value="${code}">${code} — ${name}</option>`).join("");
+  posSel.value = defaultClientPos();
+
+  tr.querySelectorAll("input[data-col]").forEach((inp) => {
+    inp.addEventListener("input", () => updateRowRate(tr));
+    inp.addEventListener("paste", (e) => handleB2BGridPaste(e, tr, inp));
+  });
+  tr.querySelector('[data-col="gstin"]').addEventListener("blur", (e) => { e.target.value = e.target.value.toUpperCase(); });
+  tr.querySelector('[data-col="idt"]').addEventListener("blur", (e) => { e.target.value = normalizeDate(e.target.value); });
+  tr.querySelector("[data-del]").addEventListener("click", () => { tr.remove(); renumberB2BRows(); });
+  return tr;
+}
+
+function renumberB2BRows() {
+  document.querySelectorAll("#b2bGridBody tr").forEach((tr, i) => {
+    tr.querySelector(".b2b-row-num").textContent = i + 1;
+  });
+}
+
+function initB2BGrid(rowCount = 8) {
+  const body = document.getElementById("b2bGridBody");
+  if (!body) return;
+  body.innerHTML = "";
+  for (let i = 0; i < rowCount; i++) body.appendChild(createB2BRow());
+  renumberB2BRows();
+}
+
+function addB2BRows(n = 5) {
+  const body = document.getElementById("b2bGridBody");
+  for (let i = 0; i < n; i++) body.appendChild(createB2BRow());
+  renumberB2BRows();
+}
+
+function updateRowRate(tr) {
+  const g = (col) => num(tr.querySelector(`[data-col="${col}"]`).value);
+  const txval = g("txval"), igst = g("igst"), cgst = g("cgst"), sgst = g("sgst");
+  const rateCell = tr.querySelector("[data-rate]");
+  if (txval > 0 && !isNaN(txval) && !isNaN(igst) && !isNaN(cgst) && !isNaN(sgst)) {
+    const computed = Math.round(((igst + cgst + sgst) / txval) * 400) / 4; // nearest 0.25%
+    const snapped = nearestValidRate(computed);
+    rateCell.textContent = snapped === null ? `${computed}%*` : `${snapped}%`;
+    rateCell.title = snapped === null ? "Doesn't match a standard GST slab — check the amounts" : "";
+  } else {
+    rateCell.textContent = "—";
+    rateCell.title = "";
+  }
+}
+
+function setB2BCell(tr, colName, rawVal) {
+  const val = String(rawVal ?? "").trim();
+  if (colName === "pos") {
+    const code = resolvePosCode(val);
+    if (STATE_CODES[code]) tr.querySelector('[data-col="pos"]').value = code;
+    return;
+  }
+  if (colName === "rchrg") {
+    tr.querySelector('[data-col="rchrg"]').value = /^y/i.test(val) ? "Y" : "N";
+    return;
+  }
+  if (colName === "idt") {
+    tr.querySelector('[data-col="idt"]').value = normalizeDate(val);
+    return;
+  }
+  if (colName === "gstin") {
+    tr.querySelector('[data-col="gstin"]').value = val.toUpperCase();
+    return;
+  }
+  const el = tr.querySelector(`[data-col="${colName}"]`);
+  if (el) el.value = val;
+}
+
+/** Excel-style paste: fills across the row from the pasted-into cell and adds new rows as needed. */
+function handleB2BGridPaste(e, tr, inputEl) {
+  const text = (e.clipboardData || window.clipboardData).getData("text");
+  if (!text || !/\t|\r|\n/.test(text)) return; // single-cell paste — let the browser handle it normally
+  e.preventDefault();
+
+  const gridRows = splitPastedText(text);
+  const body = document.getElementById("b2bGridBody");
+  let rowsArr = Array.from(body.children);
+  const startRowIdx = rowsArr.indexOf(tr);
+  const startColIdx = B2B_COLS.indexOf(inputEl.dataset.col);
+  if (startRowIdx === -1 || startColIdx === -1) return;
+
+  gridRows.forEach((cells, rOffset) => {
+    let targetRow = rowsArr[startRowIdx + rOffset];
+    if (!targetRow) {
+      targetRow = createB2BRow();
+      body.appendChild(targetRow);
+      rowsArr.push(targetRow);
+    }
+    cells.forEach((cellVal, cOffset) => {
+      const colName = B2B_COLS[startColIdx + cOffset];
+      if (!colName) return; // pasted more columns than the grid has — ignore the rest
+      setB2BCell(targetRow, colName, cellVal);
+    });
+    updateRowRate(targetRow);
+  });
+  renumberB2BRows();
+}
+
+/** Reads and validates every non-empty row directly from the grid. */
+function parseB2BFromGrid() {
+  const rows = Array.from(document.querySelectorAll("#b2bGridBody tr"));
   const out = [];
   const errors = [];
-  rows.forEach((cells, i) => {
+  let anyData = false;
+
+  rows.forEach((tr, i) => {
+    const g = (col) => tr.querySelector(`[data-col="${col}"]`).value.trim();
+    const inum = g("inum");
+    const gstin = g("gstin").toUpperCase();
+    const idt = normalizeDate(g("idt"));
+    const txvalNum = num(g("txval"));
+    const igstNum = num(g("igst")) || 0;
+    const cgstNum = num(g("cgst")) || 0;
+    const sgstNum = num(g("sgst")) || 0;
+    let valNum = num(g("val"));
+    const pos = resolvePosCode(tr.querySelector('[data-col="pos"]').value);
+    const rchrg = tr.querySelector('[data-col="rchrg"]').value === "Y" ? "Y" : "N";
+    const hsn = g("hsn").replace(/\s/g, "");
+
+    tr.classList.remove("row-error");
+    const rowIsBlank = !inum && !gstin && !txvalNum && !igstNum && !cgstNum && !sgstNum;
+    if (rowIsBlank) return; // skip fully empty rows silently
+    anyData = true;
+
     const rowErrors = [];
-    const inum = String(cells[0] || "").trim();
-    const gstin = String(cells[1] || "").trim().toUpperCase();
-    if (!GSTIN_RE.test(gstin)) rowErrors.push("Invalid recipient GSTIN");
     if (!inum) rowErrors.push("Invoice No missing");
-
-    let dateIdx = -1;
-    for (let c = 2; c < cells.length; c++) {
-      if (DATE_RE.test(String(cells[c] || "").trim())) { dateIdx = c; break; }
-    }
-    const idt = dateIdx >= 0 ? normalizeDate(cells[dateIdx]) : "";
-    if (dateIdx === -1) rowErrors.push("Couldn't find an Invoice Date (DD-MM-YYYY) in this row");
-
-    const tail = (dateIdx >= 0 ? cells.slice(dateIdx + 1) : cells.slice(2))
-      .map((c) => num(c))
-      .filter((n) => !isNaN(n));
-    let txvalNum = 0, igstNum = 0, cgstNum = 0, sgstNum = 0, valNum = 0;
-    if (tail.length >= 5) {
-      [txvalNum, igstNum, cgstNum, sgstNum, valNum] = tail.slice(-5);
-    } else if (tail.length === 4) {
-      [txvalNum, cgstNum, sgstNum, valNum] = tail; // no IGST column on this sheet
-    } else {
-      rowErrors.push("Couldn't find Taxable Value / tax / Invoice Value figures in this row");
-    }
-    if (!valNum) valNum = round2(txvalNum + igstNum + cgstNum + sgstNum);
-
-    if (!posValid) rowErrors.push("Pick a valid Place of Supply above");
-    if (!hsnValid) rowErrors.push("Set a valid default HSN/SAC code above (numeric, 4/6/8 digits)");
-    if (txvalNum < 0 || igstNum < 0 || cgstNum < 0 || sgstNum < 0) rowErrors.push("Amounts can't be negative");
+    if (!GSTIN_RE.test(gstin)) rowErrors.push("Invalid recipient GSTIN");
+    if (!DATE_RE.test(idt)) rowErrors.push("Invoice Date must be DD-MM-YYYY");
+    if (isNaN(txvalNum) || txvalNum < 0) rowErrors.push("Taxable Amount invalid");
+    if ([igstNum, cgstNum, sgstNum].some((n) => isNaN(n) || n < 0)) rowErrors.push("Tax amounts can't be negative");
     if (igstNum > 0 && (cgstNum > 0 || sgstNum > 0)) rowErrors.push("A row can't have both IGST and CGST/SGST");
+    if (!/^\d{2}$/.test(pos) || !STATE_CODES[pos]) rowErrors.push("Invalid Place of Supply");
+    if (!/^\d{4,8}$/.test(hsn) || ![4, 6, 8].includes(hsn.length)) rowErrors.push("HSN/SAC must be numeric, 4/6/8 digits");
+
+    if (!valNum) valNum = round2(txvalNum + igstNum + cgstNum + sgstNum);
 
     let rateNum = 0;
     if (!rowErrors.length && txvalNum > 0) {
@@ -388,13 +518,48 @@ function parseB2B(raw) {
       else rateNum = snapped;
     }
 
+    if (rowErrors.length) {
+      tr.classList.add("row-error");
+      errors.push(`Row ${i + 1}: ${rowErrors.join("; ")}`);
+    }
+
     out.push({
-      raw: { gstin, inum, idt, val: valNum, pos: defaultPos, rchrg: defaultRchrg, hsn: defaultHsn, txval: txvalNum, rt: rateNum, igst: igstNum, cgst: cgstNum, sgst: sgstNum },
+      raw: { gstin, inum, idt, val: valNum, pos, rchrg, hsn, txval: txvalNum, rt: rateNum, igst: igstNum, cgst: cgstNum, sgst: sgstNum },
       errors: rowErrors,
     });
-    rowErrors.forEach((e) => errors.push(`Row ${i + 1}: ${e}`));
   });
-  return { rows: out, errors };
+
+  return { rows: out, errors, anyData };
+}
+
+function handleParseB2B() {
+  const parsed = parseB2BFromGrid();
+  const errEl = document.getElementById("errB2B");
+  if (!parsed.anyData) {
+    toast("Fill in at least one invoice row first.", "warning");
+    parsedRows.b2b = [];
+    sectionHasErrors.b2b = false;
+    errEl.classList.remove("show");
+    errEl.innerHTML = "";
+    updateCounts();
+    updateSummaryStrip();
+    return;
+  }
+  parsedRows.b2b = parsed.rows;
+  sectionHasErrors.b2b = parsed.errors.length > 0;
+  if (parsed.errors.length) {
+    errEl.classList.add("show");
+    errEl.innerHTML = `<strong>${parsed.errors.length} issue(s) found — the rows highlighted in red need fixing:</strong><ul>${parsed.errors
+      .slice(0, 12)
+      .map((e) => `<li>${escapeHtml(e)}</li>`)
+      .join("")}${parsed.errors.length > 12 ? `<li>…and ${parsed.errors.length - 12} more</li>` : ""}</ul>`;
+  } else {
+    errEl.classList.remove("show");
+    errEl.innerHTML = "";
+  }
+  updateCounts();
+  updateSummaryStrip();
+  toast(`${parsed.rows.length} invoice row(s) validated${parsed.errors.length ? ` — ${parsed.errors.length} issue(s)` : ""}.`, parsed.errors.length ? "warning" : "success");
 }
 
 function parseB2CS(raw) {
@@ -551,13 +716,17 @@ function renderPreview(section, parsed) {
 }
 
 function handleParse(section) {
-  const textareaId = { b2b: "pasteB2B", b2cs: "pasteB2CS", hsn: "pasteHSN", doc: "pasteDOC" }[section];
+  if (section === "b2b") {
+    handleParseB2B();
+    return;
+  }
+  const textareaId = { b2cs: "pasteB2CS", hsn: "pasteHSN", doc: "pasteDOC" }[section];
   const raw = document.getElementById(textareaId).value;
   if (!raw.trim()) {
     toast("Paste some rows first.", "warning");
     return;
   }
-  const parserFn = { b2b: parseB2B, b2cs: parseB2CS, hsn: parseHSN, doc: parseDOC }[section];
+  const parserFn = { b2cs: parseB2CS, hsn: parseHSN, doc: parseDOC }[section];
   const parsed = parserFn(raw);
   parsedRows[section] = parsed.rows;
   sectionHasErrors[section] = parsed.errors.length > 0;
@@ -568,11 +737,15 @@ function handleParse(section) {
 }
 
 function handleClear(section) {
-  const textareaId = { b2b: "pasteB2B", b2cs: "pasteB2CS", hsn: "pasteHSN", doc: "pasteDOC" }[section];
-  document.getElementById(textareaId).value = "";
   parsedRows[section] = [];
   sectionHasErrors[section] = false;
-  document.getElementById(`preview${section.toUpperCase()}`).innerHTML = "";
+  if (section === "b2b") {
+    initB2BGrid(8);
+  } else {
+    const textareaId = { b2cs: "pasteB2CS", hsn: "pasteHSN", doc: "pasteDOC" }[section];
+    document.getElementById(textareaId).value = "";
+    document.getElementById(`preview${section.toUpperCase()}`).innerHTML = "";
+  }
   const errEl = document.getElementById(`err${section.toUpperCase()}`);
   errEl.classList.remove("show");
   errEl.innerHTML = "";
@@ -740,6 +913,19 @@ function wireEvents() {
   document.querySelectorAll("#g1Tabs .g1-tab-btn").forEach((btn) =>
     btn.addEventListener("click", () => switchSection(btn.dataset.section))
   );
+
+  document.getElementById("b2bApplyDefaults").addEventListener("click", () => {
+    const pos = document.getElementById("b2bDefaultPos").value;
+    const rchrg = document.getElementById("b2bDefaultRchrg").value;
+    const hsn = document.getElementById("b2bDefaultHsn").value.trim();
+    document.querySelectorAll("#b2bGridBody tr").forEach((tr) => {
+      tr.querySelector('[data-col="pos"]').value = pos;
+      tr.querySelector('[data-col="rchrg"]').value = rchrg;
+      if (hsn) tr.querySelector('[data-col="hsn"]').value = hsn;
+    });
+    toast("Applied to all rows — you can still edit any row individually.", "success");
+  });
+  document.getElementById("b2bAddRows").addEventListener("click", () => addB2BRows(5));
 
   document.querySelectorAll("[data-parse]").forEach((btn) =>
     btn.addEventListener("click", () => handleParse(btn.dataset.parse))
