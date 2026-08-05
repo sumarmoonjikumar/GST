@@ -46,6 +46,20 @@ const DOC_NATURE_MAP = [
   { key: 11, names: ["delivery challan in case of liquid gas", "liquid gas challan"] },
   { key: 12, names: ["delivery challan in cases other than by way of supply", "other delivery challan"] },
 ];
+const DOC_TYP_LABELS = {
+  1: "Invoices for outward supply",
+  2: "Invoices for inward supply from unregistered person",
+  3: "Revised Invoice",
+  4: "Debit Note",
+  5: "Credit Note",
+  6: "Receipt voucher",
+  7: "Payment Voucher",
+  8: "Refund voucher",
+  9: "Delivery Challan for job work",
+  10: "Delivery Challan for supply on approval",
+  11: "Delivery Challan in case of liquid gas",
+  12: "Delivery Challan in cases other than by way of supply (excluding at S no. 9 to 11)",
+};
 const STATE_CODES = {
   "01": "Jammu and Kashmir", "02": "Himachal Pradesh", "03": "Punjab", "04": "Chandigarh", "05": "Uttarakhand",
   "06": "Haryana", "07": "Delhi", "08": "Rajasthan", "09": "Uttar Pradesh", "10": "Bihar", "11": "Sikkim",
@@ -1195,7 +1209,7 @@ function updateSummaryStrip() {
 function buildGstr1Json() {
   const gstin = selectedClient.gstin;
   const fp = monthKeyToFp(selectedPeriod.monthKey);
-  const json = { gstin, fp, version: "GST3.2.2" };
+  const json = { gstin, fp };
 
   // B2B — grouped by recipient GSTIN, then by invoice number.
   if (parsedRows.b2b.length) {
@@ -1210,7 +1224,7 @@ function buildGstr1Json() {
       const inv = invMap.get(d.inum);
       inv.itms.push({
         num: inv.itms.length + 1,
-        itm_det: { txval: round2(d.txval), rt: d.rt, iamt: round2(d.igst), camt: round2(d.cgst), samt: round2(d.sgst), csamt: 0, hsn_sc: d.hsn },
+        itm_det: { txval: round2(d.txval), rt: d.rt, iamt: round2(d.igst), camt: round2(d.cgst), samt: round2(d.sgst), csamt: 0 },
       });
     });
     json.b2b = [...byCtin.entries()].map(([ctin, invMap]) => ({ ctin, inv: [...invMap.values()] }));
@@ -1255,6 +1269,7 @@ function buildGstr1Json() {
     json.doc_issue = {
       doc_det: parsedRows.doc.map((r) => ({
         doc_num: r.raw.doc_num,
+        doc_typ: DOC_TYP_LABELS[r.raw.doc_num] || "",
         docs: [{ num: 1, from: r.raw.from, to: r.raw.to, totnum: r.raw.totnum, cancel: r.raw.cancel, net_issue: r.raw.net_issue }],
       })),
     };
