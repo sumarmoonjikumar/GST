@@ -1013,12 +1013,26 @@ function buildHeaderMap(section, headerRow) {
 }
 
 /** Clears any blank starter rows, then appends one grid row per imported row (each row given as a {colKey: value} object). Returns rows filled. */
+/** A B2B row counts as empty only by its data fields — Place of Supply / Reverse Charge dropdowns always carry a default value, so they don't count. */
+function isB2BRowBlank(tr) {
+  const g = (col) => tr.querySelector(`[data-col="${col}"]`).value.trim();
+  return !g("inum") && !g("gstin") && !num(g("txval")) && !num(g("igst")) && !num(g("cgst")) && !num(g("sgst"));
+}
+
+/** Same idea for the generic grid sections — uses each section's own isRowBlank so dropdown defaults (Rate %, Nature of Document, ...) don't count as "filled in". */
+function isGridRowBlank(defKey, tr) {
+  const def = GRID_DEFS[defKey];
+  const v = {};
+  def.cols.forEach((col) => { v[col.key] = tr.querySelector(`[data-col="${col.key}"]`).value.trim(); });
+  return def.isRowBlank(v);
+}
+
 function populateGridFromKeyedRows(section, keyedRows) {
   if (!keyedRows.length) return 0;
   if (section === "b2b") {
     const body = document.getElementById("b2bGridBody");
     Array.from(body.querySelectorAll("tr")).forEach((tr) => {
-      if (B2B_COLS.every((c) => !tr.querySelector(`[data-col="${c}"]`).value.trim())) tr.remove();
+      if (isB2BRowBlank(tr)) tr.remove();
     });
     keyedRows.forEach((vals) => {
       const tr = createB2BRow();
@@ -1036,7 +1050,7 @@ function populateGridFromKeyedRows(section, keyedRows) {
   const colKeys = def.cols.map((c) => c.key);
   const body = document.getElementById(def.bodyId);
   Array.from(body.querySelectorAll("tr")).forEach((tr) => {
-    if (colKeys.every((c) => !tr.querySelector(`[data-col="${c}"]`).value.trim())) tr.remove();
+    if (isGridRowBlank(section, tr)) tr.remove();
   });
   keyedRows.forEach((vals) => {
     const tr = createGridRow(section);
