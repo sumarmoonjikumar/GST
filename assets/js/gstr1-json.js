@@ -558,7 +558,7 @@ function parseB2BFromGrid() {
     let valNum = num(g("val"));
     const pos = resolvePosCode(tr.querySelector('[data-col="pos"]').value);
     const rchrg = tr.querySelector('[data-col="rchrg"]').value === "Y" ? "Y" : "N";
-    const hsn = g("hsn").replace(/\s/g, "");
+    const hsn = g("hsn").replace(/[,\s]/g, "");
 
     tr.classList.remove("row-error", "row-unregistered");
     const rowIsBlank = !inum && !gstin && !txvalNum && !igstNum && !cgstNum && !sgstNum;
@@ -706,7 +706,7 @@ const GRID_DEFS = {
     isRowBlank: (v) => !v.hsn && !num(v.txval) && !num(v.igst) && !num(v.cgst) && !num(v.sgst),
     validateRow: (v) => {
       const errors = [];
-      const h = String(v.hsn || "").replace(/\s/g, "");
+      const h = String(v.hsn || "").replace(/[,\s]/g, "");
       if (!/^\d{4,8}$/.test(h) || ![4, 6, 8].includes(h.length)) errors.push("HSN/SAC code must be numeric, 4/6/8 digits");
       let u = String(v.uqc || "").trim().toUpperCase();
       if (h.startsWith("99") && (!u || u === "OTH-OTHERS")) u = "NA-NOT APPLICABLE";
@@ -803,7 +803,7 @@ function setGridCell(defKey, tr, colKey, rawVal) {
     return;
   }
   const el = tr.querySelector(`[data-col="${colKey}"]`);
-  if (el) el.value = colKey === "hsn" ? val.replace(/\s/g, "") : val;
+  if (el) el.value = colKey === "hsn" ? val.replace(/[,\s]/g, "") : val;
 }
 
 function handleGenericGridPaste(e, defKey, tr, inputEl) {
@@ -925,8 +925,10 @@ function syncB2csFromUnregisteredB2B() {
 
 /* =========================================================
    Excel workbook import — one .xlsx with separate sheets for
-   B2B / B2C / HSN / Document; each sheet's rows are read in
-   the same left-to-right column order as that tab's grid.
+   B2B / B2C / HSN / Document. Columns are matched by their
+   HEADER TEXT (not position), so the sheet's own column order
+   doesn't need to match the grid's — "Invoice Date" lands in
+   the date field no matter which column it's actually in.
    ========================================================= */
 function matchSheetToSection(sheetName) {
   const n = String(sheetName || "").toLowerCase().replace(/[^a-z0-9]/g, "");
@@ -937,24 +939,97 @@ function matchSheetToSection(sheetName) {
   return null;
 }
 
-/** Clears any blank starter rows, then appends one grid row per imported data row. Returns rows filled. */
-function populateGridFromRows(section, rows) {
-  if (!rows.length) return 0;
+const HEADER_ALIASES = {
+  b2b: {
+    inum: ["invoice number", "invoice no", "inv no", "bill no", "bill number", "invoice num"],
+    gstin: ["gstin", "customer gstin", "recipient gstin", "party gstin", "buyer gstin"],
+    cname: ["customer name", "party name", "buyer name", "customer", "client name", "name"],
+    idt: ["invoice date", "bill date", "inv date", "date"],
+    txval: ["taxable amount", "taxable value", "taxable", "assessable value"],
+    igst: ["igst", "igst amount"],
+    cgst: ["cgst", "cgst amount"],
+    sgst: ["sgst", "sgst amount"],
+    val: ["total", "invoice value", "total value", "total amount", "grand total"],
+    pos: ["place of supply", "pos"],
+    rchrg: ["reverse charge", "rcm"],
+    hsn: ["hsn/sac code", "hsn sac code", "hsn code", "hsn/sac", "hsn", "sac code", "sac"],
+  },
+  b2cs: {
+    pos: ["place of supply", "pos"],
+    rt: ["rate %", "rate", "gst rate", "tax rate"],
+    txval: ["taxable amount", "taxable value", "taxable"],
+    igst: ["igst", "igst amount"],
+    cgst: ["cgst", "cgst amount"],
+    sgst: ["sgst", "sgst amount"],
+  },
+  hsn: {
+    hsn: ["hsn/sac code", "hsn sac code", "hsn code", "hsn/sac", "hsn", "sac code", "sac"],
+    desc: ["description", "desc", "item description"],
+    uqc: ["uqc", "unit"],
+    qty: ["quantity", "qty", "total quantity"],
+    val: ["total value", "total"],
+    txval: ["taxable value", "taxable amount", "taxable"],
+    igst: ["igst", "igst amount"],
+    cgst: ["cgst", "cgst amount"],
+    sgst: ["sgst", "sgst amount"],
+  },
+  doc: {
+    nature: ["nature of document", "nature", "document type", "doc type"],
+    from: ["serial from", "from", "sr from", "from no"],
+    to: ["serial to", "to", "sr to", "to no"],
+    total: ["total number", "total no", "total"],
+    cancel: ["cancelled", "canceled", "cancel", "cancelled no"],
+  },
+};
+
+function normHeader(s) {
+  return String(s || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
+/** Maps each header-row cell to one of our internal column keys by matching header TEXT (exact, then partial). Returns { colIndex: key }. */
+function buildHeaderMap(section, headerRow) {
+  const aliases = HEADER_ALIASES[section];
+  const map = {};
+  headerRow.forEach((cell, idx) => {
+    const nh = normHeader(cell);
+    if (!nh) return;
+    for (const [key, list] of Object.entries(aliases)) {
+      if (list.some((a) => normHeader(a) === nh)) { map[idx] = key; return; }
+    }
+  });
+  // Second pass: partial match for anything still unmapped, so close variants ("HSN Code (Goods)") still land.
+  headerRow.forEach((cell, idx) => {
+    if (map[idx]) return;
+    const nh = normHeader(cell);
+    if (!nh) return;
+    for (const [key, list] of Object.entries(aliases)) {
+      if (list.some((a) => { const na = normHeader(a); return na.length >= 4 && (nh.includes(na) || na.includes(nh)); })) {
+        map[idx] = key;
+        return;
+      }
+    }
+  });
+  return map;
+}
+
+/** Clears any blank starter rows, then appends one grid row per imported row (each row given as a {colKey: value} object). Returns rows filled. */
+function populateGridFromKeyedRows(section, keyedRows) {
+  if (!keyedRows.length) return 0;
   if (section === "b2b") {
     const body = document.getElementById("b2bGridBody");
     Array.from(body.querySelectorAll("tr")).forEach((tr) => {
       if (B2B_COLS.every((c) => !tr.querySelector(`[data-col="${c}"]`).value.trim())) tr.remove();
     });
-    rows.forEach((cells) => {
+    keyedRows.forEach((vals) => {
       const tr = createB2BRow();
       body.appendChild(tr);
-      cells.forEach((val, i) => { if (B2B_COLS[i]) setB2BCell(tr, B2B_COLS[i], val); });
+      B2B_COLS.forEach((key) => { if (vals[key] !== undefined && vals[key] !== "") setB2BCell(tr, key, vals[key]); });
       updateRowRate(tr);
       tr.classList.toggle("row-unregistered", !tr.querySelector('[data-col="gstin"]').value.trim());
     });
     if (!body.children.length) body.appendChild(createB2BRow());
     renumberB2BRows();
-    return rows.length;
+    return keyedRows.length;
   }
 
   const def = GRID_DEFS[section];
@@ -963,14 +1038,35 @@ function populateGridFromRows(section, rows) {
   Array.from(body.querySelectorAll("tr")).forEach((tr) => {
     if (colKeys.every((c) => !tr.querySelector(`[data-col="${c}"]`).value.trim())) tr.remove();
   });
-  rows.forEach((cells) => {
+  keyedRows.forEach((vals) => {
     const tr = createGridRow(section);
     body.appendChild(tr);
-    cells.forEach((val, i) => { if (colKeys[i]) setGridCell(section, tr, colKeys[i], val); });
+    colKeys.forEach((key) => { if (vals[key] !== undefined && vals[key] !== "") setGridCell(section, tr, key, vals[key]); });
   });
   if (!body.children.length) body.appendChild(createGridRow(section));
   renumberGridRows(section);
-  return rows.length;
+  return keyedRows.length;
+}
+
+/** Turns a sheet's raw rows into {colKey: value} rows — by header text when the sheet has a recognisable header row, or by left-to-right position otherwise. */
+function keyRowsForSection(section, rawRows) {
+  if (!rawRows.length) return [];
+  const headerMap = buildHeaderMap(section, rawRows[0]);
+  if (Object.keys(headerMap).length >= 2) {
+    return rawRows.slice(1).map((r) => {
+      const o = {};
+      Object.entries(headerMap).forEach(([idx, key]) => { o[key] = r[Number(idx)] ?? ""; });
+      return o;
+    });
+  }
+  // No usable header found — fall back to plain left-to-right column order.
+  const colKeys = section === "b2b" ? B2B_COLS : GRID_DEFS[section].cols.map((c) => c.key);
+  const dataRows = stripHeaderRow(rawRows, false);
+  return dataRows.map((r) => {
+    const o = {};
+    colKeys.forEach((k, i) => { o[k] = r[i] ?? ""; });
+    return o;
+  });
 }
 
 async function handleExcelUpload(e) {
@@ -981,42 +1077,43 @@ async function handleExcelUpload(e) {
     toast("The Excel reader didn't load — check your internet connection and try again.", "danger");
     return;
   }
-  let wb;
+
   try {
     const buf = await file.arrayBuffer();
-    wb = XLSX.read(buf, { type: "array", cellDates: true });
+    const wb = XLSX.read(buf, { type: "array", cellDates: true });
+
+    const filled = { b2b: 0, b2cs: 0, hsn: 0, doc: 0 };
+    const unmatched = [];
+
+    wb.SheetNames.forEach((sheetName) => {
+      const section = matchSheetToSection(sheetName);
+      if (!section) { unmatched.push(sheetName); return; }
+      let rows = XLSX.utils.sheet_to_json(wb.Sheets[sheetName], { header: 1, raw: false, dateNF: "dd-mm-yyyy", defval: "" });
+      rows = rows.map((r) => r.map((c) => String(c ?? "").trim())).filter((r) => r.some((c) => c !== ""));
+      if (!rows.length) return;
+      let keyedRows = keyRowsForSection(section, rows);
+      keyedRows = keyedRows.filter((o) => Object.values(o).some((v) => String(v).trim() !== ""));
+      if (!keyedRows.length) return;
+      filled[section] += populateGridFromKeyedRows(section, keyedRows);
+    });
+
+    const importedParts = Object.entries(filled).filter(([, n]) => n > 0);
+    if (!importedParts.length) {
+      toast(`Couldn't find a B2B / B2C / HSN / Document sheet in that file. Sheet(s) in the file: ${wb.SheetNames.join(", ") || "none"}.`, "warning");
+      return;
+    }
+
+    // Auto-validate every section that received rows so counts/errors show immediately.
+    importedParts.forEach(([section]) => (section === "b2b" ? handleParseB2B() : handleParseGrid(section)));
+
+    let msg = `Imported ${importedParts.map(([s, n]) => `${n} row(s) into ${s === "b2cs" ? "B2C Small" : s.toUpperCase()}`).join(", ")}.`;
+    if (unmatched.length) msg += ` Skipped sheet(s) that didn't look like B2B/B2C/HSN/Document: ${unmatched.join(", ")}.`;
+    toast(msg, "success");
+    switchSection(importedParts[0][0]);
   } catch (err) {
-    console.error(err);
-    toast("Couldn't read that file — make sure it's a valid .xlsx or .xls workbook.", "danger");
-    return;
+    console.error("Excel import failed:", err);
+    toast(`Couldn't read that file — make sure it's a valid .xlsx/.xls workbook. (${err.message || err})`, "danger");
   }
-
-  const filled = { b2b: 0, b2cs: 0, hsn: 0, doc: 0 };
-  const unmatched = [];
-
-  wb.SheetNames.forEach((sheetName) => {
-    const section = matchSheetToSection(sheetName);
-    if (!section) { unmatched.push(sheetName); return; }
-    let rows = XLSX.utils.sheet_to_json(wb.Sheets[sheetName], { header: 1, raw: false, dateNF: "dd-mm-yyyy", defval: "" });
-    rows = rows.map((r) => r.map((c) => String(c ?? "").trim())).filter((r) => r.some((c) => c !== ""));
-    rows = stripHeaderRow(rows, false);
-    if (!rows.length) return;
-    filled[section] += populateGridFromRows(section, rows);
-  });
-
-  const importedParts = Object.entries(filled).filter(([, n]) => n > 0);
-  if (!importedParts.length) {
-    toast(`Couldn't find a B2B / B2C / HSN / Document sheet in that file. Sheet(s) in the file: ${wb.SheetNames.join(", ") || "none"}.`, "warning");
-    return;
-  }
-
-  // Auto-validate every section that received rows so counts/errors show immediately.
-  importedParts.forEach(([section]) => (section === "b2b" ? handleParseB2B() : handleParseGrid(section)));
-
-  let msg = `Imported ${importedParts.map(([s, n]) => `${n} row(s) into ${s === "b2cs" ? "B2C Small" : s.toUpperCase()}`).join(", ")}.`;
-  if (unmatched.length) msg += ` Skipped sheet(s) that didn't look like B2B/B2C/HSN/Document: ${unmatched.join(", ")}.`;
-  toast(msg, "success");
-  switchSection(importedParts[0][0]);
 }
 
 /* =========================================================
@@ -1211,6 +1308,13 @@ function wireEvents() {
     btn.addEventListener("click", () => switchSection(btn.dataset.section))
   );
 
+  document.getElementById("excelUploadBtn").addEventListener("click", () => {
+    if (typeof XLSX === "undefined") {
+      toast("The Excel reader is still loading — wait a second and try again, or check your internet connection.", "warning");
+      return;
+    }
+    document.getElementById("excelUploadInput").click();
+  });
   document.getElementById("excelUploadInput").addEventListener("change", handleExcelUpload);
   document.getElementById("b2bApplyDefaults").addEventListener("click", () => {
     const pos = document.getElementById("b2bDefaultPos").value;
