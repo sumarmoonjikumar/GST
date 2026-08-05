@@ -75,8 +75,12 @@
   }
   .b2b-grid-table td { border-bottom: 1px solid var(--border); padding: 0; vertical-align: middle; }
   .b2b-grid-table tr.row-error td { background: #fde8e8; }
+  .b2b-grid-table tr.row-unregistered:not(.row-error) td { background: #eef6ff; }
+  .b2b-grid-table tr.row-unregistered:not(.row-error) [data-col="gstin"] { color: var(--text-muted); font-style: italic; }
   .b2b-grid-table tr:hover td { background: var(--bg-canvas); }
   .b2b-grid-table tr.row-error:hover td { background: #fbdada; }
+  .b2b-grid-table tr.row-unregistered:not(.row-error):hover td { background: #e2f0ff; }
+  .b2b-grid-table tr[data-auto="1"] td { background: #f4faf1; }
   .b2b-cell-input {
     width: 100%; border: none; background: transparent; padding: 7px 8px;
     font-family: var(--font-mono); font-size: 0.76rem; color: var(--text-primary);
@@ -325,48 +329,94 @@
         <!-- B2CS -->
         <div class="g1-section-card ledger-card p-3" data-section-card="b2cs">
           <h6 class="font-display">B2C Small — Consolidated (Table 7)</h6>
-          <p class="col-hint mb-2">
-            One consolidated row per Place-of-Supply + Rate (already totalled in your Excel):<br>
-            <b>Place of Supply (code)</b> · <b>Rate %</b> · <b>Taxable Value</b> · <b>IGST</b> · <b>CGST</b> · <b>SGST</b>
-          </p>
-          <textarea class="paste-area" id="pasteB2CS" placeholder="Paste your Excel rows here (Ctrl+V)…"></textarea>
-          <div class="d-flex gap-2 mt-2">
-            <button type="button" class="btn btn-sm btn-navy" data-parse="b2cs"><i class="fa-solid fa-arrows-rotate me-1"></i>Parse &amp; Preview</button>
-            <button type="button" class="btn btn-sm btn-outline-secondary" data-clear="b2cs">Clear</button>
+          <p class="col-hint mb-2">One row per Place-of-Supply + Rate, already totalled. Unregistered customers you enter on the B2B tab (GSTIN left blank) are folded in here automatically — use this tab only for extra consolidated totals, e.g. counter sales.</p>
+          <div class="b2b-grid-wrap">
+            <table class="b2b-grid-table" id="b2csGridTable">
+              <thead>
+                <tr>
+                  <th style="width:26px;">#</th>
+                  <th style="min-width:160px;">Place of Supply</th>
+                  <th style="min-width:80px;">Rate %</th>
+                  <th style="min-width:110px;">Taxable Amount</th>
+                  <th style="min-width:90px;">IGST</th>
+                  <th style="min-width:90px;">CGST</th>
+                  <th style="min-width:90px;">SGST</th>
+                  <th style="min-width:100px;">Total</th>
+                  <th style="width:30px;"></th>
+                </tr>
+              </thead>
+              <tbody id="b2csGridBody"></tbody>
+            </table>
           </div>
+          <div class="d-flex gap-2 mt-2 flex-wrap">
+            <button type="button" class="btn btn-sm btn-outline-secondary" id="b2csSyncBtn" title="Pull in unregistered (blank-GSTIN) rows from the B2B tab, consolidated by Place of Supply + Rate" style="border-color: var(--blue-500); color: var(--blue-500);"><i class="fa-solid fa-rotate me-1"></i>Sync from B2B</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary" id="b2csAddRows"><i class="fa-solid fa-plus me-1"></i>Add 5 rows</button>
+            <button type="button" class="btn btn-sm btn-navy" data-parse="b2cs"><i class="fa-solid fa-arrows-rotate me-1"></i>Validate rows</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary" data-clear="b2cs">Clear all</button>
+          </div>
+          <div class="small text-muted-soft mt-1">Rows pulled in by "Sync from B2B" are marked <span class="badge bg-info-subtle text-info-emphasis">auto</span> and get replaced each time you sync — add extra manual rows below them for anything else.</div>
           <div class="g1-error-banner" id="errB2CS"></div>
-          <div class="preview-table-wrap" id="previewB2CS"></div>
         </div>
 
         <!-- HSN -->
         <div class="g1-section-card ledger-card p-3" data-section-card="hsn">
           <h6 class="font-display">HSN-wise Summary (Table 12)</h6>
-          <p class="col-hint mb-2">
-            <b>HSN/SAC Code</b> · <b>Description</b> · <b>UQC</b> (e.g. NOS, KGS — use <b>NA</b> for services) · <b>Total Quantity</b> · <b>Total Value</b> · <b>Taxable Value</b> · <b>IGST</b> · <b>CGST</b> · <b>SGST</b><br>
-            HSN code must be numeric, 4/6/8 digits — this is checked automatically so the portal never rejects it for an HSN error.
-          </p>
-          <textarea class="paste-area" id="pasteHSN" placeholder="Paste your Excel rows here (Ctrl+V)…"></textarea>
-          <div class="d-flex gap-2 mt-2">
-            <button type="button" class="btn btn-sm btn-navy" data-parse="hsn"><i class="fa-solid fa-arrows-rotate me-1"></i>Parse &amp; Preview</button>
-            <button type="button" class="btn btn-sm btn-outline-secondary" data-clear="hsn">Clear</button>
+          <p class="col-hint mb-2">HSN code must be numeric, 4/6/8 digits — checked automatically so the portal never rejects it. Use UQC <b>NA</b> for services.</p>
+          <div class="b2b-grid-wrap">
+            <table class="b2b-grid-table" id="hsnGridTable">
+              <thead>
+                <tr>
+                  <th style="width:26px;">#</th>
+                  <th style="min-width:100px;">HSN/SAC Code</th>
+                  <th style="min-width:170px;">Description</th>
+                  <th style="min-width:90px;">UQC</th>
+                  <th style="min-width:90px;">Quantity</th>
+                  <th style="min-width:100px;">Taxable Value</th>
+                  <th style="min-width:90px;">IGST</th>
+                  <th style="min-width:90px;">CGST</th>
+                  <th style="min-width:90px;">SGST</th>
+                  <th style="min-width:100px;">Total Value</th>
+                  <th style="width:30px;"></th>
+                </tr>
+              </thead>
+              <tbody id="hsnGridBody"></tbody>
+            </table>
+          </div>
+          <div class="d-flex gap-2 mt-2 flex-wrap">
+            <button type="button" class="btn btn-sm btn-outline-secondary" id="hsnAddRows"><i class="fa-solid fa-plus me-1"></i>Add 5 rows</button>
+            <button type="button" class="btn btn-sm btn-navy" data-parse="hsn"><i class="fa-solid fa-arrows-rotate me-1"></i>Validate rows</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary" data-clear="hsn">Clear all</button>
           </div>
           <div class="g1-error-banner" id="errHSN"></div>
-          <div class="preview-table-wrap" id="previewHSN"></div>
         </div>
 
         <!-- Documents Issued -->
         <div class="g1-section-card ledger-card p-3" data-section-card="doc">
           <h6 class="font-display">Documents Issued (Table 13)</h6>
-          <p class="col-hint mb-2">
-            <b>Nature of Document</b> (e.g. Invoices for outward supply, Credit Note, Debit Note) · <b>Serial From</b> · <b>Serial To</b> · <b>Total Number</b> · <b>Cancelled</b>
-          </p>
-          <textarea class="paste-area" id="pasteDOC" placeholder="Paste your Excel rows here (Ctrl+V)…"></textarea>
-          <div class="d-flex gap-2 mt-2">
-            <button type="button" class="btn btn-sm btn-navy" data-parse="doc"><i class="fa-solid fa-arrows-rotate me-1"></i>Parse &amp; Preview</button>
-            <button type="button" class="btn btn-sm btn-outline-secondary" data-clear="doc">Clear</button>
+          <p class="col-hint mb-2">One row per numbering series — e.g. all "Tax Invoice" numbers issued this month, then a separate row for Credit Notes, Debit Notes, etc.</p>
+          <div class="b2b-grid-wrap">
+            <table class="b2b-grid-table" id="docGridTable">
+              <thead>
+                <tr>
+                  <th style="width:26px;">#</th>
+                  <th style="min-width:220px;">Nature of Document</th>
+                  <th style="min-width:100px;">Serial From</th>
+                  <th style="min-width:100px;">Serial To</th>
+                  <th style="min-width:90px;">Total Number</th>
+                  <th style="min-width:90px;">Cancelled</th>
+                  <th style="min-width:80px;">Net</th>
+                  <th style="width:30px;"></th>
+                </tr>
+              </thead>
+              <tbody id="docGridBody"></tbody>
+            </table>
+          </div>
+          <div class="d-flex gap-2 mt-2 flex-wrap">
+            <button type="button" class="btn btn-sm btn-outline-secondary" id="docAddRows"><i class="fa-solid fa-plus me-1"></i>Add 3 rows</button>
+            <button type="button" class="btn btn-sm btn-navy" data-parse="doc"><i class="fa-solid fa-arrows-rotate me-1"></i>Validate rows</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary" data-clear="doc">Clear all</button>
           </div>
           <div class="g1-error-banner" id="errDOC"></div>
-          <div class="preview-table-wrap" id="previewDOC"></div>
         </div>
 
         <div class="g1-summary-strip" id="g1SummaryStrip"></div>

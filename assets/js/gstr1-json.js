@@ -236,10 +236,12 @@ function openBuilder(period) {
     parsedRows[k] = [];
     sectionHasErrors[k] = false;
   });
+  lastUnregisteredB2B = [];
   populateB2BDefaults();
   initB2BGrid(8);
-  ["pasteB2CS", "pasteHSN", "pasteDOC"].forEach((id) => (document.getElementById(id).value = ""));
-  ["previewB2CS", "previewHSN", "previewDOC"].forEach((id) => (document.getElementById(id).innerHTML = ""));
+  initGrid("b2cs", 8);
+  initGrid("hsn", 8);
+  initGrid("doc", 5);
   ["errB2B", "errB2CS", "errHSN", "errDOC"].forEach((id) => {
     const el = document.getElementById(id);
     el.classList.remove("show");
@@ -261,6 +263,14 @@ function switchSection(section) {
   activeSection = section;
   document.querySelectorAll("#g1Tabs .g1-tab-btn").forEach((btn) => btn.classList.toggle("active", btn.dataset.section === section));
   document.querySelectorAll("[data-section-card]").forEach((card) => card.classList.toggle("active", card.dataset.sectionCard === section));
+
+  if (section === "b2cs" && lastUnregisteredB2B.length) {
+    const body = document.getElementById("b2csGridBody");
+    const untouched = Array.from(body.querySelectorAll("tr")).every((tr) =>
+      Array.from(tr.querySelectorAll("input[data-col]")).every((inp) => !inp.value.trim())
+    );
+    if (untouched) syncB2csFromUnregisteredB2B();
+  }
 }
 
 function monthKeyToFp(monthKey) {
@@ -305,12 +315,62 @@ function resolvePosCode(v) {
   return found ? found[0] : raw;
 }
 
+const MONTH_NAME_TO_NUM = {
+  jan: 1, feb: 2, mar: 3, apr: 4, may: 5, jun: 6, jul: 7, aug: 8, sep: 9, oct: 10, nov: 11, dec: 12,
+};
+
+function twoDigitYearTo4(y) {
+  const n = parseInt(y, 10);
+  return String(n <= 49 ? 2000 + n : 1900 + n);
+}
+
+/**
+ * Accepts whatever date format the person's own Excel sheet happens to use —
+ * DD-MM-YYYY, DD/MM/YYYY, YYYY-MM-DD, "04-Aug-2026", "Aug 4, 2026", 2-digit
+ * years, even a raw Excel serial-date number (what you get when a date cell
+ * wasn't formatted as a date before copying) — and always normalizes to
+ * DD-MM-YYYY, which is what the GST portal's JSON schema expects.
+ */
 function normalizeDate(v) {
-  const raw = String(v || "").trim();
-  // Accept DD-MM-YYYY, DD/MM/YYYY, or already-correct format.
-  const m = raw.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})$/);
-  if (m) return `${m[1].padStart(2, "0")}-${m[2].padStart(2, "0")}-${m[3]}`;
-  return raw;
+  const raw = String(v ?? "").trim();
+  if (!raw) return "";
+
+  // Excel serial date number, e.g. 45870 (days since 1899-12-30).
+  if (/^\d{4,6}$/.test(raw)) {
+    const serial = parseInt(raw, 10);
+    if (serial > 20000 && serial < 60000) {
+      const ms = Date.UTC(1899, 11, 30) + serial * 86400000;
+      const d = new Date(ms);
+      return `${String(d.getUTCDate()).padStart(2, "0")}-${String(d.getUTCMonth() + 1).padStart(2, "0")}-${d.getUTCFullYear()}`;
+    }
+  }
+
+  // Numeric separators: DD-MM-YYYY, DD/MM/YYYY, DD.MM.YYYY, or YYYY-MM-DD / YYYY/MM/DD (ISO), 2 or 4 digit years.
+  let m = raw.match(/^(\d{1,4})[-/.](\d{1,2})[-/.](\d{1,4})$/);
+  if (m) {
+    let [, a, b, c] = m;
+    if (a.length === 4) return `${c.padStart(2, "0")}-${b.padStart(2, "0")}-${a}`; // YYYY-MM-DD
+    const year = c.length === 2 ? twoDigitYearTo4(c) : c;
+    return `${a.padStart(2, "0")}-${b.padStart(2, "0")}-${year}`;
+  }
+
+  // DD-Mon-YYYY / DD Mon YY, e.g. "04-Aug-2026", "4 Aug 26".
+  m = raw.match(/^(\d{1,2})[-\s]([a-zA-Z]{3,9})[-\s](\d{2,4})$/);
+  if (m && MONTH_NAME_TO_NUM[m[2].slice(0, 3).toLowerCase()]) {
+    const mon = MONTH_NAME_TO_NUM[m[2].slice(0, 3).toLowerCase()];
+    const year = m[3].length === 2 ? twoDigitYearTo4(m[3]) : m[3];
+    return `${m[1].padStart(2, "0")}-${String(mon).padStart(2, "0")}-${year}`;
+  }
+
+  // Mon-DD-YYYY / Mon DD, YYYY, e.g. "Aug-04-2026", "Aug 4, 2026".
+  m = raw.match(/^([a-zA-Z]{3,9})[-\s](\d{1,2}),?[-\s](\d{2,4})$/);
+  if (m && MONTH_NAME_TO_NUM[m[1].slice(0, 3).toLowerCase()]) {
+    const mon = MONTH_NAME_TO_NUM[m[1].slice(0, 3).toLowerCase()];
+    const year = m[3].length === 2 ? twoDigitYearTo4(m[3]) : m[3];
+    return `${m[2].padStart(2, "0")}-${String(mon).padStart(2, "0")}-${year}`;
+  }
+
+  return raw; // couldn't recognize it — left as-is, row validation will flag it
 }
 
 /* =========================================================
@@ -356,7 +416,7 @@ function createB2BRow() {
   tr.innerHTML = `
     <td class="b2b-row-num"></td>
     <td><input type="text" class="b2b-cell-input" data-col="inum" placeholder="INV-001"></td>
-    <td><input type="text" class="b2b-cell-input" data-col="gstin" placeholder="33ABCDE1234F1Z5" style="text-transform:uppercase;"></td>
+    <td><input type="text" class="b2b-cell-input" data-col="gstin" placeholder="blank = unregistered" style="text-transform:uppercase;"></td>
     <td><input type="text" class="b2b-cell-input" data-col="cname" placeholder="Customer name"></td>
     <td><input type="text" class="b2b-cell-input" data-col="idt" placeholder="DD-MM-YYYY"></td>
     <td><input type="text" class="b2b-cell-input" data-col="txval" placeholder="0"></td>
@@ -377,6 +437,9 @@ function createB2BRow() {
   tr.querySelectorAll("input[data-col]").forEach((inp) => {
     inp.addEventListener("input", () => updateRowRate(tr));
     inp.addEventListener("paste", (e) => handleB2BGridPaste(e, tr, inp));
+  });
+  tr.querySelector('[data-col="gstin"]').addEventListener("input", (e) => {
+    tr.classList.toggle("row-unregistered", !e.target.value.trim());
   });
   tr.querySelector('[data-col="gstin"]').addEventListener("blur", (e) => { e.target.value = e.target.value.toUpperCase(); });
   tr.querySelector('[data-col="idt"]').addEventListener("blur", (e) => { e.target.value = normalizeDate(e.target.value); });
@@ -472,10 +535,14 @@ function handleB2BGridPaste(e, tr, inputEl) {
   renumberB2BRows();
 }
 
-/** Reads and validates every non-empty row directly from the grid. */
+/** Reads and validates every non-empty row directly from the grid.
+ *  A row with no GSTIN filled in is treated as an unregistered / walk-in
+ *  customer, not an error — it's pulled out into `unregistered` so the
+ *  B2C tab can consolidate it, instead of being counted as a B2B invoice. */
 function parseB2BFromGrid() {
   const rows = Array.from(document.querySelectorAll("#b2bGridBody tr"));
   const out = [];
+  const unregistered = [];
   const errors = [];
   let anyData = false;
 
@@ -493,15 +560,29 @@ function parseB2BFromGrid() {
     const rchrg = tr.querySelector('[data-col="rchrg"]').value === "Y" ? "Y" : "N";
     const hsn = g("hsn").replace(/\s/g, "");
 
-    tr.classList.remove("row-error");
+    tr.classList.remove("row-error", "row-unregistered");
     const rowIsBlank = !inum && !gstin && !txvalNum && !igstNum && !cgstNum && !sgstNum;
     if (rowIsBlank) return; // skip fully empty rows silently
     anyData = true;
 
+    // No GSTIN filled in at all → unregistered customer, route to B2C instead of erroring.
+    if (!gstin) {
+      tr.classList.add("row-unregistered");
+      if (!/^\d{2}$/.test(pos) || !STATE_CODES[pos]) {
+        tr.classList.add("row-error");
+        errors.push(`Row ${i + 1}: Invalid Place of Supply`);
+      } else if (txvalNum > 0) {
+        const computed = Math.round(((igstNum + cgstNum + sgstNum) / txvalNum) * 400) / 4;
+        const snapped = nearestValidRate(computed) ?? 0;
+        unregistered.push({ pos, rt: snapped, txval: txvalNum, igst: igstNum, cgst: cgstNum, sgst: sgstNum });
+      }
+      return;
+    }
+
     const rowErrors = [];
     if (!inum) rowErrors.push("Invoice No missing");
     if (!GSTIN_RE.test(gstin)) rowErrors.push("Invalid recipient GSTIN");
-    if (!DATE_RE.test(idt)) rowErrors.push("Invoice Date must be DD-MM-YYYY");
+    if (!DATE_RE.test(idt)) rowErrors.push("Invoice Date not recognized — check the day/month/year");
     if (isNaN(txvalNum) || txvalNum < 0) rowErrors.push("Taxable Amount invalid");
     if ([igstNum, cgstNum, sgstNum].some((n) => isNaN(n) || n < 0)) rowErrors.push("Tax amounts can't be negative");
     if (igstNum > 0 && (cgstNum > 0 || sgstNum > 0)) rowErrors.push("A row can't have both IGST and CGST/SGST");
@@ -529,12 +610,15 @@ function parseB2BFromGrid() {
     });
   });
 
-  return { rows: out, errors, anyData };
+  return { rows: out, unregistered, errors, anyData };
 }
+
+let lastUnregisteredB2B = [];
 
 function handleParseB2B() {
   const parsed = parseB2BFromGrid();
   const errEl = document.getElementById("errB2B");
+  lastUnregisteredB2B = parsed.unregistered;
   if (!parsed.anyData) {
     toast("Fill in at least one invoice row first.", "warning");
     parsedRows.b2b = [];
@@ -559,68 +643,17 @@ function handleParseB2B() {
   }
   updateCounts();
   updateSummaryStrip();
-  toast(`${parsed.rows.length} invoice row(s) validated${parsed.errors.length ? ` — ${parsed.errors.length} issue(s)` : ""}.`, parsed.errors.length ? "warning" : "success");
+  const unregNote = parsed.unregistered.length ? ` · ${parsed.unregistered.length} unregistered row(s) → use "Sync from B2B" on the B2C tab` : "";
+  toast(`${parsed.rows.length} invoice row(s) validated${parsed.errors.length ? ` — ${parsed.errors.length} issue(s)` : ""}.${unregNote}`, parsed.errors.length ? "warning" : "success");
 }
 
-function parseB2CS(raw) {
-  let rows = splitPastedText(raw);
-  rows = stripHeaderRow(rows, true);
-  const out = [];
-  const errors = [];
-  rows.forEach((cells, i) => {
-    const [pos, rt, txval, igst, cgst, sgst] = cells;
-    const rowErrors = [];
-    const posCode = resolvePosCode(pos);
-    if (!/^\d{2}$/.test(posCode) || !STATE_CODES[posCode]) rowErrors.push("Invalid Place of Supply");
-    const rateNum = num(rt);
-    if (isNaN(rateNum) || !VALID_RATES.includes(rateNum)) rowErrors.push(`Rate ${rt} is not a valid GST slab`);
-    const txvalNum = num(txval);
-    if (isNaN(txvalNum) || txvalNum < 0) rowErrors.push("Taxable Value invalid");
-    const igstNum = num(igst), cgstNum = num(cgst), sgstNum = num(sgst);
-    if ([igstNum, cgstNum, sgstNum].some((n) => isNaN(n) || n < 0)) rowErrors.push("Tax amounts invalid");
-    if (igstNum > 0 && (cgstNum > 0 || sgstNum > 0)) rowErrors.push("A row can't have both IGST and CGST/SGST");
-
-    out.push({
-      raw: { pos: posCode, rt: rateNum, txval: txvalNum, igst: igstNum, cgst: cgstNum, sgst: sgstNum, sply_ty: igstNum > 0 ? "INTER" : "INTRA" },
-      errors: rowErrors,
-    });
-    rowErrors.forEach((e) => errors.push(`Row ${i + 1}: ${e}`));
-  });
-  return { rows: out, errors };
-}
-
-function parseHSN(raw) {
-  let rows = splitPastedText(raw);
-  rows = stripHeaderRow(rows, true);
-  const out = [];
-  const errors = [];
-  rows.forEach((cells, i) => {
-    const [hsn, desc, uqc, qty, val, txval, igst, cgst, sgst] = cells;
-    const rowErrors = [];
-    const h = String(hsn || "").replace(/\s/g, "");
-    if (!/^\d{4,8}$/.test(h) || ![4, 6, 8].includes(h.length)) rowErrors.push("HSN/SAC code must be numeric, 4/6/8 digits");
-    let u = String(uqc || "").trim().toUpperCase();
-    if (h.startsWith("99") && (!u || u === "OTH-OTHERS")) u = "NA-NOT APPLICABLE";
-    if (!u.includes("-")) {
-      const match = [...VALID_UQC].find((code) => code.startsWith(u + "-"));
-      if (match) u = match;
-    }
-    if (!VALID_UQC.has(u)) rowErrors.push(`UQC "${uqc}" is not a valid unit code`);
-    const qtyNum = num(qty);
-    if (isNaN(qtyNum) || qtyNum < 0) rowErrors.push("Quantity invalid");
-    const valNum = num(val);
-    const txvalNum = num(txval);
-    if (isNaN(txvalNum) || txvalNum < 0) rowErrors.push("Taxable Value invalid");
-    const igstNum = num(igst), cgstNum = num(cgst), sgstNum = num(sgst);
-    if ([igstNum, cgstNum, sgstNum].some((n) => isNaN(n) || n < 0)) rowErrors.push("Tax amounts invalid");
-
-    out.push({
-      raw: { hsn_sc: h, desc: desc || "", uqc: u, qty: qtyNum, val: valNum || txvalNum + igstNum + cgstNum + sgstNum, txval: txvalNum, igst: igstNum, cgst: cgstNum, sgst: sgstNum },
-      errors: rowErrors,
-    });
-    rowErrors.forEach((e) => errors.push(`Row ${i + 1}: ${e}`));
-  });
-  return { rows: out, errors };
+/* =========================================================
+   Generic editable grid engine — used for B2C Small, HSN
+   Summary and Documents Issued (same "paste fills across the
+   row, adds rows automatically" behaviour as the B2B grid).
+   ========================================================= */
+function optionsHtml(list) {
+  return list.map(([v, l]) => `<option value="${escapeHtml(v)}">${escapeHtml(l)}</option>`).join("");
 }
 
 function matchDocNature(text) {
@@ -631,81 +664,219 @@ function matchDocNature(text) {
   return null;
 }
 
-function parseDOC(raw) {
-  let rows = splitPastedText(raw);
-  rows = stripHeaderRow(rows, false);
-  const out = [];
-  const errors = [];
-  rows.forEach((cells, i) => {
-    const [nature, from, to, total, cancel] = cells;
-    const rowErrors = [];
-    const docNum = matchDocNature(nature);
-    if (!docNum) rowErrors.push(`Nature "${nature}" not recognised — use e.g. "Invoices for outward supply", "Credit Note", "Debit Note"`);
-    if (!from || !to) rowErrors.push("Serial From/To missing");
-    const totalNum = num(total);
-    const cancelNum = num(cancel) || 0;
-    if (isNaN(totalNum) || totalNum <= 0) rowErrors.push("Total Number invalid");
-    if (cancelNum > totalNum) rowErrors.push("Cancelled count can't exceed Total Number");
+const GRID_DEFS = {
+  b2cs: {
+    bodyId: "b2csGridBody",
+    cols: [
+      { key: "pos", label: "Place of Supply", type: "select", options: () => Object.entries(STATE_CODES).map(([c, n]) => [c, `${c} — ${n}`]) },
+      { key: "rt", label: "Rate %", type: "select", options: () => VALID_RATES.map((r) => [String(r), `${r}%`]) },
+      { key: "txval", label: "Taxable Value", type: "text", placeholder: "0" },
+      { key: "igst", label: "IGST", type: "text", placeholder: "0" },
+      { key: "cgst", label: "CGST", type: "text", placeholder: "0" },
+      { key: "sgst", label: "SGST", type: "text", placeholder: "0" },
+    ],
+    isRowBlank: (v) => !num(v.txval) && !num(v.igst) && !num(v.cgst) && !num(v.sgst),
+    validateRow: (v) => {
+      const errors = [];
+      const posCode = resolvePosCode(v.pos);
+      if (!/^\d{2}$/.test(posCode) || !STATE_CODES[posCode]) errors.push("Invalid Place of Supply");
+      const rateNum = num(v.rt);
+      if (isNaN(rateNum) || !VALID_RATES.includes(rateNum)) errors.push(`Rate ${v.rt} is not a valid GST slab`);
+      const txvalNum = num(v.txval);
+      if (isNaN(txvalNum) || txvalNum < 0) errors.push("Taxable Value invalid");
+      const igstNum = num(v.igst), cgstNum = num(v.cgst), sgstNum = num(v.sgst);
+      if ([igstNum, cgstNum, sgstNum].some((n) => isNaN(n) || n < 0)) errors.push("Tax amounts invalid");
+      if (igstNum > 0 && (cgstNum > 0 || sgstNum > 0)) errors.push("A row can't have both IGST and CGST/SGST");
+      return { errors, raw: { pos: posCode, rt: rateNum, txval: txvalNum, igst: igstNum, cgst: cgstNum, sgst: sgstNum, sply_ty: igstNum > 0 ? "INTER" : "INTRA" } };
+    },
+  },
+  hsn: {
+    bodyId: "hsnGridBody",
+    cols: [
+      { key: "hsn", label: "HSN/SAC Code", type: "text", placeholder: "998314" },
+      { key: "desc", label: "Description", type: "text", placeholder: "e.g. Accounting services" },
+      { key: "uqc", label: "UQC", type: "text", placeholder: "NA / NOS / KGS" },
+      { key: "qty", label: "Total Quantity", type: "text", placeholder: "0" },
+      { key: "val", label: "Total Value", type: "text", placeholder: "auto" },
+      { key: "txval", label: "Taxable Value", type: "text", placeholder: "0" },
+      { key: "igst", label: "IGST", type: "text", placeholder: "0" },
+      { key: "cgst", label: "CGST", type: "text", placeholder: "0" },
+      { key: "sgst", label: "SGST", type: "text", placeholder: "0" },
+    ],
+    isRowBlank: (v) => !v.hsn && !num(v.txval) && !num(v.igst) && !num(v.cgst) && !num(v.sgst),
+    validateRow: (v) => {
+      const errors = [];
+      const h = String(v.hsn || "").replace(/\s/g, "");
+      if (!/^\d{4,8}$/.test(h) || ![4, 6, 8].includes(h.length)) errors.push("HSN/SAC code must be numeric, 4/6/8 digits");
+      let u = String(v.uqc || "").trim().toUpperCase();
+      if (h.startsWith("99") && (!u || u === "OTH-OTHERS")) u = "NA-NOT APPLICABLE";
+      if (u && !u.includes("-")) {
+        const match = [...VALID_UQC].find((code) => code.startsWith(u + "-"));
+        if (match) u = match;
+      }
+      if (!VALID_UQC.has(u)) errors.push(`UQC "${v.uqc}" is not a valid unit code`);
+      const qtyNum = num(v.qty);
+      if (isNaN(qtyNum) || qtyNum < 0) errors.push("Quantity invalid");
+      const valNum = num(v.val);
+      const txvalNum = num(v.txval);
+      if (isNaN(txvalNum) || txvalNum < 0) errors.push("Taxable Value invalid");
+      const igstNum = num(v.igst), cgstNum = num(v.cgst), sgstNum = num(v.sgst);
+      if ([igstNum, cgstNum, sgstNum].some((n) => isNaN(n) || n < 0)) errors.push("Tax amounts invalid");
+      return { errors, raw: { hsn_sc: h, desc: v.desc || "", uqc: u, qty: qtyNum, val: valNum || round2(txvalNum + igstNum + cgstNum + sgstNum), txval: txvalNum, igst: igstNum, cgst: cgstNum, sgst: sgstNum } };
+    },
+  },
+  doc: {
+    bodyId: "docGridBody",
+    cols: [
+      { key: "nature", label: "Nature of Document", type: "select", options: () => DOC_NATURE_MAP.map((d) => [d.names[0], d.names[0].replace(/\b\w/g, (c) => c.toUpperCase())]) },
+      { key: "from", label: "Serial From", type: "text", placeholder: "INV/001" },
+      { key: "to", label: "Serial To", type: "text", placeholder: "INV/050" },
+      { key: "total", label: "Total Number", type: "text", placeholder: "0" },
+      { key: "cancel", label: "Cancelled", type: "text", placeholder: "0" },
+    ],
+    isRowBlank: (v) => !v.from && !v.to && !num(v.total),
+    validateRow: (v) => {
+      const errors = [];
+      const docNum = matchDocNature(v.nature);
+      if (!docNum) errors.push(`Nature "${v.nature}" not recognised`);
+      if (!v.from || !v.to) errors.push("Serial From/To missing");
+      const totalNum = num(v.total);
+      const cancelNum = num(v.cancel) || 0;
+      if (isNaN(totalNum) || totalNum <= 0) errors.push("Total Number invalid");
+      if (cancelNum > totalNum) errors.push("Cancelled count can't exceed Total Number");
+      return { errors, raw: { doc_num: docNum || 1, nature: v.nature || "", from: String(v.from || ""), to: String(v.to || ""), totnum: totalNum, cancel: cancelNum, net_issue: totalNum - cancelNum } };
+    },
+  },
+};
 
-    out.push({
-      raw: { doc_num: docNum || 1, nature: nature || "", from: String(from || ""), to: String(to || ""), totnum: totalNum, cancel: cancelNum, net_issue: totalNum - cancelNum },
-      errors: rowErrors,
-    });
-    rowErrors.forEach((e) => errors.push(`Row ${i + 1}: ${e}`));
-  });
-  return { rows: out, errors };
+function createGridRow(defKey) {
+  const def = GRID_DEFS[defKey];
+  const tr = document.createElement("tr");
+  const cellsHtml = def.cols
+    .map((col) =>
+      col.type === "select"
+        ? `<td><select class="b2b-cell-select" data-col="${col.key}">${optionsHtml(col.options())}</select></td>`
+        : `<td><input type="text" class="b2b-cell-input" data-col="${col.key}" placeholder="${escapeHtml(col.placeholder || "")}"></td>`
+    )
+    .join("");
+  tr.innerHTML = `<td class="b2b-row-num"></td>${cellsHtml}<td><button type="button" class="b2b-row-del" data-del title="Remove row"><i class="fa-solid fa-xmark"></i></button></td>`;
+  tr.querySelectorAll("input[data-col]").forEach((inp) => inp.addEventListener("paste", (e) => handleGenericGridPaste(e, defKey, tr, inp)));
+  tr.querySelector("[data-del]").addEventListener("click", () => { tr.remove(); renumberGridRows(defKey); });
+  return tr;
 }
 
-/* =========================================================
-   Preview rendering
-   ========================================================= */
-function renderPreview(section, parsed) {
-  const previewEl = document.getElementById(`preview${section.toUpperCase()}`);
-  const errEl = document.getElementById(`err${section.toUpperCase()}`);
+function renumberGridRows(defKey) {
+  document.querySelectorAll(`#${GRID_DEFS[defKey].bodyId} tr`).forEach((tr, i) => {
+    tr.querySelector(".b2b-row-num").textContent = i + 1;
+  });
+}
 
-  if (parsed.rows.length === 0) {
-    previewEl.innerHTML = `<div class="p-3 small text-muted-soft">Nothing parsed yet — paste rows above and click Parse &amp; Preview.</div>`;
-    errEl.classList.remove("show");
-    errEl.innerHTML = "";
+function initGrid(defKey, rowCount) {
+  const body = document.getElementById(GRID_DEFS[defKey].bodyId);
+  if (!body) return;
+  body.innerHTML = "";
+  for (let i = 0; i < rowCount; i++) body.appendChild(createGridRow(defKey));
+  renumberGridRows(defKey);
+}
+
+function addGridRows(defKey, n = 5) {
+  const body = document.getElementById(GRID_DEFS[defKey].bodyId);
+  for (let i = 0; i < n; i++) body.appendChild(createGridRow(defKey));
+  renumberGridRows(defKey);
+}
+
+function setGridCell(defKey, tr, colKey, rawVal) {
+  const col = GRID_DEFS[defKey].cols.find((c) => c.key === colKey);
+  const val = String(rawVal ?? "").trim();
+  if (!col) return;
+  if (col.type === "select") {
+    const sel = tr.querySelector(`[data-col="${colKey}"]`);
+    const opts = col.options();
+    let match = opts.find(([v]) => v.toLowerCase() === val.toLowerCase());
+    if (!match) match = opts.find(([, l]) => l.toLowerCase() === val.toLowerCase());
+    if (!match && colKey === "pos") {
+      const code = resolvePosCode(val);
+      match = opts.find(([v]) => v === code);
+    }
+    if (!match) match = opts.find(([, l]) => l.toLowerCase().includes(val.toLowerCase()));
+    if (match) sel.value = match[0];
     return;
   }
+  const el = tr.querySelector(`[data-col="${colKey}"]`);
+  if (el) el.value = colKey === "hsn" ? val.replace(/\s/g, "") : val;
+}
 
-  const headersBySection = {
-    b2b: ["#", "GSTIN", "Invoice No", "Date", "POS", "HSN", "Taxable", "Rate", "IGST", "CGST", "SGST", "Status"],
-    b2cs: ["#", "POS", "Rate", "Taxable", "IGST", "CGST", "SGST", "Status"],
-    hsn: ["#", "HSN", "Desc", "UQC", "Qty", "Taxable", "IGST", "CGST", "SGST", "Status"],
-    doc: ["#", "Nature", "From", "To", "Total", "Cancelled", "Net", "Status"],
-  };
+function handleGenericGridPaste(e, defKey, tr, inputEl) {
+  const text = (e.clipboardData || window.clipboardData).getData("text");
+  if (!text || !/\t|\r|\n/.test(text)) return; // single-cell paste — let the browser handle it normally
+  e.preventDefault();
 
-  const rowsHtml = parsed.rows
-    .map((r, i) => {
-      const bad = r.errors.length > 0;
-      const statusCell = bad
-        ? `<span class="row-err-msg" title="${escapeHtml(r.errors.join("; "))}"><i class="fa-solid fa-triangle-exclamation"></i> ${escapeHtml(r.errors[0])}${r.errors.length > 1 ? ` +${r.errors.length - 1}` : ""}</span>`
-        : `<span class="row-ok-msg"><i class="fa-solid fa-check"></i> OK</span>`;
-      let cells = "";
-      if (section === "b2b") {
-        const d = r.raw;
-        cells = `<td>${i + 1}</td><td class="font-mono">${escapeHtml(d.gstin)}</td><td>${escapeHtml(d.inum)}</td><td>${escapeHtml(d.idt)}</td><td>${escapeHtml(d.pos)}</td><td class="font-mono">${escapeHtml(d.hsn)}</td><td class="text-end">${d.txval.toLocaleString("en-IN")}</td><td class="text-end">${d.rt}%</td><td class="text-end">${d.igst.toLocaleString("en-IN")}</td><td class="text-end">${d.cgst.toLocaleString("en-IN")}</td><td class="text-end">${d.sgst.toLocaleString("en-IN")}</td>`;
-      } else if (section === "b2cs") {
-        const d = r.raw;
-        cells = `<td>${i + 1}</td><td>${escapeHtml(d.pos)}</td><td class="text-end">${d.rt}%</td><td class="text-end">${d.txval.toLocaleString("en-IN")}</td><td class="text-end">${d.igst.toLocaleString("en-IN")}</td><td class="text-end">${d.cgst.toLocaleString("en-IN")}</td><td class="text-end">${d.sgst.toLocaleString("en-IN")}</td>`;
-      } else if (section === "hsn") {
-        const d = r.raw;
-        cells = `<td>${i + 1}</td><td class="font-mono">${escapeHtml(d.hsn_sc)}</td><td>${escapeHtml(d.desc)}</td><td>${escapeHtml(d.uqc)}</td><td class="text-end">${d.qty}</td><td class="text-end">${d.txval.toLocaleString("en-IN")}</td><td class="text-end">${d.igst.toLocaleString("en-IN")}</td><td class="text-end">${d.cgst.toLocaleString("en-IN")}</td><td class="text-end">${d.sgst.toLocaleString("en-IN")}</td>`;
-      } else if (section === "doc") {
-        const d = r.raw;
-        cells = `<td>${i + 1}</td><td>${escapeHtml(d.nature)}</td><td>${escapeHtml(d.from)}</td><td>${escapeHtml(d.to)}</td><td class="text-end">${d.totnum}</td><td class="text-end">${d.cancel}</td><td class="text-end">${d.net_issue}</td>`;
-      }
-      return `<tr class="${bad ? "row-error" : ""}">${cells}<td>${statusCell}</td></tr>`;
-    })
-    .join("");
+  const colKeys = GRID_DEFS[defKey].cols.map((c) => c.key);
+  const gridRows = splitPastedText(text);
+  const body = document.getElementById(GRID_DEFS[defKey].bodyId);
+  let rowsArr = Array.from(body.children);
+  const startRowIdx = rowsArr.indexOf(tr);
+  const startColIdx = colKeys.indexOf(inputEl.dataset.col);
+  if (startRowIdx === -1 || startColIdx === -1) return;
 
-  previewEl.innerHTML = `<table class="table table-sm mb-0"><thead><tr>${headersBySection[section].map((h) => `<th>${h}</th>`).join("")}</tr></thead><tbody>${rowsHtml}</tbody></table>`;
+  gridRows.forEach((cells, rOffset) => {
+    let targetRow = rowsArr[startRowIdx + rOffset];
+    if (!targetRow) {
+      targetRow = createGridRow(defKey);
+      body.appendChild(targetRow);
+      rowsArr.push(targetRow);
+    }
+    cells.forEach((cellVal, cOffset) => {
+      const colKey = colKeys[startColIdx + cOffset];
+      if (!colKey) return; // pasted more columns than the grid has — ignore the rest
+      setGridCell(defKey, targetRow, colKey, cellVal);
+    });
+  });
+  renumberGridRows(defKey);
+}
 
-  if (parsed.errors.length > 0) {
+function parseGridSection(defKey) {
+  const def = GRID_DEFS[defKey];
+  const rows = Array.from(document.querySelectorAll(`#${def.bodyId} tr`));
+  const out = [];
+  const errors = [];
+  let anyData = false;
+
+  rows.forEach((tr, i) => {
+    const v = {};
+    def.cols.forEach((col) => { v[col.key] = tr.querySelector(`[data-col="${col.key}"]`).value.trim(); });
+    tr.classList.remove("row-error");
+    if (def.isRowBlank(v)) return;
+    anyData = true;
+    const { errors: rowErrors, raw } = def.validateRow(v);
+    if (rowErrors.length) {
+      tr.classList.add("row-error");
+      errors.push(`Row ${i + 1}: ${rowErrors.join("; ")}`);
+    }
+    out.push({ raw, errors: rowErrors });
+  });
+
+  return { rows: out, errors, anyData };
+}
+
+function handleParseGrid(defKey) {
+  const parsed = parseGridSection(defKey);
+  const errEl = document.getElementById(`err${defKey.toUpperCase()}`);
+  if (!parsed.anyData) {
+    toast("Fill in at least one row first.", "warning");
+    parsedRows[defKey] = [];
+    sectionHasErrors[defKey] = false;
+    errEl.classList.remove("show");
+    errEl.innerHTML = "";
+    updateCounts();
+    updateSummaryStrip();
+    return;
+  }
+  parsedRows[defKey] = parsed.rows;
+  sectionHasErrors[defKey] = parsed.errors.length > 0;
+  if (parsed.errors.length) {
     errEl.classList.add("show");
-    errEl.innerHTML = `<strong>${parsed.errors.length} issue(s) found — fix these rows before generating the JSON:</strong><ul>${parsed.errors
+    errEl.innerHTML = `<strong>${parsed.errors.length} issue(s) found — the rows highlighted in red need fixing:</strong><ul>${parsed.errors
       .slice(0, 12)
       .map((e) => `<li>${escapeHtml(e)}</li>`)
       .join("")}${parsed.errors.length > 12 ? `<li>…and ${parsed.errors.length - 12} more</li>` : ""}</ul>`;
@@ -713,27 +884,54 @@ function renderPreview(section, parsed) {
     errEl.classList.remove("show");
     errEl.innerHTML = "";
   }
+  updateCounts();
+  updateSummaryStrip();
+  toast(`${parsed.rows.length} row(s) validated${parsed.errors.length ? ` — ${parsed.errors.length} issue(s)` : ""}.`, parsed.errors.length ? "warning" : "success");
 }
 
+/** B2C Small tab: consolidate the month's B2B rows left with no GSTIN (unregistered / walk-in customers) by Place of Supply + Rate, and drop them in as editable rows. */
+function syncB2csFromUnregisteredB2B() {
+  if (!lastUnregisteredB2B.length) {
+    toast('No unregistered B2B rows yet — leave GSTIN blank for those invoices on the B2B tab and click "Validate rows" there first.', "warning");
+    return;
+  }
+  const grouped = new Map(); // key = pos|rt
+  lastUnregisteredB2B.forEach((r) => {
+    const key = `${r.pos}|${r.rt}`;
+    if (!grouped.has(key)) grouped.set(key, { pos: r.pos, rt: r.rt, txval: 0, igst: 0, cgst: 0, sgst: 0 });
+    const g = grouped.get(key);
+    g.txval = round2(g.txval + r.txval);
+    g.igst = round2(g.igst + r.igst);
+    g.cgst = round2(g.cgst + r.cgst);
+    g.sgst = round2(g.sgst + r.sgst);
+  });
+
+  const body = document.getElementById("b2csGridBody");
+  body.querySelectorAll('tr[data-auto="1"]').forEach((tr) => tr.remove());
+  grouped.forEach((g) => {
+    const tr = createGridRow("b2cs");
+    tr.dataset.auto = "1";
+    tr.querySelector('[data-col="pos"]').value = g.pos;
+    tr.querySelector('[data-col="rt"]').value = String(g.rt);
+    tr.querySelector('[data-col="txval"]').value = g.txval || "";
+    tr.querySelector('[data-col="igst"]').value = g.igst || "";
+    tr.querySelector('[data-col="cgst"]').value = g.cgst || "";
+    tr.querySelector('[data-col="sgst"]').value = g.sgst || "";
+    body.appendChild(tr);
+  });
+  renumberGridRows("b2cs");
+  toast(`Pulled in ${grouped.size} consolidated row(s) from ${lastUnregisteredB2B.length} unregistered B2B invoice(s) this month.`, "success");
+}
+
+/* =========================================================
+   Preview rendering
+   ========================================================= */
 function handleParse(section) {
   if (section === "b2b") {
     handleParseB2B();
     return;
   }
-  const textareaId = { b2cs: "pasteB2CS", hsn: "pasteHSN", doc: "pasteDOC" }[section];
-  const raw = document.getElementById(textareaId).value;
-  if (!raw.trim()) {
-    toast("Paste some rows first.", "warning");
-    return;
-  }
-  const parserFn = { b2cs: parseB2CS, hsn: parseHSN, doc: parseDOC }[section];
-  const parsed = parserFn(raw);
-  parsedRows[section] = parsed.rows;
-  sectionHasErrors[section] = parsed.errors.length > 0;
-  renderPreview(section, parsed);
-  updateCounts();
-  updateSummaryStrip();
-  toast(`${parsed.rows.length} row(s) parsed for ${section.toUpperCase()}${parsed.errors.length ? ` — ${parsed.errors.length} issue(s)` : ""}.`, parsed.errors.length ? "warning" : "success");
+  handleParseGrid(section);
 }
 
 function handleClear(section) {
@@ -741,10 +939,9 @@ function handleClear(section) {
   sectionHasErrors[section] = false;
   if (section === "b2b") {
     initB2BGrid(8);
+    lastUnregisteredB2B = [];
   } else {
-    const textareaId = { b2cs: "pasteB2CS", hsn: "pasteHSN", doc: "pasteDOC" }[section];
-    document.getElementById(textareaId).value = "";
-    document.getElementById(`preview${section.toUpperCase()}`).innerHTML = "";
+    initGrid(section, 8);
   }
   const errEl = document.getElementById(`err${section.toUpperCase()}`);
   errEl.classList.remove("show");
@@ -769,10 +966,14 @@ function updateSummaryStrip() {
     ...parsedRows.b2b.map((r) => r.raw.igst + r.raw.cgst + r.raw.sgst),
     ...parsedRows.b2cs.map((r) => r.raw.igst + r.raw.cgst + r.raw.sgst),
   ].reduce((s, n) => s + n, 0);
-  const invoiceCount = new Set(parsedRows.b2b.map((r) => `${r.raw.gstin}|${r.raw.inum}`)).size;
+  const b2bInvoiceCount = new Set(parsedRows.b2b.map((r) => `${r.raw.gstin}|${r.raw.inum}`)).size;
+  const unregCount = lastUnregisteredB2B.length;
+  const totalInvoices = b2bInvoiceCount + unregCount;
 
   document.getElementById("g1SummaryStrip").innerHTML = `
-    <div class="g1-summary-chip"><span class="n">${invoiceCount}</span>B2B Invoices</div>
+    <div class="g1-summary-chip"><span class="n">${totalInvoices}</span>Total Invoices this month</div>
+    <div class="g1-summary-chip"><span class="n">${b2bInvoiceCount}</span>Registered (B2B)</div>
+    <div class="g1-summary-chip"><span class="n">${unregCount}</span>Unregistered (B2C)</div>
     <div class="g1-summary-chip"><span class="n">${parsedRows.b2cs.length}</span>B2CS Rows</div>
     <div class="g1-summary-chip"><span class="n">${parsedRows.hsn.length}</span>HSN Rows</div>
     <div class="g1-summary-chip"><span class="n">${parsedRows.doc.length}</span>Doc Ranges</div>
@@ -926,6 +1127,10 @@ function wireEvents() {
     toast("Applied to all rows — you can still edit any row individually.", "success");
   });
   document.getElementById("b2bAddRows").addEventListener("click", () => addB2BRows(5));
+  document.getElementById("b2csAddRows").addEventListener("click", () => addGridRows("b2cs", 5));
+  document.getElementById("hsnAddRows").addEventListener("click", () => addGridRows("hsn", 5));
+  document.getElementById("docAddRows").addEventListener("click", () => addGridRows("doc", 5));
+  document.getElementById("b2csSyncBtn").addEventListener("click", syncB2csFromUnregisteredB2B);
 
   document.querySelectorAll("[data-parse]").forEach((btn) =>
     btn.addEventListener("click", () => handleParse(btn.dataset.parse))
