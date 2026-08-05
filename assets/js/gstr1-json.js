@@ -1195,7 +1195,7 @@ function updateSummaryStrip() {
 function buildGstr1Json() {
   const gstin = selectedClient.gstin;
   const fp = monthKeyToFp(selectedPeriod.monthKey);
-  const json = { gstin, fp, version: "GST3.2.3" };
+  const json = { gstin, fp, version: "GST3.2.2" };
 
   // B2B — grouped by recipient GSTIN, then by invoice number.
   if (parsedRows.b2b.length) {
