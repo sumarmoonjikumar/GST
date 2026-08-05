@@ -924,6 +924,102 @@ function syncB2csFromUnregisteredB2B() {
 }
 
 /* =========================================================
+   Excel workbook import — one .xlsx with separate sheets for
+   B2B / B2C / HSN / Document; each sheet's rows are read in
+   the same left-to-right column order as that tab's grid.
+   ========================================================= */
+function matchSheetToSection(sheetName) {
+  const n = String(sheetName || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+  if (n.includes("b2b")) return "b2b";
+  if (n.includes("b2c")) return "b2cs";
+  if (n.includes("hsn")) return "hsn";
+  if (n.includes("doc")) return "doc";
+  return null;
+}
+
+/** Clears any blank starter rows, then appends one grid row per imported data row. Returns rows filled. */
+function populateGridFromRows(section, rows) {
+  if (!rows.length) return 0;
+  if (section === "b2b") {
+    const body = document.getElementById("b2bGridBody");
+    Array.from(body.querySelectorAll("tr")).forEach((tr) => {
+      if (B2B_COLS.every((c) => !tr.querySelector(`[data-col="${c}"]`).value.trim())) tr.remove();
+    });
+    rows.forEach((cells) => {
+      const tr = createB2BRow();
+      body.appendChild(tr);
+      cells.forEach((val, i) => { if (B2B_COLS[i]) setB2BCell(tr, B2B_COLS[i], val); });
+      updateRowRate(tr);
+      tr.classList.toggle("row-unregistered", !tr.querySelector('[data-col="gstin"]').value.trim());
+    });
+    if (!body.children.length) body.appendChild(createB2BRow());
+    renumberB2BRows();
+    return rows.length;
+  }
+
+  const def = GRID_DEFS[section];
+  const colKeys = def.cols.map((c) => c.key);
+  const body = document.getElementById(def.bodyId);
+  Array.from(body.querySelectorAll("tr")).forEach((tr) => {
+    if (colKeys.every((c) => !tr.querySelector(`[data-col="${c}"]`).value.trim())) tr.remove();
+  });
+  rows.forEach((cells) => {
+    const tr = createGridRow(section);
+    body.appendChild(tr);
+    cells.forEach((val, i) => { if (colKeys[i]) setGridCell(section, tr, colKeys[i], val); });
+  });
+  if (!body.children.length) body.appendChild(createGridRow(section));
+  renumberGridRows(section);
+  return rows.length;
+}
+
+async function handleExcelUpload(e) {
+  const file = e.target.files[0];
+  e.target.value = ""; // allow re-uploading the same file after fixing it
+  if (!file) return;
+  if (typeof XLSX === "undefined") {
+    toast("The Excel reader didn't load — check your internet connection and try again.", "danger");
+    return;
+  }
+  let wb;
+  try {
+    const buf = await file.arrayBuffer();
+    wb = XLSX.read(buf, { type: "array", cellDates: true });
+  } catch (err) {
+    console.error(err);
+    toast("Couldn't read that file — make sure it's a valid .xlsx or .xls workbook.", "danger");
+    return;
+  }
+
+  const filled = { b2b: 0, b2cs: 0, hsn: 0, doc: 0 };
+  const unmatched = [];
+
+  wb.SheetNames.forEach((sheetName) => {
+    const section = matchSheetToSection(sheetName);
+    if (!section) { unmatched.push(sheetName); return; }
+    let rows = XLSX.utils.sheet_to_json(wb.Sheets[sheetName], { header: 1, raw: false, dateNF: "dd-mm-yyyy", defval: "" });
+    rows = rows.map((r) => r.map((c) => String(c ?? "").trim())).filter((r) => r.some((c) => c !== ""));
+    rows = stripHeaderRow(rows, false);
+    if (!rows.length) return;
+    filled[section] += populateGridFromRows(section, rows);
+  });
+
+  const importedParts = Object.entries(filled).filter(([, n]) => n > 0);
+  if (!importedParts.length) {
+    toast(`Couldn't find a B2B / B2C / HSN / Document sheet in that file. Sheet(s) in the file: ${wb.SheetNames.join(", ") || "none"}.`, "warning");
+    return;
+  }
+
+  // Auto-validate every section that received rows so counts/errors show immediately.
+  importedParts.forEach(([section]) => (section === "b2b" ? handleParseB2B() : handleParseGrid(section)));
+
+  let msg = `Imported ${importedParts.map(([s, n]) => `${n} row(s) into ${s === "b2cs" ? "B2C Small" : s.toUpperCase()}`).join(", ")}.`;
+  if (unmatched.length) msg += ` Skipped sheet(s) that didn't look like B2B/B2C/HSN/Document: ${unmatched.join(", ")}.`;
+  toast(msg, "success");
+  switchSection(importedParts[0][0]);
+}
+
+/* =========================================================
    Preview rendering
    ========================================================= */
 function handleParse(section) {
@@ -1115,6 +1211,7 @@ function wireEvents() {
     btn.addEventListener("click", () => switchSection(btn.dataset.section))
   );
 
+  document.getElementById("excelUploadInput").addEventListener("change", handleExcelUpload);
   document.getElementById("b2bApplyDefaults").addEventListener("click", () => {
     const pos = document.getElementById("b2bDefaultPos").value;
     const rchrg = document.getElementById("b2bDefaultRchrg").value;
