@@ -13,7 +13,9 @@ const session = requireSession(["admin", "staff"]);
 let allClients = [];
 let allStaff = [];
 let allGstRecords = [];
+let allSalesRecords = [];
 let filingMap = new Map();
+let savedSalesMap = new Map(); // key `${clientId}|${monthKey}` -> saved sales record
 let selectedClient = null;
 let selectedPeriod = null; // { monthKey, monthLabel, dueDate, freq }
 let builderModal;
@@ -89,15 +91,24 @@ function populateFYFilter() {
 }
 
 async function loadData() {
-  const [clients, staff, gstRecords] = await Promise.all([
+  const [clients, staff, gstRecords, salesRecords] = await Promise.all([
     DB.getAll(DB.STORES.clients),
     DB.getAll(DB.STORES.staff),
     DB.getAll(DB.STORES.gstRecords),
+    DB.getAll(DB.STORES.gstr1Sales),
   ]);
   allClients = clients;
   allStaff = staff;
   allGstRecords = gstRecords;
+  allSalesRecords = salesRecords;
   filingMap = buildFilingMap(allGstRecords);
+  savedSalesMap = new Map(allSalesRecords.map((r) => [`${r.clientId}|${r.monthKey}`, r]));
+}
+
+/** Deterministic doc id so re-saving the same client/period upserts one record. */
+function salesRecordId(clientId, monthKey) {
+  const safeMonth = String(monthKey).replace(/[^a-zA-Z0-9]/g, "");
+  return `g1sales_${clientId}_${safeMonth}`;
 }
 
 function visibleClients() {
@@ -213,16 +224,17 @@ function renderPendingListForClient() {
   emptyAllFiled.classList.add("d-none");
 
   wrap.innerHTML = rows
-    .map(
-      (r) => `<div class="gp-pending-row" data-month="${r.monthKey}" data-label="${escapeHtml(r.label)}" data-freq="${r.freq}">
+    .map((r) => {
+      const saved = savedSalesMap.has(`${selectedClient.id}|${r.monthKey}`);
+      return `<div class="gp-pending-row" data-month="${r.monthKey}" data-label="${escapeHtml(r.label)}" data-freq="${r.freq}">
         <span class="badge ${r.overdue ? "badge-soft-danger" : "badge-soft-warning"} rounded-pill"><i class="fa-solid fa-file-invoice me-1"></i>GSTR-1</span>
         <div>
-          <div class="gp-period">${escapeHtml(r.label)}</div>
+          <div class="gp-period">${escapeHtml(r.label)}${saved ? ' <span class="badge bg-success-subtle text-success-emphasis rounded-pill ms-1"><i class="fa-solid fa-circle-check me-1"></i>Saved</span>' : ""}</div>
           <div class="gp-due">Due ${r.dueDate || "—"}${r.overdue ? " · Overdue" : ""}</div>
         </div>
         <i class="fa-solid fa-chevron-right gp-arrow"></i>
-      </div>`
-    )
+      </div>`;
+    })
     .join("");
 
   wrap.querySelectorAll("[data-month]").forEach((row) =>
@@ -269,8 +281,34 @@ function openBuilder(period) {
   document.getElementById("builderTitle").textContent = `GSTR-1 — ${selectedClient.businessName} — ${period.label}`;
   document.getElementById("builderSubtitle").textContent = `GSTIN ${selectedClient.gstin} · Return Period ${monthKeyToFp(period.monthKey)}`;
 
+  const saved = savedSalesMap.get(`${selectedClient.id}|${period.monthKey}`);
+  if (saved) {
+    loadSavedSalesIntoBuilder(saved);
+    const savedWhen = saved.updatedAt ? new Date(saved.updatedAt).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "";
+    toast(`Loaded previously saved sales details for ${period.label}${savedWhen ? ` (saved ${savedWhen})` : ""}.`, "success");
+  }
+
   switchSection("b2b");
   builderModal.show();
+}
+
+/** Repopulates the grids from a saved gstr1Sales record — used when reopening a period
+ *  that already has data stored, so the party's sales details can be viewed/edited/exported anytime. */
+function loadSavedSalesIntoBuilder(saved) {
+  const sections = [
+    { key: "b2b", rows: (saved.b2b || []).map((r) => ({ inum: r.inum, gstin: r.gstin, cname: r.cname, idt: r.idt, txval: r.txval, igst: r.igst, cgst: r.cgst, sgst: r.sgst, val: r.val, pos: r.pos, rchrg: r.rchrg, hsn: r.hsn })) },
+    { key: "b2cs", rows: (saved.b2cs || []).map((r) => ({ pos: r.pos, rt: r.rt, txval: r.txval, igst: r.igst, cgst: r.cgst, sgst: r.sgst })) },
+    { key: "hsn", rows: (saved.hsn || []).map((r) => ({ hsn: r.hsn_sc, desc: r.desc, uqc: r.uqc, qty: r.qty, val: r.val, txval: r.txval, igst: r.igst, cgst: r.cgst, sgst: r.sgst })) },
+    { key: "doc", rows: (saved.doc || []).map((r) => ({ nature: r.nature, from: r.from, to: r.to, total: r.totnum, cancel: r.cancel })) },
+  ];
+  sections.forEach(({ key, rows }) => {
+    if (rows.length) populateGridFromKeyedRows(key, rows);
+  });
+  lastUnregisteredB2B = saved.unregisteredB2B || [];
+  handleParseB2B(true);
+  handleParseGrid("b2cs", true);
+  handleParseGrid("hsn", true);
+  handleParseGrid("doc", true);
 }
 
 function switchSection(section) {
@@ -457,7 +495,7 @@ function createB2BRow() {
   });
   tr.querySelector('[data-col="gstin"]').addEventListener("blur", (e) => { e.target.value = e.target.value.toUpperCase(); });
   tr.querySelector('[data-col="idt"]').addEventListener("blur", (e) => { e.target.value = normalizeDate(e.target.value); });
-  tr.querySelector("[data-del]").addEventListener("click", () => { tr.remove(); renumberB2BRows(); });
+  tr.querySelector("[data-del]").addEventListener("click", () => { tr.remove(); renumberB2BRows(); handleParseB2B(true); });
   return tr;
 }
 
@@ -619,7 +657,7 @@ function parseB2BFromGrid() {
     }
 
     out.push({
-      raw: { gstin, inum, idt, val: valNum, pos, rchrg, hsn, txval: txvalNum, rt: rateNum, igst: igstNum, cgst: cgstNum, sgst: sgstNum },
+      raw: { gstin, inum, cname, idt, val: valNum, pos, rchrg, hsn, txval: txvalNum, rt: rateNum, igst: igstNum, cgst: cgstNum, sgst: sgstNum },
       errors: rowErrors,
     });
   });
@@ -629,12 +667,12 @@ function parseB2BFromGrid() {
 
 let lastUnregisteredB2B = [];
 
-function handleParseB2B() {
+function handleParseB2B(silent = false) {
   const parsed = parseB2BFromGrid();
   const errEl = document.getElementById("errB2B");
   lastUnregisteredB2B = parsed.unregistered;
   if (!parsed.anyData) {
-    toast("Fill in at least one invoice row first.", "warning");
+    if (!silent) toast("Fill in at least one invoice row first.", "warning");
     parsedRows.b2b = [];
     sectionHasErrors.b2b = false;
     errEl.classList.remove("show");
@@ -657,8 +695,10 @@ function handleParseB2B() {
   }
   updateCounts();
   updateSummaryStrip();
-  const unregNote = parsed.unregistered.length ? ` · ${parsed.unregistered.length} unregistered row(s) → use "Sync from B2B" on the B2C tab` : "";
-  toast(`${parsed.rows.length} invoice row(s) validated${parsed.errors.length ? ` — ${parsed.errors.length} issue(s)` : ""}.${unregNote}`, parsed.errors.length ? "warning" : "success");
+  if (!silent) {
+    const unregNote = parsed.unregistered.length ? ` · ${parsed.unregistered.length} unregistered row(s) → use "Sync from B2B" on the B2C tab` : "";
+    toast(`${parsed.rows.length} invoice row(s) validated${parsed.errors.length ? ` — ${parsed.errors.length} issue(s)` : ""}.${unregNote}`, parsed.errors.length ? "warning" : "success");
+  }
 }
 
 /* =========================================================
@@ -775,7 +815,7 @@ function createGridRow(defKey) {
     .join("");
   tr.innerHTML = `<td class="b2b-row-num"></td>${cellsHtml}<td><button type="button" class="b2b-row-del" data-del title="Remove row"><i class="fa-solid fa-xmark"></i></button></td>`;
   tr.querySelectorAll("input[data-col]").forEach((inp) => inp.addEventListener("paste", (e) => handleGenericGridPaste(e, defKey, tr, inp)));
-  tr.querySelector("[data-del]").addEventListener("click", () => { tr.remove(); renumberGridRows(defKey); });
+  tr.querySelector("[data-del]").addEventListener("click", () => { tr.remove(); renumberGridRows(defKey); handleParseGrid(defKey, true); });
   return tr;
 }
 
@@ -873,11 +913,11 @@ function parseGridSection(defKey) {
   return { rows: out, errors, anyData };
 }
 
-function handleParseGrid(defKey) {
+function handleParseGrid(defKey, silent = false) {
   const parsed = parseGridSection(defKey);
   const errEl = document.getElementById(`err${defKey.toUpperCase()}`);
   if (!parsed.anyData) {
-    toast("Fill in at least one row first.", "warning");
+    if (!silent) toast("Fill in at least one row first.", "warning");
     parsedRows[defKey] = [];
     sectionHasErrors[defKey] = false;
     errEl.classList.remove("show");
@@ -900,7 +940,9 @@ function handleParseGrid(defKey) {
   }
   updateCounts();
   updateSummaryStrip();
-  toast(`${parsed.rows.length} row(s) validated${parsed.errors.length ? ` — ${parsed.errors.length} issue(s)` : ""}.`, parsed.errors.length ? "warning" : "success");
+  if (!silent) {
+    toast(`${parsed.rows.length} row(s) validated${parsed.errors.length ? ` — ${parsed.errors.length} issue(s)` : ""}.`, parsed.errors.length ? "warning" : "success");
+  }
 }
 
 /** B2C Small tab: consolidate the month's B2B rows left with no GSTIN (unregistered / walk-in customers) by Place of Supply + Rate, and drop them in as editable rows. */
@@ -1204,115 +1246,117 @@ function updateSummaryStrip() {
 }
 
 /* =========================================================
-   Build final GSTR-1 JSON (GSTN offline-tool schema)
+   Save this month's sales data (Firestore) + Export to Excel
    ========================================================= */
-function buildGstr1Json() {
-  const gstin = selectedClient.gstin;
-  const fp = monthKeyToFp(selectedPeriod.monthKey);
-  const json = { gstin, fp };
-
-  // B2B — grouped by recipient GSTIN, then by invoice number.
-  if (parsedRows.b2b.length) {
-    const byCtin = new Map();
-    parsedRows.b2b.forEach((r) => {
-      const d = r.raw;
-      if (!byCtin.has(d.gstin)) byCtin.set(d.gstin, new Map());
-      const invMap = byCtin.get(d.gstin);
-      if (!invMap.has(d.inum)) {
-        invMap.set(d.inum, { inum: d.inum, idt: d.idt, val: d.val, pos: d.pos, rchrg: d.rchrg, inv_typ: "R", itms: [] });
-      }
-      const inv = invMap.get(d.inum);
-      inv.itms.push({
-        num: inv.itms.length + 1,
-        itm_det: { txval: round2(d.txval), rt: d.rt, iamt: round2(d.igst), camt: round2(d.cgst), samt: round2(d.sgst), csamt: 0 },
-      });
-    });
-    json.b2b = [...byCtin.entries()].map(([ctin, invMap]) => ({ ctin, inv: [...invMap.values()] }));
-  }
-
-  // B2C Small — one consolidated entry per parsed row.
-  if (parsedRows.b2cs.length) {
-    json.b2cs = parsedRows.b2cs.map((r) => ({
-      sply_ty: r.raw.sply_ty,
-      pos: r.raw.pos,
-      typ: "OE",
-      rt: r.raw.rt,
-      txval: round2(r.raw.txval),
-      iamt: round2(r.raw.igst),
-      camt: round2(r.raw.cgst),
-      samt: round2(r.raw.sgst),
-      csamt: 0,
-    }));
-  }
-
-  // HSN Summary
-  if (parsedRows.hsn.length) {
-    json.hsn = {
-      data: parsedRows.hsn.map((r, i) => ({
-        num: i + 1,
-        hsn_sc: r.raw.hsn_sc,
-        desc: r.raw.desc,
-        uqc: r.raw.uqc,
-        qty: r.raw.qty,
-        val: round2(r.raw.val),
-        txval: round2(r.raw.txval),
-        iamt: round2(r.raw.igst),
-        camt: round2(r.raw.cgst),
-        samt: round2(r.raw.sgst),
-        csamt: 0,
-      })),
-    };
-  }
-
-  // Documents Issued
-  if (parsedRows.doc.length) {
-    json.doc_issue = {
-      doc_det: parsedRows.doc.map((r) => ({
-        doc_num: r.raw.doc_num,
-        doc_typ: DOC_TYP_LABELS[r.raw.doc_num] || "",
-        docs: [{ num: 1, from: r.raw.from, to: r.raw.to, totnum: r.raw.totnum, cancel: r.raw.cancel, net_issue: r.raw.net_issue }],
-      })),
-    };
-  }
-
-  return json;
-}
-
 function round2(n) {
   return Math.round((Number(n) || 0) * 100) / 100;
 }
 
-function handleGenerate() {
+/** Persists the current parsed rows for this client/period so the party's
+ *  sales details can be looked up and viewed again anytime — not just once a year. */
+async function saveSalesRecord() {
+  const record = {
+    id: salesRecordId(selectedClient.id, selectedPeriod.monthKey),
+    clientId: selectedClient.id,
+    clientName: selectedClient.businessName,
+    monthKey: selectedPeriod.monthKey,
+    monthLabel: selectedPeriod.label,
+    freq: selectedPeriod.freq,
+    fp: monthKeyToFp(selectedPeriod.monthKey),
+    updatedAt: new Date().toISOString(),
+    b2b: parsedRows.b2b.map((r) => r.raw),
+    b2cs: parsedRows.b2cs.map((r) => r.raw),
+    hsn: parsedRows.hsn.map((r) => r.raw),
+    doc: parsedRows.doc.map((r) => r.raw),
+    unregisteredB2B: lastUnregisteredB2B,
+  };
+  await DB.put(DB.STORES.gstr1Sales, record);
+  savedSalesMap.set(`${record.clientId}|${record.monthKey}`, record);
+  const idx = allSalesRecords.findIndex((r) => r.id === record.id);
+  if (idx === -1) allSalesRecords.push(record);
+  else allSalesRecords[idx] = record;
+}
+
+/** Builds a multi-sheet .xlsx workbook of the current month's sales details for this party. */
+function exportSalesToExcel() {
+  const wb = XLSX.utils.book_new();
+  const safeName = (selectedClient.businessName || "client").replace(/[^a-zA-Z0-9]+/g, "_");
+  const fp = monthKeyToFp(selectedPeriod.monthKey);
+
+  if (parsedRows.b2b.length) {
+    const sheet = XLSX.utils.json_to_sheet(
+      parsedRows.b2b.map((r) => ({
+        "Invoice Number": r.raw.inum, GSTIN: r.raw.gstin, "Customer Name": r.raw.cname || "", "Invoice Date": r.raw.idt,
+        "Taxable Amount": r.raw.txval, IGST: r.raw.igst, CGST: r.raw.cgst, SGST: r.raw.sgst, Total: r.raw.val,
+        "Place of Supply": r.raw.pos, "Reverse Charge": r.raw.rchrg, "HSN/SAC": r.raw.hsn, "Rate %": r.raw.rt,
+      }))
+    );
+    XLSX.utils.book_append_sheet(wb, sheet, "B2B");
+  }
+  if (parsedRows.b2cs.length) {
+    const sheet = XLSX.utils.json_to_sheet(
+      parsedRows.b2cs.map((r) => ({
+        "Place of Supply": r.raw.pos, "Rate %": r.raw.rt, "Taxable Amount": r.raw.txval,
+        IGST: r.raw.igst, CGST: r.raw.cgst, SGST: r.raw.sgst,
+      }))
+    );
+    XLSX.utils.book_append_sheet(wb, sheet, "B2C Small");
+  }
+  if (parsedRows.hsn.length) {
+    const sheet = XLSX.utils.json_to_sheet(
+      parsedRows.hsn.map((r) => ({
+        "HSN/SAC Code": r.raw.hsn_sc, Description: r.raw.desc, UQC: r.raw.uqc, Quantity: r.raw.qty,
+        "Total Value": r.raw.val, "Taxable Value": r.raw.txval, IGST: r.raw.igst, CGST: r.raw.cgst, SGST: r.raw.sgst,
+      }))
+    );
+    XLSX.utils.book_append_sheet(wb, sheet, "HSN Summary");
+  }
+  if (parsedRows.doc.length) {
+    const sheet = XLSX.utils.json_to_sheet(
+      parsedRows.doc.map((r) => ({
+        "Nature of Document": r.raw.nature, "Serial From": r.raw.from, "Serial To": r.raw.to,
+        "Total Number": r.raw.totnum, Cancelled: r.raw.cancel, "Net Issued": r.raw.net_issue,
+      }))
+    );
+    XLSX.utils.book_append_sheet(wb, sheet, "Documents Issued");
+  }
+
+  XLSX.writeFile(wb, `GSTR1_${safeName}_${fp}.xlsx`);
+}
+
+async function handleSaveAndExport() {
   const anySectionFilled = Object.values(parsedRows).some((r) => r.length > 0);
   if (!anySectionFilled) {
-    toast("Parse at least one section before generating.", "warning");
+    toast("Validate at least one section before saving.", "warning");
     return;
   }
   const anyErrors = Object.values(sectionHasErrors).some(Boolean);
   const banner = document.getElementById("finalErrorBanner");
   if (anyErrors) {
     banner.classList.add("show");
-    banner.innerHTML = `<strong>Fix the highlighted rows first.</strong> The rows in red above will cause the GST portal to reject the JSON — correct them, re-parse, then generate again.`;
-    toast("Some rows still have errors — fix them before downloading.", "danger");
+    banner.innerHTML = `<strong>Fix the highlighted rows first.</strong> Correct them, re-validate, then save again.`;
+    toast("Some rows still have errors — fix them before saving.", "danger");
     return;
   }
   banner.classList.remove("show");
   banner.innerHTML = "";
 
-  const json = buildGstr1Json();
-  const blob = new Blob([JSON.stringify(json, null, 2)], { type: "application/json" });
-  const url = URL.createObjectURL(blob);
-  const fp = monthKeyToFp(selectedPeriod.monthKey);
-  const safeName = (selectedClient.businessName || "client").replace(/[^a-zA-Z0-9]+/g, "_");
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `GSTR1_${safeName}_${fp}.json`;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  URL.revokeObjectURL(url);
-
-  toast("GSTR-1 JSON generated — upload it under Returns Dashboard → Prepare Offline → Upload on the GST portal.", "success");
+  const btn = document.getElementById("saveExportBtn");
+  const originalHtml = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin me-1"></i>Saving…`;
+  try {
+    await saveSalesRecord();
+    exportSalesToExcel();
+    renderPendingListForClient();
+    toast(`Sales details saved for ${selectedPeriod.label} — you can come back and view or export this anytime.`, "success");
+  } catch (err) {
+    console.error("Failed to save sales record:", err);
+    toast("Couldn't save this period's data — check your connection and try again.", "danger");
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = originalHtml;
+  }
 }
 
 /* =========================================================
@@ -1369,7 +1413,7 @@ function wireEvents() {
     btn.addEventListener("click", () => handleClear(btn.dataset.clear))
   );
 
-  document.getElementById("generateJsonBtn").addEventListener("click", handleGenerate);
+  document.getElementById("saveExportBtn").addEventListener("click", handleSaveAndExport);
 }
 
 document.addEventListener("DOMContentLoaded", init);

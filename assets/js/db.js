@@ -28,6 +28,7 @@ const STORES = {
   clients: "clients",       // GST client master records
   staff: "staff",           // staff master records
   gstRecords: "gstRecords", // GSTR-1 / GSTR-3B filing status per client/period
+  gstr1Sales: "gstr1Sales", // GSTR-1 Excel Builder — saved monthly sales data per client/period
   payments: "payments",     // payment records per client
   activity: "activity",     // recent activity feed
   settings: "settings",     // app-level settings (company name, logo, etc.)

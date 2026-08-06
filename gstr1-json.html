@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-<title>GSTR-1 JSON Builder — GST Master</title>
+<title>GSTR1 Excel Builder — GST Master</title>
 <meta name="theme-color" content="#1a3049" />
 <link rel="icon" href="assets/icons/logo-icon.svg" type="image/svg+xml" />
 <link rel="manifest" href="manifest.json" />
@@ -153,7 +153,7 @@
       <div class="nav-section-label">Practice</div>
       <a href="clients.html" class="nav-link" data-staff-plus><i class="fa-solid fa-users"></i> Clients</a>
       <a href="gst-filing.html" class="nav-link" data-staff-plus><i class="fa-solid fa-file-invoice"></i> GST Filing</a>
-      <a href="gstr1-json.html" class="nav-link active" data-staff-plus><i class="fa-solid fa-file-code"></i> GSTR-1 JSON</a>
+      <a href="gstr1-json.html" class="nav-link active" data-staff-plus><i class="fa-solid fa-file-code"></i> GSTR1 Excel</a>
       <a href="payments.html" class="nav-link" data-staff-plus><i class="fa-solid fa-indian-rupee-sign"></i> Payments</a>
 
       <div class="nav-section-label" data-admin-only>Team</div>
@@ -201,9 +201,9 @@
     <main class="app-main">
       <div class="page-heading d-flex align-items-start justify-content-between flex-wrap gap-2">
         <div>
-          <div class="breadcrumb-lite mb-1">GST Master / GSTR-1 JSON</div>
-          <h2>GSTR-1 JSON Builder</h2>
-          <p class="small text-muted-soft mb-0">Pick a client, pick a pending GSTR-1 period, paste your Excel figures, and download a portal-ready JSON.</p>
+          <div class="breadcrumb-lite mb-1">GST Master / GSTR1 Excel</div>
+          <h2>GSTR1 Excel Builder</h2>
+          <p class="small text-muted-soft mb-0">Pick a client, pick a GSTR-1 period, upload or paste your Excel figures, and save that month's sales details — come back and view or export them to Excel anytime.</p>
         </div>
       </div>
 
@@ -436,9 +436,9 @@
       </div>
 
       <div class="g1-footer-bar">
-        <span class="small text-muted-soft flex-grow-1" id="footerHint">Parse each section, fix any rows highlighted in red, then generate.</span>
+        <span class="small text-muted-soft flex-grow-1" id="footerHint">Validate each section, fix any rows highlighted in red, then save — you can reopen this period anytime to view or re-export.</span>
         <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Close</button>
-        <button type="button" class="btn btn-navy" id="generateJsonBtn"><i class="fa-solid fa-file-export me-1"></i>Generate &amp; Download JSON</button>
+        <button type="button" class="btn btn-navy" id="saveExportBtn"><i class="fa-solid fa-floppy-disk me-1"></i>Save &amp; Export to Excel</button>
       </div>
     </div>
   </div>
