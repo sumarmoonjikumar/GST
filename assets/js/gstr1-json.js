@@ -602,6 +602,7 @@ function parseB2BFromGrid() {
     const g = (col) => tr.querySelector(`[data-col="${col}"]`).value.trim();
     const inum = g("inum");
     const gstin = g("gstin").toUpperCase();
+    const cname = g("cname");
     const idt = normalizeDate(g("idt"));
     const txvalNum = num(g("txval"));
     const igstNum = num(g("igst")) || 0;
@@ -1324,7 +1325,7 @@ function exportSalesToExcel() {
   XLSX.writeFile(wb, `GSTR1_${safeName}_${fp}.xlsx`);
 }
 
-async function handleSaveAndExport() {
+async function handleSave() {
   const anySectionFilled = Object.values(parsedRows).some((r) => r.length > 0);
   if (!anySectionFilled) {
     toast("Validate at least one section before saving.", "warning");
@@ -1341,13 +1342,12 @@ async function handleSaveAndExport() {
   banner.classList.remove("show");
   banner.innerHTML = "";
 
-  const btn = document.getElementById("saveExportBtn");
+  const btn = document.getElementById("saveBtn");
   const originalHtml = btn.innerHTML;
   btn.disabled = true;
   btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin me-1"></i>Saving…`;
   try {
     await saveSalesRecord();
-    exportSalesToExcel();
     renderPendingListForClient();
     toast(`Sales details saved for ${selectedPeriod.label} — you can come back and view or export this anytime.`, "success");
   } catch (err) {
@@ -1357,6 +1357,26 @@ async function handleSaveAndExport() {
     btn.disabled = false;
     btn.innerHTML = originalHtml;
   }
+}
+
+function handleExport() {
+  const anySectionFilled = Object.values(parsedRows).some((r) => r.length > 0);
+  if (!anySectionFilled) {
+    toast("Validate at least one section before exporting.", "warning");
+    return;
+  }
+  const anyErrors = Object.values(sectionHasErrors).some(Boolean);
+  const banner = document.getElementById("finalErrorBanner");
+  if (anyErrors) {
+    banner.classList.add("show");
+    banner.innerHTML = `<strong>Fix the highlighted rows first.</strong> Correct them, re-validate, then export again.`;
+    toast("Some rows still have errors — fix them before exporting.", "danger");
+    return;
+  }
+  banner.classList.remove("show");
+  banner.innerHTML = "";
+  exportSalesToExcel();
+  toast(`Exported ${selectedPeriod.label} sales details to Excel.`, "success");
 }
 
 /* =========================================================
@@ -1413,7 +1433,8 @@ function wireEvents() {
     btn.addEventListener("click", () => handleClear(btn.dataset.clear))
   );
 
-  document.getElementById("saveExportBtn").addEventListener("click", handleSaveAndExport);
+  document.getElementById("saveBtn").addEventListener("click", handleSave);
+  document.getElementById("exportExcelBtn").addEventListener("click", handleExport);
 }
 
 document.addEventListener("DOMContentLoaded", init);
