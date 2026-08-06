@@ -351,3 +351,28 @@
   padding-bottom: 6px;
   border-bottom: 1px dashed var(--border);
 }
+
+
+/* Responsive table scrolling fix */
+.data-table-card{
+  overflow:visible;
+}
+.data-table-card .table-responsive{
+  width:100%;
+  max-width:100%;
+  overflow-x:auto;
+  overflow-y:auto;
+  display:block;
+  scrollbar-gutter:stable;
+}
+.data-table-card .table{
+  min-width:1400px;
+}
+.data-table-card .table thead th{
+  position:sticky;
+  top:0;
+  z-index:2;
+}
+html,body{
+  overflow-x:hidden;
+}
