@@ -84,7 +84,10 @@ async function renderStats() {
 
 function setStat(id, value) {
   const el = document.getElementById(id);
-  if (el) el.textContent = value;
+  if (el) {
+    el.textContent = value;
+    el.classList.remove("skeleton");
+  }
 }
 
 function initCharts() {

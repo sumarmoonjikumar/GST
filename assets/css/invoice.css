@@ -79,10 +79,12 @@
 .tally-meta-row .k { color: var(--text-muted); }
 .tally-meta-row .v { font-weight: 600; text-align: right; }
 
-/* Item table */
-.tally-table-wrap { border-bottom: 1px solid var(--text-primary); }
+/* Item table — contain any horizontal overflow within the card itself
+   (long item names / many columns) instead of pushing the page wide. */
+.tally-table-wrap { border-bottom: 1px solid var(--text-primary); overflow-x: auto; -webkit-overflow-scrolling: touch; }
 .tally-table {
   width: 100%;
+  min-width: 560px;
   border-collapse: collapse;
   font-size: 0.85rem;
   margin: 0;
@@ -170,15 +172,21 @@
 .all-paid-box i { font-size: 2.2rem; color: var(--success); margin-bottom: 10px; }
 
 @media (max-width: 640px) {
+  /* .tally-grid / .tally-bottom-grid use display:table for print-safe
+     equal-height columns (see comment above) — override to a block
+     stack on narrow screens so the seller/buyer boxes don't get
+     squeezed to ~50% width and wrap awkwardly. */
+  .tally-grid, .tally-bottom-grid { display: block; }
   .tally-grid > .tally-box,
   .tally-bottom-grid > .tally-box {
-    flex: 1 1 100%;
+    display: block;
+    width: 100%;
     border-right: none;
     border-bottom: 1px solid var(--border-strong);
   }
   .tally-grid > .tally-box:last-child,
   .tally-bottom-grid > .tally-box:last-child { border-bottom: none; }
-  .tally-table { font-size: 0.78rem; }
+  .tally-table { font-size: 0.78rem; min-width: 480px; }
   .tally-table th, .tally-table td { padding: 6px 8px; }
 }
 

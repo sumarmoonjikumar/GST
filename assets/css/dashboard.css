@@ -151,6 +151,7 @@
   font-weight: 700;
   line-height: 1;
 }
+.stat-card .stat-value.skeleton { display: inline-block; min-width: 48px; height: 1.3em; }
 .stat-card .stat-label {
   font-size: 0.8rem;
   color: var(--text-muted);
@@ -242,7 +243,32 @@
 .achievement-figure.is-achieved .value { color: var(--success); }
 .achievement-figure.is-pending .value { color: var(--gold-600); }
 
-@media (max-width: 991px) {
+/* =========================================================
+   Responsive breakpoints
+   Sidebar collapses to an off-canvas overlay below 1024px
+   (tablet/mobile). Spacing, type-scale and grid density step
+   down at each breakpoint so nothing overflows or gets cut off
+   on 320px phones through 4K/ultra-wide monitors.
+   ========================================================= */
+
+/* Ultra-wide / 4K — cap content width so lines don't stretch
+   edge-to-edge on very large monitors; no effect below ~1760px. */
+.app-main {
+  max-width: min(100%, 1760px);
+  margin-inline: auto;
+}
+
+@media (max-width: 1440px) {
+  .app-main { padding: 22px; }
+}
+
+@media (max-width: 1280px) {
+  .app-main { padding: 20px; }
+  .page-toolbar .toolbar-filters .form-control,
+  .page-toolbar .toolbar-filters .form-select { max-width: 200px; }
+}
+
+@media (max-width: 1024px) {
   .app-sidebar {
     position: fixed;
     left: 0; top: 0;
@@ -250,7 +276,43 @@
   }
   .app-sidebar.open { transform: translateX(0); box-shadow: var(--shadow-lg); }
   .sidebar-burger { display: inline-flex; align-items:center; justify-content:center; }
+  .app-main { padding: 18px; }
+  /* Wide data tables scroll horizontally within their own card
+     instead of clipping content or pushing the page out. */
+  .data-table-card { overflow-x: auto; overflow-y: hidden; -webkit-overflow-scrolling: touch; }
+  .data-table-card .table { min-width: 640px; }
+}
+
+@media (max-width: 768px) {
+  .app-topbar { padding: 0 14px; }
   .app-main { padding: 16px; }
+  .page-heading h2 { font-size: clamp(1.15rem, 4vw, 1.4rem); }
+  .stat-card { padding: 15px 16px; }
+  .achievement-figures { grid-template-columns: repeat(2, 1fr); }
+  .data-table-card .table { min-width: 560px; }
+}
+
+@media (max-width: 480px) {
+  .app-main { padding: 12px; }
+  .sidebar-brand, .sidebar-foot { padding: 14px 16px; }
+  .page-toolbar .toolbar-filters .form-control,
+  .page-toolbar .toolbar-filters .form-select { max-width: 100%; flex: 1 1 140px; }
+  .achievement-figures { grid-template-columns: 1fr; }
+  .stat-card .stat-value { font-size: clamp(1.3rem, 6vw, 1.65rem); }
+  .row-actions { flex-wrap: wrap; justify-content: flex-start; }
+}
+
+@media (max-width: 320px) {
+  .app-main { padding: 10px; }
+  .stat-card { padding: 12px 14px; }
+  .achievement-card, .section-card { padding: 16px; }
+}
+
+/* 1920px+ / 4K — the 1760px cap above already stops lines over-stretching;
+   this just restores generous breathing room on very large panels instead
+   of the cap making the content look pinned to one side. */
+@media (min-width: 1920px) {
+  .app-main { padding: 32px 40px; }
 }
 
 .sidebar-backdrop {
@@ -350,29 +412,4 @@
   margin: 18px 0 10px;
   padding-bottom: 6px;
   border-bottom: 1px dashed var(--border);
-}
-
-
-/* Responsive table scrolling fix */
-.data-table-card{
-  overflow:visible;
-}
-.data-table-card .table-responsive{
-  width:100%;
-  max-width:100%;
-  overflow-x:auto;
-  overflow-y:auto;
-  display:block;
-  scrollbar-gutter:stable;
-}
-.data-table-card .table{
-  min-width:1400px;
-}
-.data-table-card .table thead th{
-  position:sticky;
-  top:0;
-  z-index:2;
-}
-html,body{
-  overflow-x:hidden;
 }

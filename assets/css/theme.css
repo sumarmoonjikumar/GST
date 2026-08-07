@@ -205,6 +205,41 @@ a .ledger-card:hover,
 
 .text-muted-soft { color: var(--text-muted) !important; }
 
+/* =========================================================
+   Borrowed polish (from LedgerGST design reference) — kept
+   inside our existing navy/gold palette, not a re-theme.
+   ========================================================= */
+
+/* Skeleton shimmer — placeholder blocks while data loads */
+.skeleton {
+  background: linear-gradient(100deg, var(--border) 20%, var(--surface-raised) 40%, var(--border) 60%);
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.5s infinite;
+  border-radius: var(--radius-md);
+  color: transparent !important;
+  pointer-events: none;
+}
+.skeleton * { visibility: hidden; }
+@keyframes skeleton-shimmer { to { background-position: -200% 0; } }
+
+/* Fade-in entrance, optionally staggered across a row of cards */
+.fade-in { animation: fade-in 0.4s ease both; }
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.stagger-1 { animation-delay: 0.05s; }
+.stagger-2 { animation-delay: 0.10s; }
+.stagger-3 { animation-delay: 0.15s; }
+.stagger-4 { animation-delay: 0.20s; }
+.stagger-5 { animation-delay: 0.25s; }
+.stagger-6 { animation-delay: 0.30s; }
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton { animation: none; }
+  .fade-in { animation: none; }
+}
+
 /* Scrollbar (light touch) */
 ::-webkit-scrollbar { width: 8px; height: 8px; }
 ::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 8px; }
