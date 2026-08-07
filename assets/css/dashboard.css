@@ -373,6 +373,16 @@
 .cell-primary { font-weight: 600; }
 .cell-sub { font-size: 0.76rem; color: var(--text-muted); }
 
+/* Names/emails must never wrap mid-row — browsers distribute a
+   width:100% table's columns inconsistently across different monitor
+   widths/DPI, so a column that's free to wrap sometimes gets squeezed
+   and sometimes doesn't, making row height (and the whole table) look
+   different machine to machine. Locking these to one line makes the
+   layout identical everywhere; if a row is genuinely too wide for the
+   viewport, the table's own .table-responsive scrolls horizontally
+   (contained), same as it already does for narrow phones. */
+.data-table-card .table td { white-space: nowrap; }
+
 .row-actions { display: flex; gap: 6px; justify-content: flex-end; }
 .row-actions .btn { padding: 4px 9px; font-size: 0.78rem; }
 

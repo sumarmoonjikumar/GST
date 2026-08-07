@@ -2,7 +2,7 @@ import DB from "./db.js";
 import { requireSession } from "./auth.js";
 import { applyStoredTheme, toast, initials } from "./utils.js";
 import { initAppChrome } from "./chrome.js";
-import { storage } from "./firebase.js";
+import { storage, firebaseReady } from "./firebase.js";
 import {
   ref,
   uploadBytes,
@@ -102,10 +102,6 @@ function render() {
   tbody.innerHTML = list
     .map((c) => {
       const staffMember = allStaff.find((s) => s.id === c.assignedStaffId);
-      const statusBadge =
-        c.status === "Inactive"
-          ? `<span class="badge badge-soft-danger rounded-pill">Inactive</span>`
-          : `<span class="badge badge-soft-success rounded-pill">Active</span>`;
 
       const invoiceBtn = `<button class="btn btn-outline-secondary btn-sm" data-invoice="${c.id}" title="View invoice"><i class="fa-solid fa-file-invoice-dollar"></i></button>`;
       const viewBtn = `<button class="btn btn-outline-secondary btn-sm" data-view="${c.id}" title="View full details"><i class="fa-solid fa-eye"></i></button>`;
@@ -143,12 +139,7 @@ function render() {
               : "—"
           }
         </td>
-        <td>
-          <div>${escapeHtml(c.contactPhone || "—")}</div>
-          <div class="cell-sub">${escapeHtml(c.contactEmail || "")}</div>
-        </td>
         <td data-admin-only>${staffMember ? escapeHtml(staffMember.name) : '<span class="cell-sub">Unassigned</span>'}</td>
-        <td>${statusBadge}</td>
         <td class="text-end"><div class="row-actions">${actions}</div></td>
       </tr>`;
     })
@@ -252,6 +243,17 @@ function refreshDocUi(docType, client) {
   document.getElementById(`${docType}DocRemoveBtn`).classList.toggle("d-none", !url);
 }
 
+/** Rejects if the given promise doesn't settle within `ms` — used so a stuck
+ *  network/Firebase call shows an error instead of leaving the button
+ *  spinning forever with no feedback. */
+function withTimeout(promise, ms, message) {
+  let timer;
+  const timeout = new Promise((_, reject) => {
+    timer = setTimeout(() => reject(new Error(message)), ms);
+  });
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
+}
+
 async function handleDocUpload(docType, file) {
   if (!file) return;
   const clientId = document.getElementById("clientId").value;
@@ -270,11 +272,25 @@ async function handleDocUpload(docType, file) {
 
   setDocButtonBusy(docType, true);
   try {
+    // Storage rules require a signed-in (anonymous) Firebase user. If that
+    // sign-in is still in flight (or stuck), wait for it with a bound —
+    // uploading before it's ready is exactly what causes a request that
+    // never resolves.
+    await withTimeout(
+      firebaseReady,
+      15000,
+      "Still connecting to Firebase — check your internet connection and try again."
+    );
+
     const client = allClients.find((c) => c.id === clientId);
     const ext = file.name.split(".").pop();
     const path = `clients/${clientId}/${docType}-${Date.now()}.${ext}`;
     const storageRef = ref(storage, path);
-    await uploadBytes(storageRef, file);
+    await withTimeout(
+      uploadBytes(storageRef, file),
+      30000,
+      "Upload timed out — check your internet connection and try again."
+    );
     const url = await getDownloadURL(storageRef);
 
     // Replace any previous file for this slot so storage doesn't pile up.
@@ -300,8 +316,18 @@ async function handleDocUpload(docType, file) {
     await DB.logActivity(`Uploaded ${DOC_LABELS[docType]} for "${client.businessName}"`, "fa-file-arrow-up", "success");
     toast(`${DOC_LABELS[docType]} uploaded.`, "success");
   } catch (err) {
-    console.error(err);
-    toast(`Couldn't upload the ${DOC_LABELS[docType]}. Please try again.`, "danger");
+    console.error(`Document upload failed (${docType}):`, err);
+    // Firebase Storage's most common silent-hang causes, surfaced with an
+    // actionable hint instead of a generic message.
+    let hint = "Please try again.";
+    if (err?.code === "storage/unauthorized") {
+      hint = "Access was denied by Storage rules — check Firebase Console → Authentication → Sign-in method → Anonymous is enabled.";
+    } else if (err?.code === "storage/unknown" || err?.code === "storage/retry-limit-exceeded") {
+      hint = "Check that Firebase Storage is set up for this project (Firebase Console → Storage → Get started).";
+    } else if (err?.message?.includes("timed out") || err?.message?.includes("connecting")) {
+      hint = err.message;
+    }
+    toast(`Couldn't upload the ${DOC_LABELS[docType]}. ${hint}`, "danger");
   } finally {
     setDocButtonBusy(docType, false);
     document.getElementById(`${docType}DocInput`).value = "";
