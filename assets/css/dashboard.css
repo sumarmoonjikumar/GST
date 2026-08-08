@@ -385,6 +385,9 @@
 
 .row-actions { display: flex; gap: 6px; justify-content: flex-end; }
 .row-actions .btn { padding: 4px 9px; font-size: 0.78rem; }
+.row-actions .fa-whatsapp { color: #25d366; }
+.row-actions a.btn:has(.fa-whatsapp):hover,
+.row-actions button.btn:not(:disabled):has(.fa-whatsapp):hover { border-color: #25d366; background: rgba(37,211,102,0.08); }
 
 .empty-state {
   text-align: center;

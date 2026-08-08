@@ -76,6 +76,19 @@ export function initials(name = "") {
     .join("");
 }
 
+/** Builds a wa.me click-to-chat link. Normalizes plain 10-digit Indian
+ *  mobile numbers by prefixing the country code; leaves numbers that
+ *  already include one (91… or +91…) as-is. Returns null if the phone
+ *  looks unusable, so callers can hide/disable the button instead of
+ *  linking to a broken chat. */
+export function whatsappLink(phone, message = "") {
+  const digits = String(phone || "").replace(/\D/g, "");
+  if (digits.length < 10) return null;
+  const withCountryCode = digits.length === 10 ? `91${digits}` : digits;
+  const base = `https://wa.me/${withCountryCode}`;
+  return message ? `${base}?text=${encodeURIComponent(message)}` : base;
+}
+
 /** Lightweight, dependency-free Bootstrap toast. Container is created lazily. */
 export function toast(message, variant = "success") {
   let host = document.getElementById("toastHost");

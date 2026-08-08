@@ -1,14 +1,8 @@
 import DB from "./db.js";
 import { requireSession } from "./auth.js";
-import { applyStoredTheme, toast, initials } from "./utils.js";
+import { applyStoredTheme, toast, initials, whatsappLink } from "./utils.js";
 import { initAppChrome } from "./chrome.js";
-import { storage, firebaseReady } from "./firebase.js";
-import {
-  ref,
-  uploadBytes,
-  getDownloadURL,
-  deleteObject,
-} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
+import { cloudinaryConfig } from "./cloudinary-config.js";
 
 applyStoredTheme();
 const session = requireSession(["admin", "staff"]); // customers never reach this page
@@ -103,6 +97,12 @@ function render() {
     .map((c) => {
       const staffMember = allStaff.find((s) => s.id === c.assignedStaffId);
 
+      const waMsg = `Hi ${c.contactPerson || c.businessName}, this is regarding ${c.businessName}'s GST filing with us. Please let us know if you need anything.`;
+      const waHref = whatsappLink(c.contactPhone, waMsg);
+      const waBtn = waHref
+        ? `<a href="${waHref}" target="_blank" rel="noopener" class="btn btn-outline-secondary btn-sm" title="Message on WhatsApp"><i class="fa-brands fa-whatsapp"></i></a>`
+        : `<button class="btn btn-outline-secondary btn-sm" disabled title="No phone number on file"><i class="fa-brands fa-whatsapp"></i></button>`;
+
       const invoiceBtn = `<button class="btn btn-outline-secondary btn-sm" data-invoice="${c.id}" title="View invoice"><i class="fa-solid fa-file-invoice-dollar"></i></button>`;
       const viewBtn = `<button class="btn btn-outline-secondary btn-sm" data-view="${c.id}" title="View full details"><i class="fa-solid fa-eye"></i></button>`;
 
@@ -110,11 +110,13 @@ function render() {
         session.role === "admin"
           ? `
           ${viewBtn}
+          ${waBtn}
           ${invoiceBtn}
           <button class="btn btn-outline-secondary btn-sm" data-edit="${c.id}" title="Edit"><i class="fa-solid fa-pen"></i></button>
           <button class="btn btn-outline-danger btn-sm" data-delete="${c.id}" title="Delete"><i class="fa-solid fa-trash"></i></button>`
           : `
           ${viewBtn}
+          ${waBtn}
           ${invoiceBtn}
           <button class="btn btn-outline-secondary btn-sm" data-creds="${c.id}" title="Update portal & login credentials"><i class="fa-solid fa-key"></i> Credentials</button>`;
 
@@ -244,14 +246,37 @@ function refreshDocUi(docType, client) {
 }
 
 /** Rejects if the given promise doesn't settle within `ms` — used so a stuck
- *  network/Firebase call shows an error instead of leaving the button
- *  spinning forever with no feedback. */
+ *  network call shows an error instead of leaving the button spinning
+ *  forever with no feedback. */
 function withTimeout(promise, ms, message) {
   let timer;
   const timeout = new Promise((_, reject) => {
     timer = setTimeout(() => reject(new Error(message)), ms);
   });
   return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
+}
+
+/** Uploads a file to Cloudinary's free tier via an unsigned upload preset —
+ *  no backend/API secret needed, works straight from the browser. Returns
+ *  the hosted file's URL. See cloudinary-config.js for one-time setup. */
+async function uploadToCloudinary(file) {
+  if (cloudinaryConfig.cloudName === "YOUR_CLOUD_NAME" || cloudinaryConfig.uploadPreset === "YOUR_UNSIGNED_UPLOAD_PRESET") {
+    throw new Error("CLOUDINARY_NOT_CONFIGURED");
+  }
+  const form = new FormData();
+  form.append("file", file);
+  form.append("upload_preset", cloudinaryConfig.uploadPreset);
+  form.append("folder", "clients");
+
+  const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudinaryConfig.cloudName}/auto/upload`, {
+    method: "POST",
+    body: form,
+  });
+  const data = await res.json().catch(() => null);
+  if (!res.ok) {
+    throw new Error(data?.error?.message || `Cloudinary upload failed (HTTP ${res.status})`);
+  }
+  return data.secure_url;
 }
 
 async function handleDocUpload(docType, file) {
@@ -272,44 +297,20 @@ async function handleDocUpload(docType, file) {
 
   setDocButtonBusy(docType, true);
   try {
-    // Storage rules require a signed-in (anonymous) Firebase user. If that
-    // sign-in is still in flight (or stuck), wait for it with a bound —
-    // uploading before it's ready is exactly what causes a request that
-    // never resolves.
-    await withTimeout(
-      firebaseReady,
-      15000,
-      "Still connecting to Firebase — check your internet connection and try again."
-    );
-
     const client = allClients.find((c) => c.id === clientId);
-    const ext = file.name.split(".").pop();
-    const path = `clients/${clientId}/${docType}-${Date.now()}.${ext}`;
-    const storageRef = ref(storage, path);
-    await withTimeout(
-      uploadBytes(storageRef, file),
+    const url = await withTimeout(
+      uploadToCloudinary(file),
       30000,
       "Upload timed out — check your internet connection and try again."
     );
-    const url = await getDownloadURL(storageRef);
-
-    // Replace any previous file for this slot so storage doesn't pile up.
-    const oldPath = client?.[`${docType}DocPath`];
-    if (oldPath) {
-      try {
-        await deleteObject(ref(storage, oldPath));
-      } catch {
-        /* old file may already be gone — safe to ignore */
-      }
-    }
 
     const updated = {
       ...client,
       [`${docType}DocUrl`]: url,
       [`${docType}DocName`]: file.name,
-      [`${docType}DocPath`]: path,
       updatedAt: new Date().toISOString(),
     };
+    delete updated[`${docType}DocPath`]; // no longer used (was the old Firebase Storage path)
     await DB.put(DB.STORES.clients, updated);
     Object.assign(client, updated);
     refreshDocUi(docType, client);
@@ -317,14 +318,12 @@ async function handleDocUpload(docType, file) {
     toast(`${DOC_LABELS[docType]} uploaded.`, "success");
   } catch (err) {
     console.error(`Document upload failed (${docType}):`, err);
-    // Firebase Storage's most common silent-hang causes, surfaced with an
-    // actionable hint instead of a generic message.
     let hint = "Please try again.";
-    if (err?.code === "storage/unauthorized") {
-      hint = "Access was denied by Storage rules — check Firebase Console → Authentication → Sign-in method → Anonymous is enabled.";
-    } else if (err?.code === "storage/unknown" || err?.code === "storage/retry-limit-exceeded") {
-      hint = "Check that Firebase Storage is set up for this project (Firebase Console → Storage → Get started).";
-    } else if (err?.message?.includes("timed out") || err?.message?.includes("connecting")) {
+    if (err?.message === "CLOUDINARY_NOT_CONFIGURED") {
+      hint = "File storage isn't set up yet — add your Cloudinary cloud name and upload preset in assets/js/cloudinary-config.js.";
+    } else if (err?.message?.includes("timed out")) {
+      hint = err.message;
+    } else if (err?.message) {
       hint = err.message;
     }
     toast(`Couldn't upload the ${DOC_LABELS[docType]}. ${hint}`, "danger");
@@ -340,14 +339,10 @@ async function handleDocRemove(docType) {
   if (!client) return;
   if (!confirm(`Remove the ${DOC_LABELS[docType]} for ${client.businessName}?`)) return;
 
-  const path = client[`${docType}DocPath`];
-  if (path) {
-    try {
-      await deleteObject(ref(storage, path));
-    } catch {
-      /* already gone — safe to ignore */
-    }
-  }
+  // Unsigned Cloudinary uploads can't be deleted from the browser (that
+  // needs a signed request with the API secret, i.e. a backend) — so this
+  // just unlinks the reference here. The file itself stays on Cloudinary,
+  // comfortably within the free tier for document-sized files.
   const updated = { ...client };
   delete updated[`${docType}DocUrl`];
   delete updated[`${docType}DocName`];
@@ -396,6 +391,12 @@ function openViewClient(id) {
   document.getElementById("vRentTaxable").textContent = money(c.rentTaxable);
   document.getElementById("vRentSgst").textContent = money(c.rentSgst);
   document.getElementById("vRentCgst").textContent = money(c.rentCgst);
+
+  const waMsg = `Hi ${c.contactPerson || c.businessName}, this is regarding ${c.businessName}'s GST filing with us. Please let us know if you need anything.`;
+  const waHref = whatsappLink(c.contactPhone, waMsg);
+  const waBtn = document.getElementById("viewClientWaBtn");
+  waBtn.classList.toggle("d-none", !waHref);
+  if (waHref) waBtn.href = waHref;
 
   const modalEl = document.getElementById("viewClientModal");
   if (session.role !== "admin") {
