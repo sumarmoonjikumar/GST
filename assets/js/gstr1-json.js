@@ -1050,6 +1050,7 @@ const HEADER_ALIASES = {
     igst: ["igst", "igst amount"],
     cgst: ["cgst", "cgst amount"],
     sgst: ["sgst", "sgst amount"],
+    sply_ty: ["type", "supply type"],
   },
   hsn: {
     hsn: ["hsn/sac code", "hsn sac code", "hsn code", "hsn/sac", "hsn", "sac code", "sac"],
@@ -1058,14 +1059,14 @@ const HEADER_ALIASES = {
     qty: ["quantity", "qty", "total quantity"],
     val: ["total value", "total"],
     txval: ["taxable value", "taxable amount", "taxable"],
-    igst: ["igst", "igst amount"],
-    cgst: ["cgst", "cgst amount"],
-    sgst: ["sgst", "sgst amount"],
+    igst: ["igst", "igst amount", "integrated tax amount"],
+    cgst: ["cgst", "cgst amount", "central tax amount"],
+    sgst: ["sgst", "sgst amount", "state/ut tax amount", "state ut tax amount"],
   },
   doc: {
     nature: ["nature of document", "nature", "document type", "doc type"],
-    from: ["serial from", "from", "sr from", "from no"],
-    to: ["serial to", "to", "sr to", "to no"],
+    from: ["serial from", "sr. no. from", "sr no from", "from", "sr from", "from no"],
+    to: ["serial to", "sr. no. to", "sr no to", "to", "sr to", "to no"],
     total: ["total number", "total no", "total"],
     cancel: ["cancelled", "canceled", "cancel", "cancelled no"],
   },
@@ -1116,6 +1117,31 @@ function isGridRowBlank(defKey, tr) {
   return def.isRowBlank(v);
 }
 
+/** Same idea as deriveB2BTaxSplit, but for B2CS rows — the official format
+ *  gives Rate + Taxable Value only; split into IGST vs CGST+SGST using
+ *  each row's own "Type" (Inter/Intra) when given, else Place of Supply
+ *  vs the seller's state. */
+function deriveB2CSTaxSplit(vals, sellerStateCode) {
+  const rate = num(vals.rt);
+  const txval = num(vals.txval);
+  const hasExplicitTax = ["igst", "cgst", "sgst"].some((k) => num(vals[k]) > 0);
+  if (!rate || !txval || hasExplicitTax) return vals;
+  const typeRaw = String(vals.sply_ty || "").trim().toUpperCase();
+  const posCode = resolvePosCode(vals.pos);
+  const isInter = typeRaw.startsWith("INTER") || typeRaw === "E" ? true : typeRaw.startsWith("INTRA") || typeRaw === "OE" ? false : sellerStateCode ? posCode !== sellerStateCode : null;
+  const taxAmt = round2((txval * rate) / 100);
+  if (isInter === false) {
+    vals.cgst = round2(taxAmt / 2);
+    vals.sgst = round2(taxAmt / 2);
+    vals.igst = 0;
+  } else {
+    vals.igst = taxAmt;
+    vals.cgst = 0;
+    vals.sgst = 0;
+  }
+  return vals;
+}
+
 function populateGridFromKeyedRows(section, keyedRows) {
   if (!keyedRows.length) return 0;
   if (section === "b2b") {
@@ -1144,6 +1170,7 @@ function populateGridFromKeyedRows(section, keyedRows) {
     if (isGridRowBlank(section, tr)) tr.remove();
   });
   keyedRows.forEach((vals) => {
+    if (section === "b2cs") deriveB2CSTaxSplit(vals, (selectedClient?.gstin || "").slice(0, 2));
     const tr = createGridRow(section);
     body.appendChild(tr);
     colKeys.forEach((key) => { if (vals[key] !== undefined && vals[key] !== "") setGridCell(section, tr, key, vals[key]); });
@@ -1345,32 +1372,163 @@ function exportSalesToExcel() {
   if (parsedRows.b2cs.length) {
     const sheet = XLSX.utils.json_to_sheet(
       parsedRows.b2cs.map((r) => ({
-        "Place of Supply": r.raw.pos, "Rate %": r.raw.rt, "Taxable Amount": r.raw.txval,
-        IGST: r.raw.igst, CGST: r.raw.cgst, SGST: r.raw.sgst,
+        Type: r.raw.sply_ty === "INTER" ? "E" : "OE",
+        "Place Of Supply": STATE_CODES[r.raw.pos] ? `${r.raw.pos}-${STATE_CODES[r.raw.pos]}` : r.raw.pos,
+        "Applicable % of Tax Rate": "",
+        Rate: r.raw.rt,
+        "Taxable Value": r.raw.txval,
+        "Cess Amount": 0,
+        "E-Commerce GSTIN": "",
       }))
     );
-    XLSX.utils.book_append_sheet(wb, sheet, "B2C Small");
+    XLSX.utils.book_append_sheet(wb, sheet, "B2CS");
   }
   if (parsedRows.hsn.length) {
     const sheet = XLSX.utils.json_to_sheet(
-      parsedRows.hsn.map((r) => ({
-        "HSN/SAC Code": r.raw.hsn_sc, Description: r.raw.desc, UQC: r.raw.uqc, Quantity: r.raw.qty,
-        "Total Value": r.raw.val, "Taxable Value": r.raw.txval, IGST: r.raw.igst, CGST: r.raw.cgst, SGST: r.raw.sgst,
-      }))
+      parsedRows.hsn.map((r) => {
+        const taxTotal = round2(Number(r.raw.igst) + Number(r.raw.cgst) + Number(r.raw.sgst));
+        const rate = r.raw.txval > 0 ? round2((taxTotal / r.raw.txval) * 100) : 0;
+        return {
+          HSN: r.raw.hsn_sc,
+          Description: r.raw.desc,
+          UQC: r.raw.uqc,
+          "Total Quantity": r.raw.qty,
+          "Total Value": r.raw.val,
+          Rate: rate,
+          "Taxable Value": r.raw.txval,
+          "Integrated Tax Amount": r.raw.igst,
+          "Central Tax Amount": r.raw.cgst,
+          "State/UT Tax Amount": r.raw.sgst,
+          "Cess Amount": 0,
+        };
+      })
     );
-    XLSX.utils.book_append_sheet(wb, sheet, "HSN Summary");
+    XLSX.utils.book_append_sheet(wb, sheet, "HSN");
   }
   if (parsedRows.doc.length) {
     const sheet = XLSX.utils.json_to_sheet(
       parsedRows.doc.map((r) => ({
-        "Nature of Document": r.raw.nature, "Serial From": r.raw.from, "Serial To": r.raw.to,
-        "Total Number": r.raw.totnum, Cancelled: r.raw.cancel, "Net Issued": r.raw.net_issue,
+        "Nature of Document": r.raw.nature,
+        "Sr. No. From": r.raw.from,
+        "Sr. No. To": r.raw.to,
+        "Total Number": r.raw.totnum,
+        Cancelled: r.raw.cancel,
       }))
     );
     XLSX.utils.book_append_sheet(wb, sheet, "Documents Issued");
   }
 
   XLSX.writeFile(wb, `GSTR1_${safeName}_${fp}.xlsx`);
+}
+
+/* =========================================================
+   Generate GSTR-1 JSON (GSTN offline-tool schema) — rebuilt
+   against the official GST Offline Tool's own Excel/CSV column
+   structure, so the output matches what the tool itself expects.
+   ========================================================= */
+function buildGstr1Json() {
+  const gstin = selectedClient.gstin;
+  const fp = monthKeyToFp(selectedPeriod.monthKey);
+  const json = { gstin, fp };
+
+  // B2B — grouped by recipient GSTIN, then by invoice number.
+  if (parsedRows.b2b.length) {
+    const byCtin = new Map();
+    parsedRows.b2b.forEach((r) => {
+      const d = r.raw;
+      if (!byCtin.has(d.gstin)) byCtin.set(d.gstin, new Map());
+      const invMap = byCtin.get(d.gstin);
+      if (!invMap.has(d.inum)) {
+        invMap.set(d.inum, { inum: d.inum, idt: d.idt, val: round2(d.val), pos: d.pos, rchrg: d.rchrg, inv_typ: "R", itms: [] });
+      }
+      const inv = invMap.get(d.inum);
+      inv.itms.push({
+        num: inv.itms.length + 1,
+        itm_det: { txval: round2(d.txval), rt: d.rt, iamt: round2(d.igst), camt: round2(d.cgst), samt: round2(d.sgst), csamt: 0 },
+      });
+    });
+    json.b2b = [...byCtin.entries()].map(([ctin, invMap]) => ({ ctin, inv: [...invMap.values()] }));
+  }
+
+  // B2C Small — one consolidated entry per parsed row.
+  if (parsedRows.b2cs.length) {
+    json.b2cs = parsedRows.b2cs.map((r) => ({
+      sply_ty: r.raw.sply_ty === "INTER" ? "INTER" : "INTRA",
+      pos: r.raw.pos,
+      typ: "OE",
+      rt: r.raw.rt,
+      txval: round2(r.raw.txval),
+      iamt: round2(r.raw.igst),
+      camt: round2(r.raw.cgst),
+      samt: round2(r.raw.sgst),
+      csamt: 0,
+    }));
+  }
+
+  // HSN Summary
+  if (parsedRows.hsn.length) {
+    json.hsn = {
+      data: parsedRows.hsn.map((r, i) => ({
+        num: i + 1,
+        hsn_sc: r.raw.hsn_sc,
+        desc: r.raw.desc,
+        uqc: r.raw.uqc,
+        qty: r.raw.qty,
+        val: round2(r.raw.val),
+        txval: round2(r.raw.txval),
+        iamt: round2(r.raw.igst),
+        camt: round2(r.raw.cgst),
+        samt: round2(r.raw.sgst),
+        csamt: 0,
+      })),
+    };
+  }
+
+  // Documents Issued
+  if (parsedRows.doc.length) {
+    json.doc_issue = {
+      doc_det: parsedRows.doc.map((r) => ({
+        doc_num: r.raw.doc_num,
+        doc_typ: DOC_TYP_LABELS[r.raw.doc_num] || "",
+        docs: [{ num: 1, from: r.raw.from, to: r.raw.to, totnum: r.raw.totnum, cancel: r.raw.cancel, net_issue: r.raw.net_issue }],
+      })),
+    };
+  }
+
+  return json;
+}
+
+function handleGenerateJson() {
+  const anySectionFilled = Object.values(parsedRows).some((r) => r.length > 0);
+  if (!anySectionFilled) {
+    toast("Validate at least one section before generating.", "warning");
+    return;
+  }
+  const anyErrors = Object.values(sectionHasErrors).some(Boolean);
+  const banner = document.getElementById("finalErrorBanner");
+  if (anyErrors) {
+    banner.classList.add("show");
+    banner.innerHTML = `<strong>Fix the highlighted rows first.</strong> The rows in red above will cause the GST portal to reject the JSON — correct them, re-validate, then generate again.`;
+    toast("Some rows still have errors — fix them before downloading.", "danger");
+    return;
+  }
+  banner.classList.remove("show");
+  banner.innerHTML = "";
+
+  const json = buildGstr1Json();
+  const blob = new Blob([JSON.stringify(json, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const fp = monthKeyToFp(selectedPeriod.monthKey);
+  const safeName = (selectedClient.businessName || "client").replace(/[^a-zA-Z0-9]+/g, "_");
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `GSTR1_${safeName}_${fp}.json`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+
+  toast("GSTR-1 JSON generated — upload it under Returns Dashboard → Prepare Offline → Upload on the GST portal.", "success");
 }
 
 async function handleSave() {
@@ -1483,6 +1641,7 @@ function wireEvents() {
 
   document.getElementById("saveBtn").addEventListener("click", handleSave);
   document.getElementById("exportExcelBtn").addEventListener("click", handleExport);
+  document.getElementById("generateJsonBtn").addEventListener("click", handleGenerateJson);
 }
 
 document.addEventListener("DOMContentLoaded", init);
