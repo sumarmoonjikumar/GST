@@ -1339,83 +1339,106 @@ async function saveSalesRecord() {
   else allSalesRecords[idx] = record;
 }
 
-/** Builds a multi-sheet .xlsx workbook of the current month's sales details for this party. */
+/** Builds a sheet that replicates the official GST Offline Tool template's
+ *  exact row layout — title row, summary-labels row, summary-values row,
+ *  THEN the real column headers on row 4 — because the tool's importer
+ *  validates the header row by position, not just by name. A header on
+ *  row 1 (which is what a plain json_to_sheet export would give) fails
+ *  its "Column Headers Missing/Mismatch" check even with the right names. */
+function buildOfficialSheet(title, summaryLabels, summaryValues, headers, dataRows) {
+  const aoa = [[title, "HELP"], summaryLabels, summaryValues, headers, ...dataRows];
+  return XLSX.utils.aoa_to_sheet(aoa);
+}
+
+/** Builds a multi-sheet .xlsx workbook of the current month's sales details
+ *  for this party, laid out to match the official GST Offline Tool's own
+ *  template exactly (sheet names, header row position, column order) so
+ *  it can be fed straight into the tool's "Import Excel Workbook" option,
+ *  which then generates the portal-ready JSON itself. */
 function exportSalesToExcel() {
   const wb = XLSX.utils.book_new();
   const safeName = (selectedClient.businessName || "client").replace(/[^a-zA-Z0-9]+/g, "_");
   const fp = monthKeyToFp(selectedPeriod.monthKey);
+  const sum = (rows, key) => round2(rows.reduce((t, r) => t + (Number(r.raw[key]) || 0), 0));
 
   if (parsedRows.b2b.length) {
-    // Column names/order match the official GST offline-tool B2B sheet
-    // (same one finexo.in's converter expects) — so this exported file can
-    // be fed straight into finexo's Excel→JSON tool, or the GST portal's
-    // own offline utility, without reshaping.
-    const sheet = XLSX.utils.json_to_sheet(
-      parsedRows.b2b.map((r) => ({
-        "GSTIN/UIN of Recipient": r.raw.gstin,
-        "Receiver Name": r.raw.cname || "",
-        "Invoice Number": r.raw.inum,
-        "Invoice date": r.raw.idt,
-        "Invoice Value": r.raw.val,
-        "Place Of Supply": STATE_CODES[r.raw.pos] ? `${r.raw.pos}-${STATE_CODES[r.raw.pos]}` : r.raw.pos,
-        "Reverse Charge": r.raw.rchrg,
-        "Applicable % of Tax Rate": "",
-        "Invoice Type": "Regular B2B",
-        "E-Commerce GSTIN": "",
-        Rate: r.raw.rt,
-        "Taxable Value": r.raw.txval,
-        "Cess Amount": 0,
-      }))
+    const rows = parsedRows.b2b;
+    const recipients = new Set(rows.map((r) => r.raw.gstin)).size;
+    const invoices = new Set(rows.map((r) => r.raw.inum)).size;
+    const sheet = buildOfficialSheet(
+      "Summary For B2B, SEZ, DE (4A, 4B, 6B, 6C)",
+      ["No. of Recipients", "No. of Invoices", "Total Invoice Value", "Total Taxable Value", "Total Cess"],
+      [recipients, invoices, sum(rows, "val"), sum(rows, "txval"), 0],
+      ["GSTIN/UIN of Recipient", "Receiver Name", "Invoice Number", "Invoice date", "Invoice Value", "Place Of Supply", "Reverse Charge", "Applicable % of Tax Rate", "Invoice Type", "E-Commerce GSTIN", "Rate", "Taxable Value", "Cess Amount"],
+      rows.map((r) => [
+        r.raw.gstin,
+        r.raw.cname || "",
+        r.raw.inum,
+        r.raw.idt,
+        r.raw.val,
+        STATE_CODES[r.raw.pos] ? `${r.raw.pos}-${STATE_CODES[r.raw.pos]}` : r.raw.pos,
+        r.raw.rchrg,
+        "",
+        "Regular B2B",
+        "",
+        r.raw.rt,
+        r.raw.txval,
+        0,
+      ])
     );
-    XLSX.utils.book_append_sheet(wb, sheet, "B2B");
+    XLSX.utils.book_append_sheet(wb, sheet, "b2b,sez,de");
   }
+
   if (parsedRows.b2cs.length) {
-    const sheet = XLSX.utils.json_to_sheet(
-      parsedRows.b2cs.map((r) => ({
-        Type: r.raw.sply_ty === "INTER" ? "E" : "OE",
-        "Place Of Supply": STATE_CODES[r.raw.pos] ? `${r.raw.pos}-${STATE_CODES[r.raw.pos]}` : r.raw.pos,
-        "Applicable % of Tax Rate": "",
-        Rate: r.raw.rt,
-        "Taxable Value": r.raw.txval,
-        "Cess Amount": 0,
-        "E-Commerce GSTIN": "",
-      }))
+    const rows = parsedRows.b2cs;
+    const sheet = buildOfficialSheet(
+      "Summary For B2CS(7)",
+      ["Total Taxable  Value", "Total Cess"],
+      [sum(rows, "txval"), 0],
+      ["Type", "Place Of Supply", "Applicable % of Tax Rate", "Rate", "Taxable Value", "Cess Amount", "E-Commerce GSTIN"],
+      rows.map((r) => [
+        r.raw.sply_ty === "INTER" ? "E" : "OE",
+        STATE_CODES[r.raw.pos] ? `${r.raw.pos}-${STATE_CODES[r.raw.pos]}` : r.raw.pos,
+        "",
+        r.raw.rt,
+        r.raw.txval,
+        0,
+        "",
+      ])
     );
-    XLSX.utils.book_append_sheet(wb, sheet, "B2CS");
+    XLSX.utils.book_append_sheet(wb, sheet, "b2cs");
   }
+
   if (parsedRows.hsn.length) {
-    const sheet = XLSX.utils.json_to_sheet(
-      parsedRows.hsn.map((r) => {
+    const rows = parsedRows.hsn;
+    const sheet = buildOfficialSheet(
+      "Summary For HSN(12)",
+      ["No. of HSN", "Total Value", "Total Taxable Value", "Total Integrated Tax", "Total Central Tax", "Total State/UT Tax", "Total Cess"],
+      [rows.length, sum(rows, "val"), sum(rows, "txval"), sum(rows, "igst"), sum(rows, "cgst"), sum(rows, "sgst"), 0],
+      ["HSN", "Description", "UQC", "Total Quantity", "Total Value", "Rate", "Taxable Value", "Integrated Tax Amount", "Central Tax Amount", "State/UT Tax Amount", "Cess Amount"],
+      rows.map((r) => {
         const taxTotal = round2(Number(r.raw.igst) + Number(r.raw.cgst) + Number(r.raw.sgst));
         const rate = r.raw.txval > 0 ? round2((taxTotal / r.raw.txval) * 100) : 0;
-        return {
-          HSN: r.raw.hsn_sc,
-          Description: r.raw.desc,
-          UQC: r.raw.uqc,
-          "Total Quantity": r.raw.qty,
-          "Total Value": r.raw.val,
-          Rate: rate,
-          "Taxable Value": r.raw.txval,
-          "Integrated Tax Amount": r.raw.igst,
-          "Central Tax Amount": r.raw.cgst,
-          "State/UT Tax Amount": r.raw.sgst,
-          "Cess Amount": 0,
-        };
+        return [r.raw.hsn_sc, r.raw.desc, r.raw.uqc, r.raw.qty, r.raw.val, rate, r.raw.txval, r.raw.igst, r.raw.cgst, r.raw.sgst, 0];
       })
     );
-    XLSX.utils.book_append_sheet(wb, sheet, "HSN");
+    // The official tool splits HSN into two sheets (hsn(b2b) / hsn(b2c)) since
+    // release 3.2.2. We keep one combined HSN section for simplicity, so this
+    // exports as hsn(b2b) — the more common case. If a client's HSN entries
+    // are mostly B2C, rename this tab to "hsn(b2c)" before importing.
+    XLSX.utils.book_append_sheet(wb, sheet, "hsn(b2b)");
   }
+
   if (parsedRows.doc.length) {
-    const sheet = XLSX.utils.json_to_sheet(
-      parsedRows.doc.map((r) => ({
-        "Nature of Document": r.raw.nature,
-        "Sr. No. From": r.raw.from,
-        "Sr. No. To": r.raw.to,
-        "Total Number": r.raw.totnum,
-        Cancelled: r.raw.cancel,
-      }))
+    const rows = parsedRows.doc;
+    const sheet = buildOfficialSheet(
+      "Summary of documents issued during the tax period (13)",
+      ["Total Number", "Total Cancelled"],
+      [sum(rows, "totnum"), sum(rows, "cancel")],
+      ["Nature of Document", "Sr. No. From", "Sr. No. To", "Total Number", "Cancelled"],
+      rows.map((r) => [r.raw.nature, r.raw.from, r.raw.to, r.raw.totnum, r.raw.cancel])
     );
-    XLSX.utils.book_append_sheet(wb, sheet, "Documents Issued");
+    XLSX.utils.book_append_sheet(wb, sheet, "docs");
   }
 
   XLSX.writeFile(wb, `GSTR1_${safeName}_${fp}.xlsx`);
