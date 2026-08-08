@@ -360,11 +360,42 @@ function num(v) {
   return isNaN(n) ? NaN : n;
 }
 
+/** The official GST Excel format gives Rate + Taxable Value instead of
+ *  explicit IGST/CGST/SGST amounts — the portal derives the split itself
+ *  from Place of Supply vs the seller's own state. We do the same here on
+ *  import, so a client's official-format Excel auto-fills correctly
+ *  instead of silently landing with ₹0 tax. Only fills in what's missing —
+ *  never overrides amounts the sheet already gave explicitly. */
+function deriveB2BTaxSplit(vals, sellerStateCode) {
+  const rate = num(vals.rt);
+  const txval = num(vals.txval);
+  const hasExplicitTax = ["igst", "cgst", "sgst"].some((k) => num(vals[k]) > 0);
+  if (!rate || !txval || hasExplicitTax) return vals;
+  const posCode = resolvePosCode(vals.pos);
+  const taxAmt = round2((txval * rate) / 100);
+  if (sellerStateCode && posCode === sellerStateCode) {
+    vals.cgst = round2(taxAmt / 2);
+    vals.sgst = round2(taxAmt / 2);
+    vals.igst = 0;
+  } else {
+    vals.igst = taxAmt;
+    vals.cgst = 0;
+    vals.sgst = 0;
+  }
+  if (!vals.val) vals.val = round2(txval + taxAmt);
+  return vals;
+}
+
 function resolvePosCode(v) {
   const raw = String(v || "").trim();
   if (/^\d{1,2}$/.test(raw)) return raw.padStart(2, "0");
-  const found = Object.entries(STATE_CODES).find(([, name]) => name.toLowerCase() === raw.toLowerCase());
-  return found ? found[0] : raw;
+  // "33-Tamil Nadu" / "33 - Tamil Nadu" (the official GST Excel format's style).
+  const leading = raw.match(/^(\d{1,2})\D/);
+  if (leading && STATE_CODES[leading[1].padStart(2, "0")]) return leading[1].padStart(2, "0");
+  const exact = Object.entries(STATE_CODES).find(([, name]) => name.toLowerCase() === raw.toLowerCase());
+  if (exact) return exact[0];
+  const loose = Object.entries(STATE_CODES).find(([, name]) => raw.toLowerCase().includes(name.toLowerCase()));
+  return loose ? loose[0] : raw;
 }
 
 const MONTH_NAME_TO_NUM = {
@@ -1010,6 +1041,7 @@ const HEADER_ALIASES = {
     pos: ["place of supply", "pos"],
     rchrg: ["reverse charge", "rcm"],
     hsn: ["hsn/sac code", "hsn sac code", "hsn code", "hsn/sac", "hsn", "sac code", "sac"],
+    rt: ["rate", "rate %", "gst rate", "tax rate"],
   },
   b2cs: {
     pos: ["place of supply", "pos"],
@@ -1087,11 +1119,13 @@ function isGridRowBlank(defKey, tr) {
 function populateGridFromKeyedRows(section, keyedRows) {
   if (!keyedRows.length) return 0;
   if (section === "b2b") {
+    const sellerStateCode = (selectedClient?.gstin || "").slice(0, 2);
     const body = document.getElementById("b2bGridBody");
     Array.from(body.querySelectorAll("tr")).forEach((tr) => {
       if (isB2BRowBlank(tr)) tr.remove();
     });
     keyedRows.forEach((vals) => {
+      deriveB2BTaxSplit(vals, sellerStateCode);
       const tr = createB2BRow();
       body.appendChild(tr);
       B2B_COLS.forEach((key) => { if (vals[key] !== undefined && vals[key] !== "") setB2BCell(tr, key, vals[key]); });
@@ -1285,11 +1319,25 @@ function exportSalesToExcel() {
   const fp = monthKeyToFp(selectedPeriod.monthKey);
 
   if (parsedRows.b2b.length) {
+    // Column names/order match the official GST offline-tool B2B sheet
+    // (same one finexo.in's converter expects) — so this exported file can
+    // be fed straight into finexo's Excel→JSON tool, or the GST portal's
+    // own offline utility, without reshaping.
     const sheet = XLSX.utils.json_to_sheet(
       parsedRows.b2b.map((r) => ({
-        "Invoice Number": r.raw.inum, GSTIN: r.raw.gstin, "Customer Name": r.raw.cname || "", "Invoice Date": r.raw.idt,
-        "Taxable Amount": r.raw.txval, IGST: r.raw.igst, CGST: r.raw.cgst, SGST: r.raw.sgst, Total: r.raw.val,
-        "Place of Supply": r.raw.pos, "Reverse Charge": r.raw.rchrg, "HSN/SAC": r.raw.hsn, "Rate %": r.raw.rt,
+        "GSTIN/UIN of Recipient": r.raw.gstin,
+        "Receiver Name": r.raw.cname || "",
+        "Invoice Number": r.raw.inum,
+        "Invoice date": r.raw.idt,
+        "Invoice Value": r.raw.val,
+        "Place Of Supply": STATE_CODES[r.raw.pos] ? `${r.raw.pos}-${STATE_CODES[r.raw.pos]}` : r.raw.pos,
+        "Reverse Charge": r.raw.rchrg,
+        "Applicable % of Tax Rate": "",
+        "Invoice Type": "Regular B2B",
+        "E-Commerce GSTIN": "",
+        Rate: r.raw.rt,
+        "Taxable Value": r.raw.txval,
+        "Cess Amount": 0,
       }))
     );
     XLSX.utils.book_append_sheet(wb, sheet, "B2B");
