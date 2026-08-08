@@ -1,6 +1,6 @@
 import DB from "./db.js";
 import { requireSession } from "./auth.js";
-import { applyStoredTheme, toast, formatDate, currentFY, fyList, fyMonths, initials } from "./utils.js";
+import { applyStoredTheme, toast, formatDate, currentFY, fyList, fyMonths, initials, whatsappLink } from "./utils.js";
 import { initAppChrome } from "./chrome.js";
 import { buildFilingMap, getFilingStatus, filingRecordId, periodHasStarted, daysBetween, isQuarterEndMonth } from "./gst-status.js";
 
@@ -360,6 +360,20 @@ function openStatusModal(clientId, monthKey, type, presetStatus) {
   document.getElementById("fNotes").value = rec.notes || "";
   renderInvoiceBreakdown(rec.invoiceBreakdown || []);
   toggleFiledDateVisibility();
+
+  const waBtn = document.getElementById("fWaBtn");
+  const waMsg =
+    type === "GSTR-1"
+      ? `Hi ${client?.contactPerson || client?.businessName}, please share your ${monthName} ${year} sales invoice details (B2B + B2C) for GSTR-1 filing at the earliest.`
+      : `Hi ${client?.contactPerson || client?.businessName}, your GSTR-3B payment for ${monthName} ${year} is pending and the filing is due. Please send the tax amount at the earliest so we can complete the filing.`;
+  const waHref = whatsappLink(client?.contactPhone, waMsg);
+  waBtn.classList.toggle("d-none", !waHref);
+  if (waHref) {
+    waBtn.href = waHref;
+    document.getElementById("fWaBtnLabel").textContent =
+      type === "GSTR-1" ? "Ask for sales invoice details (WhatsApp)" : "Send payment reminder (WhatsApp)";
+  }
+
   statusModal.show();
 }
 
