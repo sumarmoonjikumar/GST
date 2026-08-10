@@ -268,7 +268,19 @@
             <i class="fa-solid fa-file-excel me-1"></i>Upload Excel (.xlsx)
           </button>
           <input type="file" id="excelUploadInput" accept=".xlsx,.xls" class="visually-hidden">
+          <button type="button" class="btn btn-sm btn-outline-secondary" id="sheetImportBtn">
+            <i class="fa-brands fa-google-drive me-1"></i>Import from Google Sheet
+          </button>
           <span class="small text-muted-soft">One workbook, one sheet per tab — name the sheets <b>B2B</b>, <b>B2C</b>, <b>HSN</b>, <b>Document</b> (any case, extra words fine) and each sheet's rows go straight into the matching tab below. Columns should be in the same order as the boxes in each tab.</span>
+        </div>
+        <div class="g1-error-banner mb-3" id="sheetImportPanel" style="display:none; background: var(--surface-raised); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 12px 14px;">
+          <label class="form-label small mb-1" for="sheetImportUrl">Published CSV link for the <b id="sheetImportSectionLabel">B2B</b> tab</label>
+          <div class="d-flex gap-2">
+            <input type="url" class="form-control form-control-sm" id="sheetImportUrl" placeholder="https://docs.google.com/spreadsheets/d/e/…/pub?output=csv">
+            <button type="button" class="btn btn-sm btn-navy text-nowrap" id="sheetImportFetchBtn">Fetch &amp; Fill</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary" id="sheetImportCancelBtn">Cancel</button>
+          </div>
+          <div class="small text-muted-soft mt-1">In Google Sheets: <b>File → Share → Publish to web</b> → pick this sheet's tab → format <b>CSV</b> → Publish, then paste that link here. This fills the currently open tab (<span id="sheetImportSectionHint">B2B</span>) — switch tabs above for other sections.</div>
         </div>
         <div class="g1-tabs" id="g1Tabs">
           <button type="button" class="g1-tab-btn active" data-section="b2b"><i class="fa-solid fa-building"></i> B2B <span class="badge bg-secondary rounded-pill" id="countB2B">0</span></button>

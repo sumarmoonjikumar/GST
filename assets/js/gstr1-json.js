@@ -315,6 +315,7 @@ function switchSection(section) {
   activeSection = section;
   document.querySelectorAll("#g1Tabs .g1-tab-btn").forEach((btn) => btn.classList.toggle("active", btn.dataset.section === section));
   document.querySelectorAll("[data-section-card]").forEach((card) => card.classList.toggle("active", card.dataset.sectionCard === section));
+  document.getElementById("sheetImportPanel").style.display = "none";
 
   if (section === "b2cs" && lastUnregisteredB2B.length) {
     const body = document.getElementById("b2csGridBody");
@@ -1249,6 +1250,72 @@ async function handleExcelUpload(e) {
 }
 
 /* =========================================================
+   Import from a Google Sheet published as CSV
+   ========================================================= */
+function toGvizCsvExportUrl(url) {
+  // Accept either a "Publish to web" CSV link, or a regular
+  // .../edit#gid=... link — normalize the latter into a fetchable CSV
+  // export URL for that specific tab (gid).
+  const m = url.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
+  if (m && !/\/pub\?/.test(url) && !/output=csv/.test(url)) {
+    const gidMatch = url.match(/[?#&]gid=(\d+)/);
+    const gid = gidMatch ? gidMatch[1] : "0";
+    return `https://docs.google.com/spreadsheets/d/${m[1]}/export?format=csv&gid=${gid}`;
+  }
+  return url;
+}
+
+async function handleSheetImportFetch() {
+  const urlInput = document.getElementById("sheetImportUrl");
+  const url = urlInput.value.trim();
+  if (!url) {
+    toast("Paste the Google Sheet's published link first.", "warning");
+    return;
+  }
+  if (typeof XLSX === "undefined") {
+    toast("The sheet reader didn't load — check your internet connection and try again.", "danger");
+    return;
+  }
+  const btn = document.getElementById("sheetImportFetchBtn");
+  const originalHtml = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i>`;
+  try {
+    const fetchUrl = toGvizCsvExportUrl(url);
+    const res = await fetch(fetchUrl);
+    if (!res.ok) throw new Error(`Google Sheets returned HTTP ${res.status} — make sure the sheet is published/shared as "Anyone with the link can view".`);
+    const csvText = await res.text();
+    if (/^<!DOCTYPE html/i.test(csvText.trim())) {
+      throw new Error('Got a login/sharing page instead of CSV — publish this sheet (File → Share → Publish to web → CSV) or set sharing to "Anyone with the link".');
+    }
+
+    const wb = XLSX.read(csvText, { type: "string" });
+    const sheetName = wb.SheetNames[0];
+    let rows = XLSX.utils.sheet_to_json(wb.Sheets[sheetName], { header: 1, raw: false, defval: "" });
+    rows = rows.map((r) => r.map((c) => String(c ?? "").trim())).filter((r) => r.some((c) => c !== ""));
+    if (!rows.length) throw new Error("That sheet looks empty.");
+
+    let keyedRows = keyRowsForSection(activeSection, rows);
+    keyedRows = keyedRows.filter((o) => Object.values(o).some((v) => String(v).trim() !== ""));
+    if (!keyedRows.length) {
+      throw new Error("Couldn't match any columns in that sheet to this tab's fields — check the column headers.");
+    }
+
+    const filled = populateGridFromKeyedRows(activeSection, keyedRows);
+    activeSection === "b2b" ? handleParseB2B() : handleParseGrid(activeSection);
+    toast(`Imported ${filled} row(s) from Google Sheets into ${activeSection === "b2cs" ? "B2C Small" : activeSection.toUpperCase()}.`, "success");
+    document.getElementById("sheetImportPanel").style.display = "none";
+    urlInput.value = "";
+  } catch (err) {
+    console.error("Google Sheet import failed:", err);
+    toast(err.message || "Couldn't import from that Google Sheet link.", "danger");
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = originalHtml;
+  }
+}
+
+/* =========================================================
    Preview rendering
    ========================================================= */
 function handleParse(section) {
@@ -1641,6 +1708,19 @@ function wireEvents() {
     document.getElementById("excelUploadInput").click();
   });
   document.getElementById("excelUploadInput").addEventListener("change", handleExcelUpload);
+
+  const SECTION_LABELS = { b2b: "B2B", b2cs: "B2C Small", hsn: "HSN", doc: "Documents" };
+  document.getElementById("sheetImportBtn").addEventListener("click", () => {
+    document.getElementById("sheetImportSectionLabel").textContent = SECTION_LABELS[activeSection] || activeSection;
+    document.getElementById("sheetImportSectionHint").textContent = SECTION_LABELS[activeSection] || activeSection;
+    document.getElementById("sheetImportPanel").style.display = "block";
+    document.getElementById("sheetImportUrl").focus();
+  });
+  document.getElementById("sheetImportCancelBtn").addEventListener("click", () => {
+    document.getElementById("sheetImportPanel").style.display = "none";
+  });
+  document.getElementById("sheetImportFetchBtn").addEventListener("click", handleSheetImportFetch);
+
   document.getElementById("b2bApplyDefaults").addEventListener("click", () => {
     const pos = document.getElementById("b2bDefaultPos").value;
     const rchrg = document.getElementById("b2bDefaultRchrg").value;
