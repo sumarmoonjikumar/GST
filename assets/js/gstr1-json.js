@@ -1488,32 +1488,35 @@ function buildGstr1Json() {
     }));
   }
 
-  // HSN Summary
+  // HSN Summary — real Tally/portal exports nest the array under "hsn_b2b"
+  // (not "data"), never include a "val" (total incl. tax) field, and put
+  // the description text in "user_desc" — "desc" itself stays blank.
   if (parsedRows.hsn.length) {
     json.hsn = {
-      data: parsedRows.hsn.map((r, i) => ({
+      hsn_b2b: parsedRows.hsn.map((r, i) => ({
         num: i + 1,
         hsn_sc: r.raw.hsn_sc,
-        desc: r.raw.desc,
-        uqc: r.raw.uqc,
-        qty: r.raw.qty,
-        val: round2(r.raw.val),
         txval: round2(r.raw.txval),
         iamt: round2(r.raw.igst),
         camt: round2(r.raw.cgst),
         samt: round2(r.raw.sgst),
         csamt: 0,
+        desc: "",
+        user_desc: r.raw.desc || "",
+        uqc: r.raw.uqc,
+        qty: r.raw.qty,
+        rt: r.raw.rt,
       })),
     };
   }
 
-  // Documents Issued
+  // Documents Issued — no "doc_typ" field in the real export; each doc_num
+  // group's docs[] entries carry from/to/totnum/cancel/net_issue only.
   if (parsedRows.doc.length) {
     json.doc_issue = {
       doc_det: parsedRows.doc.map((r) => ({
         doc_num: r.raw.doc_num,
-        doc_typ: DOC_TYP_LABELS[r.raw.doc_num] || "",
-        docs: [{ num: 1, from: r.raw.from, to: r.raw.to, totnum: r.raw.totnum, cancel: r.raw.cancel, net_issue: r.raw.net_issue }],
+        docs: [{ cancel: r.raw.cancel, from: r.raw.from, net_issue: r.raw.net_issue, num: 1, to: r.raw.to, totnum: r.raw.totnum }],
       })),
     };
   }
