@@ -1316,12 +1316,6 @@ function buildSampleSheet(headers, blankRowCount = 40) {
   const aoa = [headers];
   for (let i = 0; i < blankRowCount; i++) aoa.push(headers.map(() => ""));
   const ws = XLSX.utils.aoa_to_sheet(aoa);
-  // Best-effort header emphasis (bold white-on-navy) — harmlessly ignored if the
-  // loaded xlsx build doesn't support cell styles on write, values still land fine.
-  headers.forEach((_, c) => {
-    const addr = XLSX.utils.encode_cell({ r: 0, c });
-    if (ws[addr]) ws[addr].s = { font: { bold: true, color: { rgb: "FFFFFF" } }, fill: { fgColor: { rgb: "1A3049" } } };
-  });
   ws["!cols"] = headers.map(() => ({ wch: 20 }));
   ws["!rows"] = [{ hpx: 22 }];
   return ws;
@@ -1349,13 +1343,58 @@ function parseXmlAttrs(tag) {
   return attrs;
 }
 
-/** Injects real Excel/Sheets "pick from a list" dropdowns into the generated
- *  workbook by editing each target sheet's raw XML directly — data validation
- *  isn't something the free xlsx writer can add on its own. Every list lives on
- *  a hidden "Lists" sheet so it's easy to find/extend later; if anything here
- *  fails for any reason, the caller falls back to the plain (no-dropdown) file
+/** Adds one new bold-white-on-navy cell style to styles.xml (font + fill + cellXf)
+ *  and returns its index — needed because the free xlsx writer silently drops any
+ *  `.s` style object set in JS, so header coloring has to be patched in as raw XML
+ *  after the fact, the same way the dropdown lists are. */
+async function addHeaderStyle(zip) {
+  const path = "xl/styles.xml";
+  const file = zip.file(path);
+  if (!file) return null;
+  let xml = await file.async("string");
+  if (!/<fonts count="\d+"/.test(xml) || !/<fills count="\d+"/.test(xml) || !/<cellXfs count="\d+"/.test(xml)) return null;
+
+  const fontsCount = parseInt(xml.match(/<fonts count="(\d+)"/)[1], 10);
+  xml = xml
+    .replace(/<fonts count="\d+"/, `<fonts count="${fontsCount + 1}"`)
+    .replace("</fonts>", `<font><b/><sz val="11"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font></fonts>`);
+  const fontIdx = fontsCount;
+
+  const fillsCount = parseInt(xml.match(/<fills count="(\d+)"/)[1], 10);
+  xml = xml
+    .replace(/<fills count="\d+"/, `<fills count="${fillsCount + 1}"`)
+    .replace("</fills>", `<fill><patternFill patternType="solid"><fgColor rgb="FF1A3049"/><bgColor indexed="64"/></patternFill></fill></fills>`);
+  const fillIdx = fillsCount;
+
+  const cellXfsCount = parseInt(xml.match(/<cellXfs count="(\d+)"/)[1], 10);
+  xml = xml
+    .replace(/<cellXfs count="\d+"/, `<cellXfs count="${cellXfsCount + 1}"`)
+    .replace("</cellXfs>", `<xf numFmtId="0" fontId="${fontIdx}" fillId="${fillIdx}" borderId="0" xfId="0" applyFont="1" applyFill="1"/></cellXfs>`);
+  const xfIdx = cellXfsCount;
+
+  zip.file(path, xml);
+  return xfIdx;
+}
+
+/** Sets every cell in row 1 of a worksheet's raw XML to the given cellXf style index. */
+function applyHeaderRowStyle(xml, styleIdx) {
+  if (styleIdx === null) return xml;
+  return xml.replace(/(<row r="1"[^>]*>)([\s\S]*?)(<\/row>)/, (full, open, inner, close) => {
+    const newInner = inner.replace(/<c r="([A-Za-z]+1)"([^>]*)>/g, (m, addr, attrs) => {
+      const cleanAttrs = attrs.replace(/\s*s="[^"]*"/, "");
+      return `<c r="${addr}" s="${styleIdx}"${cleanAttrs}>`;
+    });
+    return open + newInner + close;
+  });
+}
+
+/** Injects real Excel/Sheets "pick from a list" dropdowns AND the navy header-row
+ *  coloring into the generated workbook by editing each target sheet's raw XML
+ *  directly — neither is something the free xlsx writer can add on its own. Every
+ *  dropdown list lives on a hidden "Lists" sheet so it's easy to find/extend later;
+ *  if anything here fails for any reason, the caller falls back to the plain file
  *  rather than the download breaking outright. */
-async function addDropdownValidations(arrayBuffer, sheetTargets) {
+async function addDropdownValidations(arrayBuffer, sheetTargets, colorSheetNames) {
   const zip = await JSZip.loadAsync(arrayBuffer);
 
   const workbookXml = await zip.file("xl/workbook.xml").async("string");
@@ -1377,12 +1416,16 @@ async function addDropdownValidations(arrayBuffer, sheetTargets) {
     }
   });
 
+  const headerStyleIdx = await addHeaderStyle(zip);
+
   for (const [sheetName, fields] of Object.entries(sheetTargets)) {
     const path = sheetPathByName[sheetName];
     const file = path && zip.file(path);
     if (!file) continue; // sheet not found — skip rather than corrupt the file
     let xml = await file.async("string");
     if (!xml.includes("</sheetData>")) continue;
+
+    if (colorSheetNames.includes(sheetName)) xml = applyHeaderRowStyle(xml, headerStyleIdx);
 
     const dvEntries = fields
       .map(({ colIdx, listColIdx, listLen }) => {
@@ -1455,24 +1498,28 @@ async function downloadSampleExcel() {
   }
 
   try {
-    const withDropdowns = await addDropdownValidations(arrayBuffer, {
-      B2B: [
-        { colIdx: B2B_SAMPLE_LABELS.indexOf("Place of Supply"), listColIdx: 0, listLen: posList.length },
-        { colIdx: B2B_SAMPLE_LABELS.indexOf("Reverse Charge"), listColIdx: 1, listLen: rcList.length },
-      ],
-      B2C: [
-        { colIdx: 0, listColIdx: 0, listLen: posList.length }, // Place of Supply
-        { colIdx: 1, listColIdx: 2, listLen: rateList.length }, // Rate %
-      ],
-      HSN: [{ colIdx: 2, listColIdx: 3, listLen: uqcList.length }], // UQC
-      Document: [{ colIdx: 0, listColIdx: 4, listLen: docList.length }], // Nature of Document
-    });
+    const withDropdowns = await addDropdownValidations(
+      arrayBuffer,
+      {
+        B2B: [
+          { colIdx: B2B_SAMPLE_LABELS.indexOf("Place of Supply"), listColIdx: 0, listLen: posList.length },
+          { colIdx: B2B_SAMPLE_LABELS.indexOf("Reverse Charge"), listColIdx: 1, listLen: rcList.length },
+        ],
+        B2C: [
+          { colIdx: 0, listColIdx: 0, listLen: posList.length }, // Place of Supply
+          { colIdx: 1, listColIdx: 2, listLen: rateList.length }, // Rate %
+        ],
+        HSN: [{ colIdx: 2, listColIdx: 3, listLen: uqcList.length }], // UQC
+        Document: [{ colIdx: 0, listColIdx: 4, listLen: docList.length }], // Nature of Document
+      },
+      ["B2B", "B2C", "HSN", "Document"]
+    );
     triggerDownload(withDropdowns, filename);
-    toast("Sample downloaded — Place of Supply, Reverse Charge, Rate %, UQC and Nature of Document are pick-from-a-list dropdowns. Row 1 is the header, start your data from row 2.", "success");
+    toast("Sample downloaded — headers are coloured, and Place of Supply, Reverse Charge, Rate %, UQC, Nature of Document are pick-from-a-list dropdowns. Row 1 is the header, start your data from row 2.", "success");
   } catch (err) {
-    console.error("Dropdown injection failed, falling back to plain sample:", err);
+    console.error("Dropdown/header-style injection failed, falling back to plain sample:", err);
     triggerDownload(arrayBuffer, filename);
-    toast("Sample downloaded (without dropdown lists this time). Row 1 on each tab is the header, start your data from row 2.", "warning");
+    toast("Sample downloaded (without header colour/dropdowns this time). Row 1 on each tab is the header, start your data from row 2.", "warning");
   }
 }
 
