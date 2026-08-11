@@ -13,7 +13,6 @@ let allGstRecords = [];
 let filingMap = new Map();
 let currentInvoiceBreakdown = [];
 let statusModal;
-let activeTab = "matrix";
 
 async function init() {
   if (!session) return;
@@ -53,10 +52,10 @@ function applyQueryParams() {
   const status = params.get("status");
   const due = params.get("due");
   if (type) document.getElementById("typeFilter").value = type;
-  if (status === "Pending") switchTab("pending");
+  if (status === "Pending") focusPendingRail();
   if (due === "today") {
     // leave "All Months" selected — the pending list itself sorts soonest-due first
-    switchTab("pending");
+    focusPendingRail();
   }
 }
 
@@ -296,48 +295,49 @@ function renderPendingList() {
 
   rows.sort((a, b) => (a.dueDate || "").localeCompare(b.dueDate || ""));
 
-  const tbody = document.getElementById("pendingTableBody");
+  const body = document.getElementById("pendingListBody");
   const empty = document.getElementById("pendingEmptyState");
   if (rows.length === 0) {
-    tbody.innerHTML = "";
+    body.innerHTML = "";
     empty.classList.remove("d-none");
     return;
   }
   empty.classList.add("d-none");
 
-  tbody.innerHTML = rows
+  body.innerHTML = rows
     .map((r) => {
       const days = r.dueDate ? daysBetween(today, r.dueDate) : null;
       const daysLabel =
         days === null ? "—" : days < 0 ? `${Math.abs(days)}d overdue` : days === 0 ? "Due today" : `${days}d left`;
       const daysBadge = r.overdue ? "badge-soft-danger" : days !== null && days <= 3 ? "badge-soft-warning" : "badge-soft-info";
       const urgencyTone = r.overdue ? "tone-overdue" : days !== null && days <= 3 ? "tone-soon" : "tone-normal";
-      return `<tr class="pending-row">
-        <td>
-          <span class="urgency-bar ${urgencyTone}"></span>
-          <div class="client-cell">
+      return `<div class="pending-item ${urgencyTone}">
+        <div class="pending-item-bar"></div>
+        <div class="pending-item-main">
+          <div class="pending-item-top">
             <span class="avatar-chip">${initials(r.client.businessName) || "GM"}</span>
-            <div>
-              <div class="cell-primary">${escapeHtml(r.client.businessName)}</div>
-              <div class="cell-sub font-mono">${escapeHtml(r.client.gstin)}</div>
+            <div style="min-width:0;">
+              <div class="pending-item-name">${escapeHtml(r.client.businessName)}</div>
+              <div class="pending-item-gstin font-mono">${escapeHtml(r.client.gstin)}</div>
             </div>
           </div>
-        </td>
-        <td>${escapeHtml(r.staffName)}</td>
-        <td>${r.monthLabel}</td>
-        <td><span class="return-chip"><i class="fa-solid fa-file-invoice"></i>${r.type}</span></td>
-        <td>${formatDate(r.dueDate)}</td>
-        <td><span class="badge ${daysBadge} rounded-pill">${daysLabel}</span></td>
-        <td class="text-end">
-          <button class="btn btn-outline-success btn-sm" data-mark="${r.client.id}|${r.monthKey}|${r.type}">
-            <i class="fa-solid fa-check me-1"></i>Mark Filed
-          </button>
-        </td>
-      </tr>`;
+          <div class="pending-item-meta">
+            <span class="return-chip"><i class="fa-solid fa-file-invoice"></i>${r.type}</span>
+            <span class="pending-item-period">${r.monthLabel}</span>
+          </div>
+          <div class="pending-item-staff">${escapeHtml(r.staffName)} · Due ${formatDate(r.dueDate)}</div>
+          <div class="pending-item-foot">
+            <span class="badge ${daysBadge} rounded-pill">${daysLabel}</span>
+            <button class="btn btn-outline-success btn-sm" data-mark="${r.client.id}|${r.monthKey}|${r.type}">
+              <i class="fa-solid fa-check me-1"></i>Mark Filed
+            </button>
+          </div>
+        </div>
+      </div>`;
     })
     .join("");
 
-  tbody.querySelectorAll("[data-mark]").forEach((btn) =>
+  body.querySelectorAll("[data-mark]").forEach((btn) =>
     btn.addEventListener("click", () => {
       const [clientId, monthKey, type] = btn.dataset.mark.split("|");
       openStatusModal(clientId, monthKey, type, "Filed");
@@ -522,11 +522,15 @@ async function ensurePendingPayment(clientId, monthKey, client) {
   return { clientId, invoiceNo: record.invoiceNo };
 }
 
-function switchTab(tab) {
-  activeTab = tab;
-  document.querySelectorAll("#filingTabs .seg-btn").forEach((btn) => btn.classList.toggle("active", btn.dataset.tab === tab));
-  document.getElementById("matrixPane").classList.toggle("d-none", tab !== "matrix");
-  document.getElementById("pendingPane").classList.toggle("d-none", tab !== "pending");
+/** The Pending rail is always visible now (sticky on the right), so a
+ * deep-link that used to switch to the "Pending" tab just scrolls it into
+ * view and gives it a brief highlight instead. */
+function focusPendingRail() {
+  const panel = document.querySelector(".filing-side .side-panel");
+  if (!panel) return;
+  panel.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  panel.classList.add("is-highlighted");
+  setTimeout(() => panel.classList.remove("is-highlighted"), 1400);
 }
 
 function escapeHtml(str = "") {
@@ -546,10 +550,6 @@ function wireEvents() {
   document.getElementById("typeFilter").addEventListener("change", render);
   document.getElementById("staffFilter")?.addEventListener("change", render);
   document.getElementById("clientSearch").addEventListener("input", render);
-
-  document.querySelectorAll("#filingTabs .seg-btn").forEach((btn) =>
-    btn.addEventListener("click", () => switchTab(btn.dataset.tab))
-  );
 
   document.getElementById("fStatus").addEventListener("change", toggleFiledDateVisibility);
   document.getElementById("filingStatusForm").addEventListener("submit", onSaveStatus);

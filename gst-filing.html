@@ -17,39 +17,80 @@
 <link rel="stylesheet" href="assets/css/dashboard.css">
 <style>
   /* =========================================================
-     GST Filing — page-scoped design
-     Signature: "quarterly ledger" — the matrix is grouped into
-     Q1–Q4 blocks with a stamped-seal pill for each return, echoing
-     the perforated-challan motif used across the app.
+     GST Filing — "Modern Ledger" page redesign
+     Tokens sourced from DESIGN.md, layered on top of the app's
+     shared navy/gold theme (the two palettes already agree on
+     navy, success, danger — so this is a refinement, not a
+     re-theme). Two signature moves:
+       1. A slim glass "hero" strip — Total Filings stays the
+          one big number up top; Filed/Pending/Overdue shrink
+          into compact ticker rows beside it, not full cards.
+       2. The Pending List is promoted out of a tab into a
+          sticky right-hand rail, always visible beside the
+          matrix instead of a click away.
      ========================================================= */
 
-  /* ---- Stat strip ---- */
-  .gst-stat-card {
-    padding: 16px 18px 15px;
-    height: 100%;
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
+  :root {
+    --bg-canvas: #fbf9f4;
+    --surface: #ffffff;
+    --surface-raised: #ffffff;
+    --surface-dim: #f5f3ee;
+    --border: #e8e5de;
+    --border-strong: #d2ccbe;
+    --text-primary: #1b1c19;
+    --text-muted: #43474c;
+    --text-faint: #74777c;
+    --gold-vibrant: #d4af37;
+    --glass-border: rgba(255,255,255,0.55);
+    --glass-blur: 14px;
+    --radius-md: 12px;
+    --radius-lg: 16px;
   }
-  .gst-stat-card .stat-top { display: flex; align-items: center; justify-content: space-between; }
-  .gst-stat-card .stat-icon-ring {
-    width: 34px; height: 34px; border-radius: 999px;
+  [data-theme="dark"] {
+    --glass-border: rgba(255,255,255,0.08);
+  }
+
+  /* ---- Glass surface ---- */
+  .glass-panel {
+    background: rgba(255,255,255,0.68);
+    backdrop-filter: blur(var(--glass-blur));
+    -webkit-backdrop-filter: blur(var(--glass-blur));
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-lg);
+    box-shadow: 0 20px 40px rgba(17,33,47,0.06);
+    transition: box-shadow var(--transition);
+  }
+  [data-theme="dark"] .glass-panel { background: rgba(26,32,36,0.72); }
+  .side-panel.is-highlighted { box-shadow: 0 0 0 3px rgba(212,175,55,0.45), 0 20px 40px rgba(17,33,47,0.06); }
+
+  /* ---- Ledger summary hero ---- */
+  .ledger-summary { display: flex; align-items: center; gap: 22px; padding: 18px 24px; margin-bottom: 16px; flex-wrap: wrap; }
+  .ledger-summary-hero { display: flex; align-items: center; gap: 14px; }
+  .ledger-summary-hero .hero-icon {
+    width: 52px; height: 52px; border-radius: 14px; flex-shrink: 0;
     display: flex; align-items: center; justify-content: center;
-    font-size: 0.85rem; flex-shrink: 0;
+    background: var(--navy-950); color: var(--gold-vibrant); font-size: 1.15rem;
   }
-  .gst-stat-card .stat-icon-ring.tone-info { background: var(--info-100); color: var(--blue-600); }
-  .gst-stat-card .stat-icon-ring.tone-success { background: var(--success-100); color: var(--success); }
-  .gst-stat-card .stat-icon-ring.tone-danger { background: var(--danger-100); color: var(--danger); }
-  .gst-stat-card .stat-icon-ring.tone-warning { background: var(--warning-100); color: var(--gold-600); }
-  .gst-stat-card .stat-value { font-family: var(--font-display); font-size: 1.9rem; font-weight: 800; line-height: 1; }
-  .gst-stat-card .stat-label { font-size: 0.78rem; color: var(--text-muted); }
-  .gst-stat-card .stat-bar-track { height: 4px; border-radius: 999px; background: var(--border); overflow: hidden; margin-top: auto; }
-  .gst-stat-card .stat-bar-fill { height: 100%; border-radius: 999px; transition: width 500ms ease; }
-  .gst-stat-card.tone-info .stat-bar-fill { background: var(--blue-500); }
-  .gst-stat-card.tone-success .stat-bar-fill { background: var(--success); }
-  .gst-stat-card.tone-danger .stat-bar-fill { background: var(--danger); }
-  .gst-stat-card.tone-warning .stat-bar-fill { background: var(--gold-500); }
+  .ledger-summary-hero .hero-value { font-family: var(--font-display); font-size: 2.1rem; font-weight: 700; line-height: 1; color: var(--text-primary); }
+  .ledger-summary-hero .hero-label { font-size: 0.74rem; color: var(--text-muted); margin-top: 4px; text-transform: uppercase; letter-spacing: 0.06em; font-weight: 600; }
+  .ledger-summary-divider {
+    width: 1px; align-self: stretch; min-height: 46px;
+    background: repeating-linear-gradient(to bottom, var(--border-strong) 0 4px, transparent 4px 8px);
+  }
+  .ledger-summary-minis { display: flex; gap: 24px; flex-wrap: wrap; flex: 1; }
+  .mini-row { min-width: 108px; }
+  .mini-row-top { display: flex; align-items: center; gap: 6px; margin-bottom: 5px; }
+  .mini-row .mini-dot { width: 7px; height: 7px; border-radius: 2px; flex-shrink: 0; }
+  .mini-row.tone-success .mini-dot { background: var(--success); }
+  .mini-row.tone-warning .mini-dot { background: var(--gold-vibrant); }
+  .mini-row.tone-danger .mini-dot { background: var(--danger); }
+  .mini-row .mini-label { font-size: 0.72rem; color: var(--text-muted); font-weight: 600; }
+  .mini-row .mini-value { font-family: var(--font-mono); font-size: 0.82rem; font-weight: 700; margin-left: auto; }
+  .mini-track { height: 4px; border-radius: 999px; background: var(--border); width: 108px; overflow: hidden; }
+  .mini-fill { height: 100%; border-radius: 999px; width: 0%; transition: width 500ms ease; }
+  .tone-success .mini-fill { background: var(--success); }
+  .tone-warning .mini-fill { background: var(--gold-vibrant); }
+  .tone-danger .mini-fill { background: var(--danger); }
 
   /* ---- Toolbar ---- */
   .filing-toolbar { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
@@ -58,20 +99,52 @@
   .filing-legend { display: flex; align-items: center; gap: 16px; white-space: nowrap; }
   .legend-dot { display: inline-block; width: 9px; height: 9px; border-radius: 3px; margin-right: 6px; }
 
-  /* ---- Segmented tabs ---- */
-  .segmented-tabs {
-    display: inline-flex; gap: 2px; padding: 4px; background: var(--bg-canvas);
-    border: 1px solid var(--border); border-radius: 999px; margin-bottom: 16px;
+  /* ---- Two-column layout: matrix + sticky pending rail ---- */
+  .filing-layout { display: flex; align-items: flex-start; gap: 18px; }
+  .filing-main { flex: 1; min-width: 0; }
+  .filing-side {
+    width: 340px; flex-shrink: 0;
+    position: sticky; top: calc(var(--topbar-h) + 16px);
+    max-height: calc(100vh - var(--topbar-h) - 32px);
+    display: flex; flex-direction: column;
   }
-  .segmented-tabs .seg-btn {
-    border: none; background: transparent; color: var(--text-muted);
-    font-size: 0.83rem; font-weight: 600; padding: 7px 18px; border-radius: 999px;
-    display: inline-flex; align-items: center; gap: 7px; cursor: pointer;
-    transition: background var(--transition), color var(--transition);
+  .side-panel { display: flex; flex-direction: column; min-height: 0; overflow: hidden; flex: 1; }
+  .side-panel-head {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 16px 12px; border-bottom: 1px dashed var(--border-strong); flex-shrink: 0;
   }
-  .segmented-tabs .seg-btn:hover { color: var(--text-primary); }
-  .segmented-tabs .seg-btn.active { background: var(--navy-800); color: #fff; box-shadow: var(--shadow-sm); }
-  .segmented-tabs .seg-btn .badge { font-size: 0.68rem; }
+  .side-panel-head h6 { margin: 0; font-size: 0.86rem; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+  .side-panel-head h6 i { color: var(--gold-vibrant); }
+  .side-panel-body { overflow-y: auto; padding: 10px 12px 14px; flex: 1; min-height: 0; }
+  .side-panel .empty-state { padding: 40px 18px; }
+
+  /* ---- Pending item cards ---- */
+  .pending-item {
+    display: flex; border-radius: var(--radius-md);
+    background: var(--surface); border: 1px solid var(--border);
+    margin-bottom: 8px; overflow: hidden;
+    transition: box-shadow var(--transition), transform var(--transition);
+  }
+  .pending-item:hover { box-shadow: var(--shadow-sm); transform: translateY(-1px); }
+  .pending-item .pending-item-bar { width: 3px; flex-shrink: 0; }
+  .pending-item.tone-overdue .pending-item-bar { background: var(--danger); }
+  .pending-item.tone-soon .pending-item-bar { background: var(--gold-vibrant); }
+  .pending-item.tone-normal .pending-item-bar { background: var(--border-strong); }
+  .pending-item-main { padding: 10px 12px; flex: 1; min-width: 0; }
+  .pending-item-top { display: flex; align-items: center; gap: 8px; }
+  .pending-item-top .avatar-chip { width: 26px; height: 26px; font-size: 0.62rem; }
+  .pending-item-name { font-size: 0.8rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 210px; }
+  .pending-item-gstin { font-size: 0.66rem; color: var(--text-muted); }
+  .pending-item-meta { display: flex; align-items: center; gap: 8px; margin: 7px 0 4px; }
+  .pending-item-period { font-size: 0.72rem; color: var(--text-muted); }
+  .pending-item-staff { font-size: 0.66rem; color: var(--text-faint); margin-bottom: 7px; }
+  .pending-item-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .pending-item-foot .btn { padding: 3px 9px; font-size: 0.7rem; }
+  .return-chip {
+    display: inline-flex; align-items: center; gap: 5px;
+    font-family: var(--font-mono); font-size: 0.66rem; font-weight: 700;
+    padding: 2px 8px; border-radius: 999px; background: var(--info-100); color: var(--blue-600);
+  }
 
   /* ---- Matrix ---- */
   .filing-matrix-wrap { overflow-x: auto; }
@@ -135,17 +208,18 @@
     background: var(--gold-100, #f6e6b8); color: var(--gold-700, #8a6a10); flex-shrink: 0;
   }
 
-  /* ---- Pending list ---- */
-  .pending-row td { border-bottom: 1px solid var(--border); position: relative; }
-  .pending-row .urgency-bar { position: absolute; left: 0; top: 8px; bottom: 8px; width: 3px; border-radius: 3px; }
-  .pending-row .urgency-bar.tone-overdue { background: var(--danger); }
-  .pending-row .urgency-bar.tone-soon { background: var(--gold-500); }
-  .pending-row .urgency-bar.tone-normal { background: var(--border-strong); }
-  .pending-row td:first-child { padding-left: 20px; }
-  .return-chip {
-    display: inline-flex; align-items: center; gap: 5px;
-    font-family: var(--font-mono); font-size: 0.7rem; font-weight: 700;
-    padding: 3px 9px; border-radius: 999px; background: var(--info-100); color: var(--blue-600);
+  /* ---- Responsive: stack the pending rail below the matrix on narrow viewports ---- */
+  @media (max-width: 1180px) {
+    .filing-layout { flex-direction: column; }
+    .filing-side { width: 100%; position: static; max-height: none; }
+    .side-panel-body { max-height: 420px; }
+  }
+  @media (max-width: 640px) {
+    .ledger-summary { flex-direction: column; align-items: flex-start; gap: 14px; padding: 16px 18px; }
+    .ledger-summary-divider { display: none; }
+    .ledger-summary-minis { width: 100%; justify-content: space-between; gap: 12px; }
+    .mini-track { width: 100%; }
+    .mini-row { flex: 1; min-width: 0; }
   }
 </style>
 </head>
@@ -230,60 +304,35 @@
         </div>
       </div>
 
-      <!-- Summary strip -->
-      <div class="row g-3 mb-3">
-        <div class="col-6 col-md-3">
-          <div class="ledger-card gst-stat-card tone-info">
-            <div class="stat-top">
-              <span class="stat-icon-ring tone-info"><i class="fa-solid fa-file-lines"></i></span>
-            </div>
-            <div>
-              <div class="stat-value" id="statTotalFilings">0</div>
-              <div class="stat-label">Total Filings (FY)</div>
-            </div>
-            <div class="stat-bar-track"><div class="stat-bar-fill" style="width:100%"></div></div>
+      <!-- Summary strip: Total Filings stays the headline; Filed/Pending/
+           Overdue fold into small ticker rows beside it, not full cards. -->
+      <div class="ledger-summary glass-panel">
+        <div class="ledger-summary-hero">
+          <span class="hero-icon"><i class="fa-solid fa-file-invoice"></i></span>
+          <div>
+            <div class="hero-value" id="statTotalFilings">0</div>
+            <div class="hero-label">Total Filings — Selected Period</div>
           </div>
         </div>
-        <div class="col-6 col-md-3">
-          <div class="ledger-card gst-stat-card tone-success">
-            <div class="stat-top">
-              <span class="stat-icon-ring tone-success"><i class="fa-solid fa-circle-check"></i></span>
-            </div>
-            <div>
-              <div class="stat-value" id="statFiledCount">0</div>
-              <div class="stat-label">Filed</div>
-            </div>
-            <div class="stat-bar-track"><div class="stat-bar-fill" id="statFiledBar" style="width:0%"></div></div>
+        <div class="ledger-summary-divider"></div>
+        <div class="ledger-summary-minis">
+          <div class="mini-row tone-success">
+            <div class="mini-row-top"><span class="mini-dot"></span><span class="mini-label">Filed</span><span class="mini-value" id="statFiledCount">0</span></div>
+            <div class="mini-track"><div class="mini-fill" id="statFiledBar"></div></div>
           </div>
-        </div>
-        <div class="col-6 col-md-3">
-          <div class="ledger-card gst-stat-card tone-danger">
-            <div class="stat-top">
-              <span class="stat-icon-ring tone-danger"><i class="fa-solid fa-triangle-exclamation"></i></span>
-            </div>
-            <div>
-              <div class="stat-value" id="statPendingCount">0</div>
-              <div class="stat-label">Pending</div>
-            </div>
-            <div class="stat-bar-track"><div class="stat-bar-fill" id="statPendingBar" style="width:0%"></div></div>
+          <div class="mini-row tone-warning">
+            <div class="mini-row-top"><span class="mini-dot"></span><span class="mini-label">Pending</span><span class="mini-value" id="statPendingCount">0</span></div>
+            <div class="mini-track"><div class="mini-fill" id="statPendingBar"></div></div>
           </div>
-        </div>
-        <div class="col-6 col-md-3">
-          <div class="ledger-card gst-stat-card tone-warning">
-            <div class="stat-top">
-              <span class="stat-icon-ring tone-warning"><i class="fa-solid fa-hourglass-half"></i></span>
-            </div>
-            <div>
-              <div class="stat-value" id="statOverdueCount">0</div>
-              <div class="stat-label">Overdue</div>
-            </div>
-            <div class="stat-bar-track"><div class="stat-bar-fill" id="statOverdueBar" style="width:0%"></div></div>
+          <div class="mini-row tone-danger">
+            <div class="mini-row-top"><span class="mini-dot"></span><span class="mini-label">Overdue</span><span class="mini-value" id="statOverdueCount">0</span></div>
+            <div class="mini-track"><div class="mini-fill" id="statOverdueBar"></div></div>
           </div>
         </div>
       </div>
 
       <!-- Filters -->
-      <div class="ledger-card page-toolbar filing-toolbar p-3">
+      <div class="ledger-card page-toolbar filing-toolbar p-3 mb-3">
         <div class="toolbar-filters">
           <select class="form-select form-select-sm" id="fyFilter"></select>
           <select class="form-select form-select-sm" id="monthFilter">
@@ -306,51 +355,39 @@
         </span>
       </div>
 
-      <!-- Tabs: Matrix / Pending list -->
-      <div class="segmented-tabs" id="filingTabs">
-        <button class="seg-btn active" data-tab="matrix" type="button"><i class="fa-solid fa-table-cells"></i> Filing Matrix</button>
-        <button class="seg-btn" data-tab="pending" type="button"><i class="fa-solid fa-list-check"></i> Pending List <span class="badge badge-soft-danger rounded-pill" id="pendingTabCount">0</span></button>
-      </div>
+      <!-- Matrix (left) + Pending List fixed on the right -->
+      <div class="filing-layout">
+        <div class="filing-main">
+          <div id="matrixPane" class="ledger-card data-table-card">
+            <div class="filing-matrix-wrap">
+              <table class="table filing-matrix">
+                <colgroup id="matrixColgroup"></colgroup>
+                <thead id="matrixHead"></thead>
+                <tbody id="matrixBody"></tbody>
+              </table>
+            </div>
+            <div id="matrixEmptyState" class="empty-state d-none">
+              <i class="fa-solid fa-file-invoice"></i>
+              <h6>No clients yet</h6>
+              <p class="small mb-0">Add a client in Client Master to start tracking GST filings.</p>
+            </div>
+          </div>
+        </div>
 
-      <!-- Matrix view -->
-      <div id="matrixPane" class="ledger-card data-table-card">
-        <div class="filing-matrix-wrap">
-          <table class="table filing-matrix">
-            <colgroup id="matrixColgroup"></colgroup>
-            <thead id="matrixHead"></thead>
-            <tbody id="matrixBody"></tbody>
-          </table>
-        </div>
-        <div id="matrixEmptyState" class="empty-state d-none">
-          <i class="fa-solid fa-file-invoice"></i>
-          <h6>No clients yet</h6>
-          <p class="small mb-0">Add a client in Client Master to start tracking GST filings.</p>
-        </div>
-      </div>
-
-      <!-- Pending list view -->
-      <div id="pendingPane" class="ledger-card data-table-card d-none">
-        <div class="table-responsive">
-          <table class="table">
-            <thead>
-              <tr>
-                <th>Client</th>
-                <th>Staff</th>
-                <th>Period</th>
-                <th>Return</th>
-                <th>Due Date</th>
-                <th>Days</th>
-                <th class="text-end">Action</th>
-              </tr>
-            </thead>
-            <tbody id="pendingTableBody"></tbody>
-          </table>
-        </div>
-        <div id="pendingEmptyState" class="empty-state d-none">
-          <i class="fa-solid fa-circle-check"></i>
-          <h6>Nothing pending</h6>
-          <p class="small mb-0">Every return in this view is filed. Great work!</p>
-        </div>
+        <aside class="filing-side">
+          <div class="side-panel glass-panel">
+            <div class="side-panel-head">
+              <h6><i class="fa-solid fa-list-check"></i> Pending &amp; Due</h6>
+              <span class="badge badge-soft-danger rounded-pill" id="pendingTabCount">0</span>
+            </div>
+            <div class="side-panel-body" id="pendingListBody"></div>
+            <div id="pendingEmptyState" class="empty-state d-none">
+              <i class="fa-solid fa-circle-check"></i>
+              <h6>Nothing pending</h6>
+              <p class="small mb-0">Every return in view is filed. Great work!</p>
+            </div>
+          </div>
+        </aside>
       </div>
     </main>
   </div>
