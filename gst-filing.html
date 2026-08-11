@@ -99,6 +99,15 @@
   .filing-legend { display: flex; align-items: center; gap: 16px; white-space: nowrap; }
   .legend-dot { display: inline-block; width: 9px; height: 9px; border-radius: 3px; margin-right: 6px; }
 
+  /* ---- Topbar: FY / Month pulled up next to Quick Search ---- */
+  .topbar-right { min-width: 0; }
+  .app-topbar .topbar-period-select { width: 128px; flex-shrink: 0; }
+  .app-topbar .topbar-search { max-width: 230px; }
+  @media (max-width: 1320px) {
+    .app-topbar .topbar-search { max-width: 180px; }
+    .app-topbar .topbar-period-select { width: 108px; }
+  }
+
   /* ---- Two-column layout: matrix + sticky pending rail ---- */
   .filing-layout { display: flex; align-items: flex-start; gap: 18px; }
   .filing-main { flex: 1; min-width: 0; }
@@ -282,12 +291,16 @@
     <header class="app-topbar">
       <div class="d-flex align-items-center gap-3" style="min-width:0;">
         <button id="sidebarBurger" class="sidebar-burger" aria-label="Open menu"><i class="fa-solid fa-bars"></i></button>
+      </div>
+      <div class="d-flex align-items-center gap-2 topbar-right">
+        <select class="form-select form-select-sm topbar-period-select d-none d-md-inline-block" id="fyFilter"></select>
+        <select class="form-select form-select-sm topbar-period-select d-none d-md-inline-block" id="monthFilter">
+          <option value="">All Months</option>
+        </select>
         <div class="topbar-search d-none d-md-block">
           <i class="fa-solid fa-magnifying-glass"></i>
           <input type="search" class="form-control form-control-sm" placeholder="Quick search clients, GSTIN, invoices…">
         </div>
-      </div>
-      <div class="d-flex align-items-center gap-3">
         <span class="small text-muted-soft d-none d-sm-inline" id="topbarWelcome">Welcome</span>
         <button id="themeToggleBtn" type="button" class="theme-toggle-btn" title="Toggle dark mode" aria-label="Toggle dark mode">
           <i class="fa-solid fa-moon"></i>
@@ -334,10 +347,6 @@
       <!-- Filters -->
       <div class="ledger-card page-toolbar filing-toolbar p-3 mb-3">
         <div class="toolbar-filters">
-          <select class="form-select form-select-sm" id="fyFilter"></select>
-          <select class="form-select form-select-sm" id="monthFilter">
-            <option value="">All Months</option>
-          </select>
           <select class="form-select form-select-sm" id="typeFilter">
             <option value="">GSTR-1 &amp; GSTR-3B</option>
             <option value="GSTR-1">GSTR-1 only</option>
