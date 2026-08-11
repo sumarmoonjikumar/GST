@@ -80,6 +80,9 @@
   .b2b-grid-table tr:hover td { background: var(--bg-canvas); }
   .b2b-grid-table tr.row-error:hover td { background: #fbdada; }
   .b2b-grid-table tr.row-unregistered:not(.row-error):hover td { background: #e2f0ff; }
+  .b2b-grid-table tr.row-date-warn:not(.row-error) td { background: #fff3cd; }
+  .b2b-grid-table tr.row-date-warn:not(.row-error) [data-col="idt"] { font-weight: 700; color: #96660a; }
+  .b2b-grid-table tr.row-date-warn:not(.row-error):hover td { background: #ffe9a8; }
   .b2b-grid-table tr[data-auto="1"] td { background: #f4faf1; }
   .b2b-cell-input {
     width: 100%; border: none; background: transparent; padding: 7px 8px;

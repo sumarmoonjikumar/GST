@@ -524,7 +524,7 @@ function createB2BRow() {
   posSel.value = defaultClientPos();
 
   tr.querySelectorAll("input[data-col]").forEach((inp) => {
-    inp.addEventListener("input", () => updateRowRate(tr));
+    inp.addEventListener("input", () => { autoFillB2BRow(tr, inp.dataset.col); updateRowRate(tr); });
     inp.addEventListener("paste", (e) => handleB2BGridPaste(e, tr, inp));
   });
   tr.querySelector('[data-col="gstin"]').addEventListener("input", (e) => {
@@ -568,6 +568,33 @@ function updateRowRate(tr) {
   } else {
     rateCell.textContent = "—";
     rateCell.title = "";
+  }
+}
+
+/** Manual-entry convenience: CGST and SGST are always equal under GST law, so
+ *  typing one auto-fills the other; and Taxable + IGST + CGST + SGST is kept
+ *  live in the Total box instead of leaving it for the user to add up. */
+function autoFillB2BRow(tr, changedCol) {
+  const cgstEl = tr.querySelector('[data-col="cgst"]');
+  const sgstEl = tr.querySelector('[data-col="sgst"]');
+  const valEl = tr.querySelector('[data-col="val"]');
+  const txvalEl = tr.querySelector('[data-col="txval"]');
+  const igstEl = tr.querySelector('[data-col="igst"]');
+
+  if (changedCol === "cgst") {
+    const v = cgstEl.value.trim();
+    if (v !== "" && sgstEl.value.trim() !== v) sgstEl.value = v;
+  } else if (changedCol === "sgst") {
+    const v = sgstEl.value.trim();
+    if (v !== "" && cgstEl.value.trim() !== v) cgstEl.value = v;
+  }
+
+  if (["txval", "igst", "cgst", "sgst"].includes(changedCol)) {
+    const txval = num(txvalEl.value) || 0;
+    const igst = num(igstEl.value) || 0;
+    const cgst = num(cgstEl.value) || 0;
+    const sgst = num(sgstEl.value) || 0;
+    if (txval || igst || cgst || sgst) valEl.value = round2(txval + igst + cgst + sgst);
   }
 }
 
@@ -628,11 +655,21 @@ function handleB2BGridPaste(e, tr, inputEl) {
  *  A row with no GSTIN filled in is treated as an unregistered / walk-in
  *  customer, not an error — it's pulled out into `unregistered` so the
  *  B2C tab can consolidate it, instead of being counted as a B2B invoice. */
+/** Converts a return-period monthKey like "Aug-2026" into { m, y } so an
+ *  invoice date can be checked against the period it's being filed in. */
+function periodMonthYear(monthKey) {
+  const [name, year] = String(monthKey || "").split("-");
+  return { m: FY_MONTH_TO_NUM[name] ? parseInt(FY_MONTH_TO_NUM[name], 10) : 0, y: parseInt(year, 10) || 0 };
+}
+
 function parseB2BFromGrid() {
   const rows = Array.from(document.querySelectorAll("#b2bGridBody tr"));
   const out = [];
   const unregistered = [];
   const errors = [];
+  const dateWarnings = [];
+  const sellerStateCode = String(selectedClient?.gstin || "").slice(0, 2);
+  const period = periodMonthYear(selectedPeriod?.monthKey);
   let anyData = false;
 
   rows.forEach((tr, i) => {
@@ -650,7 +687,7 @@ function parseB2BFromGrid() {
     const rchrg = tr.querySelector('[data-col="rchrg"]').value === "Y" ? "Y" : "N";
     const hsn = g("hsn").replace(/[,\s]/g, "");
 
-    tr.classList.remove("row-error", "row-unregistered");
+    tr.classList.remove("row-error", "row-unregistered", "row-date-warn");
     const rowIsBlank = !inum && !gstin && !txvalNum && !igstNum && !cgstNum && !sgstNum;
     if (rowIsBlank) return; // skip fully empty rows silently
     anyData = true;
@@ -679,6 +716,30 @@ function parseB2BFromGrid() {
     if (!/^\d{2}$/.test(pos) || !STATE_CODES[pos]) rowErrors.push("Invalid Place of Supply");
     if (!/^\d{4,8}$/.test(hsn) || ![4, 6, 8].includes(hsn.length)) rowErrors.push("HSN/SAC must be numeric, 4/6/8 digits");
 
+    // GSTIN-based state check: recipient's GSTIN state code (first 2 digits) tells us
+    // whether this is an interstate or intrastate sale, so CGST/SGST vs IGST can be
+    // flagged as wrong even if the amounts otherwise look fine.
+    const recipientStateCode = gstin.slice(0, 2);
+    if (/^\d{2}$/.test(recipientStateCode) && sellerStateCode) {
+      if (recipientStateCode !== sellerStateCode && (cgstNum > 0 || sgstNum > 0)) {
+        rowErrors.push(`Recipient GSTIN is from ${STATE_CODES[recipientStateCode] || "another state"} (interstate) — use IGST, not CGST/SGST`);
+      } else if (recipientStateCode === sellerStateCode && igstNum > 0) {
+        rowErrors.push("Recipient GSTIN is from the same state (intrastate) — use CGST/SGST, not IGST");
+      }
+    }
+
+    // Invoice date outside the return period being filed — not a hard error (backdated /
+    // late-booked invoices do happen), but highlighted so it needs explicit confirmation to save.
+    if (DATE_RE.test(idt) && period.y) {
+      const dparts = idt.split("-");
+      const invMonth = parseInt(dparts[1], 10);
+      const invYear = parseInt(dparts[2], 10);
+      if (invMonth !== period.m || invYear !== period.y) {
+        tr.classList.add("row-date-warn");
+        dateWarnings.push(`Row ${i + 1}: Invoice date ${idt} is not in the return period ${selectedPeriod.label}`);
+      }
+    }
+
     if (!valNum) valNum = round2(txvalNum + igstNum + cgstNum + sgstNum);
 
     let rateNum = 0;
@@ -700,15 +761,17 @@ function parseB2BFromGrid() {
     });
   });
 
-  return { rows: out, unregistered, errors, anyData };
+  return { rows: out, unregistered, errors, dateWarnings, anyData };
 }
 
 let lastUnregisteredB2B = [];
+let lastB2BDateWarnings = [];
 
 function handleParseB2B(silent = false) {
   const parsed = parseB2BFromGrid();
   const errEl = document.getElementById("errB2B");
   lastUnregisteredB2B = parsed.unregistered;
+  lastB2BDateWarnings = parsed.dateWarnings || [];
   if (!parsed.anyData) {
     if (!silent) toast("Fill in at least one invoice row first.", "warning");
     parsedRows.b2b = [];
@@ -727,6 +790,12 @@ function handleParseB2B(silent = false) {
       .slice(0, 12)
       .map((e) => `<li>${escapeHtml(e)}</li>`)
       .join("")}${parsed.errors.length > 12 ? `<li>…and ${parsed.errors.length - 12} more</li>` : ""}</ul>`;
+  } else if (lastB2BDateWarnings.length) {
+    errEl.classList.add("show");
+    errEl.innerHTML = `<strong style="color: var(--gold-600, #96660a);">${lastB2BDateWarnings.length} invoice(s) dated outside this return period (highlighted in yellow) — you'll be asked to confirm before saving:</strong><ul>${lastB2BDateWarnings
+      .slice(0, 12)
+      .map((w) => `<li>${escapeHtml(w)}</li>`)
+      .join("")}${lastB2BDateWarnings.length > 12 ? `<li>…and ${lastB2BDateWarnings.length - 12} more</li>` : ""}</ul>`;
   } else {
     errEl.classList.remove("show");
     errEl.innerHTML = "";
@@ -735,7 +804,8 @@ function handleParseB2B(silent = false) {
   updateSummaryStrip();
   if (!silent) {
     const unregNote = parsed.unregistered.length ? ` · ${parsed.unregistered.length} unregistered row(s) → use "Sync from B2B" on the B2C tab` : "";
-    toast(`${parsed.rows.length} invoice row(s) validated${parsed.errors.length ? ` — ${parsed.errors.length} issue(s)` : ""}.${unregNote}`, parsed.errors.length ? "warning" : "success");
+    const dateNote = lastB2BDateWarnings.length ? ` · ${lastB2BDateWarnings.length} invoice date(s) outside this return period` : "";
+    toast(`${parsed.rows.length} invoice row(s) validated${parsed.errors.length ? ` — ${parsed.errors.length} issue(s)` : ""}.${unregNote}${dateNote}`, parsed.errors.length ? "warning" : "success");
   }
 }
 
@@ -1645,6 +1715,17 @@ async function handleSave() {
   }
   banner.classList.remove("show");
   banner.innerHTML = "";
+
+  if (lastB2BDateWarnings.length) {
+    const ok = window.confirm(
+      `${lastB2BDateWarnings.length} B2B invoice(s) are dated outside ${selectedPeriod.label} (the return period you're filing).\n\n` +
+      `This is allowed (backdated / late-booked invoices happen) but needs your confirmation.\n\nSave anyway?`
+    );
+    if (!ok) {
+      toast("Save cancelled — fix the invoice date(s), or confirm to save anyway.", "warning");
+      return;
+    }
+  }
 
   const btn = document.getElementById("saveBtn");
   const originalHtml = btn.innerHTML;
