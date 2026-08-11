@@ -1304,10 +1304,15 @@ function keyRowsForSection(section, rawRows) {
    (and matched exactly to our own alias vocabulary so it's
    recognized instantly on re-upload), every row under it left
    blank for the user to type or paste their own data into.
+   Place of Supply / Reverse Charge / Rate % / UQC / Nature of
+   Document get real Excel dropdown lists (data validation) —
+   same pick-from-a-list behaviour as the app's own manual-entry
+   grid — via a small post-processing step on the generated
+   .xlsx (a free-tier xlsx writer can't add these directly).
    ========================================================= */
 const B2B_SAMPLE_LABELS = ["Invoice Number", "GSTIN", "Customer Name", "Invoice Date", "Taxable Amount", "IGST", "CGST", "SGST", "Total", "Place of Supply", "Reverse Charge", "HSN/SAC Code"];
 
-function buildSampleSheet(headers, blankRowCount = 25) {
+function buildSampleSheet(headers, blankRowCount = 40) {
   const aoa = [headers];
   for (let i = 0; i < blankRowCount; i++) aoa.push(headers.map(() => ""));
   const ws = XLSX.utils.aoa_to_sheet(aoa);
@@ -1322,18 +1327,153 @@ function buildSampleSheet(headers, blankRowCount = 25) {
   return ws;
 }
 
-function downloadSampleExcel() {
+/** 0-based column index → Excel column letters ("A", "B", ..., "AA", ...). */
+function colLetter(idx) {
+  let n = idx + 1;
+  let s = "";
+  while (n > 0) {
+    const rem = (n - 1) % 26;
+    s = String.fromCharCode(65 + rem) + s;
+    n = Math.floor((n - 1) / 26);
+  }
+  return s;
+}
+
+/** Parses a self-closing/opening XML tag's attributes into a plain object, e.g.
+ *  '<sheet name="B2B" sheetId="1" r:id="rId1"/>' → { name: "B2B", sheetId: "1", "r:id": "rId1" }. */
+function parseXmlAttrs(tag) {
+  const attrs = {};
+  const re = /([\w:.-]+)="([^"]*)"/g;
+  let m;
+  while ((m = re.exec(tag))) attrs[m[1]] = m[2];
+  return attrs;
+}
+
+/** Injects real Excel/Sheets "pick from a list" dropdowns into the generated
+ *  workbook by editing each target sheet's raw XML directly — data validation
+ *  isn't something the free xlsx writer can add on its own. Every list lives on
+ *  a hidden "Lists" sheet so it's easy to find/extend later; if anything here
+ *  fails for any reason, the caller falls back to the plain (no-dropdown) file
+ *  rather than the download breaking outright. */
+async function addDropdownValidations(arrayBuffer, sheetTargets) {
+  const zip = await JSZip.loadAsync(arrayBuffer);
+
+  const workbookXml = await zip.file("xl/workbook.xml").async("string");
+  const relsXml = await zip.file("xl/_rels/workbook.xml.rels").async("string");
+
+  const relMap = {}; // r:id -> target path
+  (relsXml.match(/<Relationship\b[^>]*\/>/g) || []).forEach((tag) => {
+    const a = parseXmlAttrs(tag);
+    if (a.Id && a.Target) relMap[a.Id] = a.Target;
+  });
+
+  const sheetPathByName = {}; // sheet name -> "xl/worksheets/sheetN.xml"
+  (workbookXml.match(/<sheet\b[^>]*\/>/g) || []).forEach((tag) => {
+    const a = parseXmlAttrs(tag);
+    const rid = a["r:id"];
+    if (a.name && rid && relMap[rid]) {
+      const target = relMap[rid].replace(/^\/?/, "");
+      sheetPathByName[a.name] = target.startsWith("xl/") ? target : `xl/${target}`;
+    }
+  });
+
+  for (const [sheetName, fields] of Object.entries(sheetTargets)) {
+    const path = sheetPathByName[sheetName];
+    const file = path && zip.file(path);
+    if (!file) continue; // sheet not found — skip rather than corrupt the file
+    let xml = await file.async("string");
+    if (!xml.includes("</sheetData>")) continue;
+
+    const dvEntries = fields
+      .map(({ colIdx, listColIdx, listLen }) => {
+        const col = colLetter(colIdx);
+        const listCol = colLetter(listColIdx);
+        return `<dataValidation type="list" allowBlank="1" showErrorMessage="1" sqref="${col}2:${col}2000"><formula1>Lists!$${listCol}$1:$${listCol}$${listLen}</formula1></dataValidation>`;
+      })
+      .join("");
+    const dvBlock = `<dataValidations count="${fields.length}">${dvEntries}</dataValidations>`;
+    xml = xml.replace("</sheetData>", "</sheetData>" + dvBlock);
+    zip.file(path, xml);
+  }
+
+  // Hide the Lists reference sheet so it doesn't clutter the tabs the person sees.
+  const listsPath = sheetPathByName["Lists"];
+  if (listsPath) {
+    const newWbXml = workbookXml.replace(
+      /<sheet\b([^>]*name="Lists"[^>]*)\/>/,
+      (m, attrsStr) => (attrsStr.includes("state=") ? m : `<sheet${attrsStr} state="hidden"/>`)
+    );
+    zip.file("xl/workbook.xml", newWbXml);
+  }
+
+  return zip.generateAsync({ type: "arraybuffer" });
+}
+
+function triggerDownload(arrayBuffer, filename) {
+  const blob = new Blob([arrayBuffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 4000);
+}
+
+async function downloadSampleExcel() {
   if (typeof XLSX === "undefined") {
     toast("The Excel reader didn't load — check your internet connection and try again.", "danger");
     return;
   }
+  const filename = "GSTR1_Sample_Template.xlsx";
+
+  const posList = Object.entries(STATE_CODES).map(([c, n]) => `${c} - ${n}`);
+  const rcList = ["N", "Y"];
+  const rateList = VALID_RATES.map(String);
+  const uqcList = [...VALID_UQC];
+  const docList = DOC_NATURE_MAP.map((d) => d.names[0].replace(/\b\w/g, (ch) => ch.toUpperCase()));
+  const listCols = [posList, rcList, rateList, uqcList, docList];
+  const maxLen = Math.max(...listCols.map((c) => c.length));
+  const listRows = [];
+  for (let r = 0; r < maxLen; r++) listRows.push(listCols.map((c) => c[r] ?? ""));
+
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, buildSampleSheet(B2B_SAMPLE_LABELS), "B2B");
   XLSX.utils.book_append_sheet(wb, buildSampleSheet(GRID_DEFS.b2cs.cols.map((c) => c.label)), "B2C");
   XLSX.utils.book_append_sheet(wb, buildSampleSheet(GRID_DEFS.hsn.cols.map((c) => c.label)), "HSN");
   XLSX.utils.book_append_sheet(wb, buildSampleSheet(GRID_DEFS.doc.cols.map((c) => c.label)), "Document");
-  XLSX.writeFile(wb, "GSTR1_Sample_Template.xlsx");
-  toast("Sample downloaded — row 1 on each tab is the header, start typing your data from row 2 and upload it back here.", "success");
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(listRows), "Lists");
+
+  const arrayBuffer = XLSX.write(wb, { type: "array", bookType: "xlsx" });
+
+  if (typeof JSZip === "undefined") {
+    // Dropdown post-processing unavailable — still give them the coloured/headered file.
+    triggerDownload(arrayBuffer, filename);
+    toast("Sample downloaded (without dropdown lists — reload the page for those). Row 1 on each tab is the header, start from row 2.", "warning");
+    return;
+  }
+
+  try {
+    const withDropdowns = await addDropdownValidations(arrayBuffer, {
+      B2B: [
+        { colIdx: B2B_SAMPLE_LABELS.indexOf("Place of Supply"), listColIdx: 0, listLen: posList.length },
+        { colIdx: B2B_SAMPLE_LABELS.indexOf("Reverse Charge"), listColIdx: 1, listLen: rcList.length },
+      ],
+      B2C: [
+        { colIdx: 0, listColIdx: 0, listLen: posList.length }, // Place of Supply
+        { colIdx: 1, listColIdx: 2, listLen: rateList.length }, // Rate %
+      ],
+      HSN: [{ colIdx: 2, listColIdx: 3, listLen: uqcList.length }], // UQC
+      Document: [{ colIdx: 0, listColIdx: 4, listLen: docList.length }], // Nature of Document
+    });
+    triggerDownload(withDropdowns, filename);
+    toast("Sample downloaded — Place of Supply, Reverse Charge, Rate %, UQC and Nature of Document are pick-from-a-list dropdowns. Row 1 is the header, start your data from row 2.", "success");
+  } catch (err) {
+    console.error("Dropdown injection failed, falling back to plain sample:", err);
+    triggerDownload(arrayBuffer, filename);
+    toast("Sample downloaded (without dropdown lists this time). Row 1 on each tab is the header, start your data from row 2.", "warning");
+  }
 }
 
 async function handleExcelUpload(e) {
