@@ -229,7 +229,13 @@
           <div class="ledger-card p-3">
             <div class="d-flex align-items-center justify-content-between mb-2 flex-wrap gap-2">
               <h6 class="mb-0 font-display" id="pendingListTitle">GSTR-1 Pending List</h6>
-              <select class="form-select form-select-sm" id="fyFilter" style="max-width:160px;"></select>
+              <div class="d-flex align-items-center gap-2 flex-wrap">
+                <div class="form-check form-switch mb-0">
+                  <input class="form-check-input" type="checkbox" id="showFiledToggle">
+                  <label class="form-check-label small text-muted-soft" for="showFiledToggle">Show filed too</label>
+                </div>
+                <select class="form-select form-select-sm" id="fyFilter" style="max-width:160px;"></select>
+              </div>
             </div>
             <div id="noClientSelected" class="empty-state">
               <i class="fa-solid fa-hand-pointer"></i>
@@ -241,7 +247,7 @@
               <div id="pendingAllFiled" class="empty-state d-none">
                 <i class="fa-solid fa-circle-check"></i>
                 <h6>Nothing pending</h6>
-                <p class="small mb-0">Every GSTR-1 in this FY is already marked filed for this client.</p>
+                <p class="small mb-0">Every GSTR-1 in this FY is already marked filed for this client. Turn on "Show filed too" above to open a filed period and view its saved sales details.</p>
               </div>
             </div>
           </div>

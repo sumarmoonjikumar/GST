@@ -191,7 +191,8 @@ function renderPendingListForClient() {
   document.getElementById("pendingListWrap").classList.toggle("d-none", !selectedClient);
   if (!selectedClient) return;
 
-  document.getElementById("pendingListTitle").textContent = `GSTR-1 Pending — ${selectedClient.businessName}`;
+  const showFiled = document.getElementById("showFiledToggle").checked;
+  document.getElementById("pendingListTitle").textContent = `GSTR-1 ${showFiled ? "— All Periods" : "Pending"} — ${selectedClient.businessName}`;
 
   const fy = document.getElementById("fyFilter").value;
   const freq = selectedClient.gstFrequency === "Quarterly" ? "Quarterly" : "Monthly";
@@ -203,12 +204,13 @@ function renderPendingListForClient() {
   periods.forEach((m) => {
     if (!periodHasStarted(m.month, m.year)) return;
     const rec = getFilingStatus(filingMap, selectedClient.id, m.key, "GSTR-1", freq);
-    if (rec.status === "Filed") return;
+    if (rec.status === "Filed" && !showFiled) return;
     rows.push({
       monthKey: m.key,
       label: freq === "Quarterly" ? QUARTER_RANGE_LABEL[m.month] + " " + m.year : m.label,
       dueDate: rec.dueDate,
       overdue: rec.dueDate ? rec.dueDate < today : false,
+      filed: rec.status === "Filed",
       freq,
     });
   });
@@ -226,11 +228,14 @@ function renderPendingListForClient() {
   wrap.innerHTML = rows
     .map((r) => {
       const saved = savedSalesMap.has(`${selectedClient.id}|${r.monthKey}`);
+      const statusBadge = r.filed
+        ? `<span class="badge bg-success-subtle text-success-emphasis rounded-pill"><i class="fa-solid fa-circle-check me-1"></i>Filed</span>`
+        : `<span class="badge ${r.overdue ? "badge-soft-danger" : "badge-soft-warning"} rounded-pill"><i class="fa-solid fa-file-invoice me-1"></i>GSTR-1</span>`;
       return `<div class="gp-pending-row" data-month="${r.monthKey}" data-label="${escapeHtml(r.label)}" data-freq="${r.freq}">
-        <span class="badge ${r.overdue ? "badge-soft-danger" : "badge-soft-warning"} rounded-pill"><i class="fa-solid fa-file-invoice me-1"></i>GSTR-1</span>
+        ${statusBadge}
         <div>
           <div class="gp-period">${escapeHtml(r.label)}${saved ? ' <span class="badge bg-success-subtle text-success-emphasis rounded-pill ms-1"><i class="fa-solid fa-circle-check me-1"></i>Saved</span>' : ""}</div>
-          <div class="gp-due">Due ${r.dueDate || "—"}${r.overdue ? " · Overdue" : ""}</div>
+          <div class="gp-due">Due ${r.dueDate || "—"}${r.overdue && !r.filed ? " · Overdue" : ""}</div>
         </div>
         <i class="fa-solid fa-chevron-right gp-arrow"></i>
       </div>`;
@@ -1695,6 +1700,7 @@ function wireEvents() {
     renderClientList();
     renderPendingListForClient();
   });
+  document.getElementById("showFiledToggle").addEventListener("change", renderPendingListForClient);
 
   document.querySelectorAll("#g1Tabs .g1-tab-btn").forEach((btn) =>
     btn.addEventListener("click", () => switchSection(btn.dataset.section))
