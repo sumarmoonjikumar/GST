@@ -360,6 +360,25 @@ function stripHeaderRow(rows, firstColIsNumericLike) {
   return rows;
 }
 
+/** Generic header-row detector used as a fallback when the column-based header
+ *  match couldn't confidently map the sheet (e.g. a sample template whose first
+ *  column is "Sr No." / "#" instead of a recognizable field name). Checks EVERY
+ *  cell in the row — not just column 0 — against the section's known header
+ *  vocabulary, so a header row never gets treated as a data row and pasted in
+ *  as literal text like "Invoice Number" / "GSTIN" into the grid. */
+function looksLikeHeaderRow(section, row) {
+  if (!row) return false;
+  const aliases = HEADER_ALIASES[section] || {};
+  const words = Object.values(aliases).flat().map(normHeader);
+  let hits = 0;
+  row.forEach((cell) => {
+    const nh = normHeader(cell);
+    if (!nh) return;
+    if (words.some((a) => a === nh || (a.length >= 4 && (nh.includes(a) || a.includes(nh))))) hits++;
+  });
+  return hits >= 2;
+}
+
 function num(v) {
   if (v === undefined || v === null || v === "") return 0;
   const n = Number(String(v).replace(/[₹,\s]/g, ""));
@@ -1267,14 +1286,54 @@ function keyRowsForSection(section, rawRows) {
       return o;
     });
   }
-  // No usable header found — fall back to plain left-to-right column order.
+  // No usable header found via column matching — but the row might still be a
+  // header using wording we don't map 1:1 (e.g. "Sr No", "S.No."). Detect that
+  // generically across the whole row before falling back to column order, so a
+  // header row is never mistaken for the first data row.
   const colKeys = section === "b2b" ? B2B_COLS : GRID_DEFS[section].cols.map((c) => c.key);
-  const dataRows = stripHeaderRow(rawRows, false);
+  const dataRows = looksLikeHeaderRow(section, rawRows[0]) ? rawRows.slice(1) : stripHeaderRow(rawRows, false);
   return dataRows.map((r) => {
     const o = {};
     colKeys.forEach((k, i) => { o[k] = r[i] ?? ""; });
     return o;
   });
+}
+
+/* =========================================================
+   Downloadable sample/template workbook — header row filled in
+   (and matched exactly to our own alias vocabulary so it's
+   recognized instantly on re-upload), every row under it left
+   blank for the user to type or paste their own data into.
+   ========================================================= */
+const B2B_SAMPLE_LABELS = ["Invoice Number", "GSTIN", "Customer Name", "Invoice Date", "Taxable Amount", "IGST", "CGST", "SGST", "Total", "Place of Supply", "Reverse Charge", "HSN/SAC Code"];
+
+function buildSampleSheet(headers, blankRowCount = 25) {
+  const aoa = [headers];
+  for (let i = 0; i < blankRowCount; i++) aoa.push(headers.map(() => ""));
+  const ws = XLSX.utils.aoa_to_sheet(aoa);
+  // Best-effort header emphasis (bold white-on-navy) — harmlessly ignored if the
+  // loaded xlsx build doesn't support cell styles on write, values still land fine.
+  headers.forEach((_, c) => {
+    const addr = XLSX.utils.encode_cell({ r: 0, c });
+    if (ws[addr]) ws[addr].s = { font: { bold: true, color: { rgb: "FFFFFF" } }, fill: { fgColor: { rgb: "1A3049" } } };
+  });
+  ws["!cols"] = headers.map(() => ({ wch: 20 }));
+  ws["!rows"] = [{ hpx: 22 }];
+  return ws;
+}
+
+function downloadSampleExcel() {
+  if (typeof XLSX === "undefined") {
+    toast("The Excel reader didn't load — check your internet connection and try again.", "danger");
+    return;
+  }
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, buildSampleSheet(B2B_SAMPLE_LABELS), "B2B");
+  XLSX.utils.book_append_sheet(wb, buildSampleSheet(GRID_DEFS.b2cs.cols.map((c) => c.label)), "B2C");
+  XLSX.utils.book_append_sheet(wb, buildSampleSheet(GRID_DEFS.hsn.cols.map((c) => c.label)), "HSN");
+  XLSX.utils.book_append_sheet(wb, buildSampleSheet(GRID_DEFS.doc.cols.map((c) => c.label)), "Document");
+  XLSX.writeFile(wb, "GSTR1_Sample_Template.xlsx");
+  toast("Sample downloaded — row 1 on each tab is the header, start typing your data from row 2 and upload it back here.", "success");
 }
 
 async function handleExcelUpload(e) {
@@ -1786,6 +1845,8 @@ function wireEvents() {
   document.querySelectorAll("#g1Tabs .g1-tab-btn").forEach((btn) =>
     btn.addEventListener("click", () => switchSection(btn.dataset.section))
   );
+
+  document.getElementById("sampleExcelBtn").addEventListener("click", downloadSampleExcel);
 
   document.getElementById("excelUploadBtn").addEventListener("click", () => {
     if (typeof XLSX === "undefined") {

@@ -273,6 +273,9 @@
       </div>
       <div class="modal-body">
         <div class="excel-import-bar mb-3">
+          <button type="button" class="btn btn-sm btn-outline-secondary" id="sampleExcelBtn">
+            <i class="fa-solid fa-download me-1"></i>Download Sample Excel
+          </button>
           <button type="button" class="btn btn-sm btn-outline-secondary" id="excelUploadBtn">
             <i class="fa-solid fa-file-excel me-1"></i>Upload Excel (.xlsx)
           </button>
@@ -280,7 +283,7 @@
           <button type="button" class="btn btn-sm btn-outline-secondary" id="sheetImportBtn">
             <i class="fa-brands fa-google-drive me-1"></i>Import from Google Sheet
           </button>
-          <span class="small text-muted-soft">One workbook, one sheet per tab — name the sheets <b>B2B</b>, <b>B2C</b>, <b>HSN</b>, <b>Document</b> (any case, extra words fine) and each sheet's rows go straight into the matching tab below. Columns should be in the same order as the boxes in each tab.</span>
+          <span class="small text-muted-soft">One workbook, one sheet per tab — name the sheets <b>B2B</b>, <b>B2C</b>, <b>HSN</b>, <b>Document</b> (any case, extra words fine) and each sheet's rows go straight into the matching tab below. Not sure of the columns? Download the sample above first — it has the header row already filled in on each tab, just add your rows below it.</span>
         </div>
         <div class="g1-error-banner mb-3" id="sheetImportPanel" style="display:none; background: var(--surface-raised); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 12px 14px;">
           <label class="form-label small mb-1" for="sheetImportUrl">Published CSV link for the <b id="sheetImportSectionLabel">B2B</b> tab</label>
