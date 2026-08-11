@@ -459,6 +459,18 @@ function normalizeDate(v) {
     let [, a, b, c] = m;
     if (a.length === 4) return `${c.padStart(2, "0")}-${b.padStart(2, "0")}-${a}`; // YYYY-MM-DD
     const year = c.length === 2 ? twoDigitYearTo4(c) : c;
+    const an = parseInt(a, 10), bn = parseInt(b, 10);
+    // Excel exported/typed as US-style MM/DD/YYYY (common when a date cell wasn't
+    // formatted as a real date, or the sheet came from a US-locale template) looks
+    // identical to DD/MM/YYYY whenever both numbers are <=12, which is the swap
+    // people run into. We can only *know* the sheet is MM/DD when the FIRST number
+    // can't possibly be a month (i.e. it's >12) — that means it must be a day, so
+    // it's already DD/MM and needs no change. Conversely, if the SECOND number is
+    // the one that can't be a month (>12) while the first is <=12, the first must
+    // actually be the month and the second the day — i.e. it's MM/DD, so swap.
+    if (bn > 12 && bn <= 31 && an >= 1 && an <= 12) {
+      return `${b.padStart(2, "0")}-${a.padStart(2, "0")}-${year}`; // was MM/DD, swap to DD-MM
+    }
     return `${a.padStart(2, "0")}-${b.padStart(2, "0")}-${year}`;
   }
 
@@ -495,6 +507,15 @@ function nearestValidRate(computed) {
 }
 
 const DATE_RE = /^\d{1,2}[/-]\d{1,2}[/-]\d{4}$/;
+
+/** After normalizeDate, idt should be DD-MM-YYYY. This catches the case a swap
+ *  still got the month wrong (e.g. source had an out-of-range day/month combo) so
+ *  it shows up as a row error instead of silently going into the JSON wrong. */
+function isValidDMY(idt) {
+  if (!DATE_RE.test(idt)) return false;
+  const [d, mo] = idt.split(/[-/]/).map((x) => parseInt(x, 10));
+  return mo >= 1 && mo <= 12 && d >= 1 && d <= 31;
+}
 
 /**
  * Deliberately loose about what sits between the GSTIN and the numbers —
@@ -729,6 +750,7 @@ function parseB2BFromGrid() {
     if (!inum) rowErrors.push("Invoice No missing");
     if (!GSTIN_RE.test(gstin)) rowErrors.push("Invalid recipient GSTIN");
     if (!DATE_RE.test(idt)) rowErrors.push("Invoice Date not recognized — check the day/month/year");
+    else if (!isValidDMY(idt)) rowErrors.push(`Invoice Date "${idt}" has an invalid day/month — check if it got swapped`);
     if (isNaN(txvalNum) || txvalNum < 0) rowErrors.push("Taxable Amount invalid");
     if ([igstNum, cgstNum, sgstNum].some((n) => isNaN(n) || n < 0)) rowErrors.push("Tax amounts can't be negative");
     if (igstNum > 0 && (cgstNum > 0 || sgstNum > 0)) rowErrors.push("A row can't have both IGST and CGST/SGST");
@@ -749,7 +771,7 @@ function parseB2BFromGrid() {
 
     // Invoice date outside the return period being filed — not a hard error (backdated /
     // late-booked invoices do happen), but highlighted so it needs explicit confirmation to save.
-    if (DATE_RE.test(idt) && period.y) {
+    if (isValidDMY(idt) && period.y) {
       const dparts = idt.split("-");
       const invMonth = parseInt(dparts[1], 10);
       const invYear = parseInt(dparts[2], 10);
