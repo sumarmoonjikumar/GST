@@ -206,12 +206,12 @@ function renderMatrix() {
     const rec = getFilingStatus(filingMap, c.id, monthKey, type, freq);
     const overdue = rec.status !== "Filed" && rec.dueDate && rec.dueDate < today;
     const cls = rec.status === "Filed" ? "is-filed" : overdue ? "is-overdue" : "is-pending";
-    const icon = rec.status === "Filed" ? "check" : overdue ? "priority_high" : "schedule";
+    const icon = rec.status === "Filed" ? "fa-check" : overdue ? "fa-exclamation" : "fa-clock";
     const label = type === "GSTR-1" ? "G1" : "3B";
     const statusLabel = rec.status === "Filed" ? "Filed" : overdue ? "Overdue" : "Pending";
     const valueNote = rec.taxableValue ? ` · Sales ₹${Number(rec.taxableValue).toLocaleString("en-IN")}` : "";
     const sub = freq === "Quarterly" ? `<span class="qtr-sub">QTR</span>` : "";
-    return `<button type="button" class="filing-pill ${cls}" data-client="${c.id}" data-month="${monthKey}" data-type="${type}" title="${type} · ${monthLabel} · ${escapeHtml(c.businessName)} — ${statusLabel}${valueNote}"><span class="material-symbols-outlined">${icon}</span>${label}${sub}</button>`;
+    return `<button type="button" class="filing-pill ${cls}" data-client="${c.id}" data-month="${monthKey}" data-type="${type}" title="${type} · ${monthLabel} · ${escapeHtml(c.businessName)} — ${statusLabel}${valueNote}"><i class="fa-solid ${icon}"></i>${label}${sub}</button>`;
   };
 
   body.innerHTML = clients
@@ -326,14 +326,14 @@ function renderPendingList() {
             </div>
           </div>
           <div class="pending-item-meta">
-            <span class="return-chip"><span class="material-symbols-outlined">description</span>${r.type}</span>
+            <span class="return-chip"><i class="fa-solid fa-file-invoice"></i>${r.type}</span>
             <span class="pending-item-period">${r.monthLabel}</span>
           </div>
           <div class="pending-item-staff">${escapeHtml(r.staffName)} · Due ${formatDate(r.dueDate)}</div>
           <div class="pending-item-foot">
             <span class="badge ${daysBadge} rounded-pill">${daysLabel}</span>
             <button class="btn btn-outline-success btn-sm" data-mark="${r.client.id}|${r.monthKey}|${r.type}">
-              <span class="material-symbols-outlined" style="font-size:1rem;margin-right:4px;">check</span>Mark Filed
+              <i class="fa-solid fa-check me-1"></i>Mark Filed
             </button>
           </div>
         </div>
