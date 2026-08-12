@@ -96,8 +96,6 @@
   .filing-toolbar { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
   .filing-toolbar .toolbar-filters .form-select,
   .filing-toolbar .toolbar-filters .form-control { max-width: 190px; }
-  .filing-legend { display: flex; align-items: center; gap: 16px; white-space: nowrap; }
-  .legend-dot { display: inline-block; width: 9px; height: 9px; border-radius: 3px; margin-right: 6px; }
 
   /* ---- Topbar: FY / Month pulled up next to Quick Search ---- */
   .topbar-right { min-width: 0; }
@@ -291,16 +289,16 @@
     <header class="app-topbar">
       <div class="d-flex align-items-center gap-3" style="min-width:0;">
         <button id="sidebarBurger" class="sidebar-burger" aria-label="Open menu"><i class="fa-solid fa-bars"></i></button>
+        <div class="topbar-search d-none d-md-block">
+          <i class="fa-solid fa-magnifying-glass"></i>
+          <input type="search" class="form-control form-control-sm" placeholder="Quick search clients, GSTIN, invoices…">
+        </div>
       </div>
       <div class="d-flex align-items-center gap-2 topbar-right">
         <select class="form-select form-select-sm topbar-period-select d-none d-md-inline-block" id="fyFilter"></select>
         <select class="form-select form-select-sm topbar-period-select d-none d-md-inline-block" id="monthFilter">
           <option value="">All Months</option>
         </select>
-        <div class="topbar-search d-none d-md-block">
-          <i class="fa-solid fa-magnifying-glass"></i>
-          <input type="search" class="form-control form-control-sm" placeholder="Quick search clients, GSTIN, invoices…">
-        </div>
         <span class="small text-muted-soft d-none d-sm-inline" id="topbarWelcome">Welcome</span>
         <button id="themeToggleBtn" type="button" class="theme-toggle-btn" title="Toggle dark mode" aria-label="Toggle dark mode">
           <i class="fa-solid fa-moon"></i>
@@ -357,11 +355,6 @@
           </select>
           <input type="search" class="form-control form-control-sm" id="clientSearch" placeholder="Search client or GSTIN…">
         </div>
-        <span class="small text-muted-soft filing-legend">
-          <span><span class="legend-dot" style="background:var(--success)"></span>Filed</span>
-          <span><span class="legend-dot" style="background:var(--danger)"></span>Pending</span>
-          <span><span class="legend-dot" style="background:var(--navy-800)"></span>Overdue</span>
-        </span>
       </div>
 
       <!-- Matrix (left) + Pending List fixed on the right -->
