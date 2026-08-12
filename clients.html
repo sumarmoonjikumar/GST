@@ -76,6 +76,19 @@
       <div class="d-flex align-items-center gap-3" style="min-width:0;">
         <button id="sidebarBurger" class="sidebar-burger" aria-label="Open menu"><i class="fa-solid fa-bars"></i></button>
       </div>
+      <div class="app-topbar-filters">
+        <input type="search" class="form-control form-control-sm" id="clientSearch" placeholder="Search name or GSTIN…">
+        <select class="form-select form-select-sm" id="statusFilter">
+          <option value="">All Status</option>
+          <option value="Active">Active</option>
+          <option value="Inactive">Inactive</option>
+        </select>
+        <select class="form-select form-select-sm" id="staffFilter" data-admin-only>
+          <option value="">All Staff</option>
+          <option value="unassigned">Unassigned</option>
+        </select>
+        <span class="small text-muted-soft topbar-count-label" id="clientCountLabel">0 clients</span>
+      </div>
     </header>
 
     <!-- Main content -->
@@ -83,22 +96,6 @@
       <button class="btn btn-navy fab-btn" id="addClientBtn" data-admin-only>
         <i class="fa-solid fa-plus"></i>Add Client
       </button>
-
-      <div class="ledger-card page-toolbar p-3">
-        <div class="toolbar-filters">
-          <input type="search" class="form-control form-control-sm" id="clientSearch" placeholder="Search name or GSTIN…">
-          <select class="form-select form-select-sm" id="statusFilter">
-            <option value="">All Status</option>
-            <option value="Active">Active</option>
-            <option value="Inactive">Inactive</option>
-          </select>
-          <select class="form-select form-select-sm" id="staffFilter" data-admin-only>
-            <option value="">All Staff</option>
-            <option value="unassigned">Unassigned</option>
-          </select>
-        </div>
-        <span class="small text-muted-soft" id="clientCountLabel">0 clients</span>
-      </div>
 
       <div class="ledger-card data-table-card">
         <div class="table-responsive">

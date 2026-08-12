@@ -76,6 +76,14 @@
       <div class="d-flex align-items-center gap-3" style="min-width:0;">
         <button id="sidebarBurger" class="sidebar-burger" aria-label="Open menu"><i class="fa-solid fa-bars"></i></button>
       </div>
+      <div class="app-topbar-filters">
+        <select class="form-select form-select-sm" id="fyFilter"></select>
+        <select class="form-select form-select-sm" id="staffFilter">
+          <option value="">All Staff</option>
+        </select>
+        <input type="search" class="form-control form-control-sm" id="clientSearch" placeholder="Search client or GSTIN…">
+        <span class="small text-muted-soft topbar-count-label" id="reportCountLabel">0 clients</span>
+      </div>
     </header>
 
     <!-- Main content -->
@@ -83,17 +91,6 @@
       <button class="btn btn-outline-secondary fab-btn" id="exportCsvBtn">
         <i class="fa-solid fa-file-arrow-down"></i>Export CSV
       </button>
-
-      <div class="ledger-card page-toolbar p-3">
-        <div class="toolbar-filters">
-          <select class="form-select form-select-sm" id="fyFilter"></select>
-          <select class="form-select form-select-sm" id="staffFilter">
-            <option value="">All Staff</option>
-          </select>
-          <input type="search" class="form-control form-control-sm" id="clientSearch" placeholder="Search client or GSTIN…">
-        </div>
-        <span class="small text-muted-soft" id="reportCountLabel">0 clients</span>
-      </div>
 
       <div class="ledger-card data-table-card">
         <div class="table-responsive">

@@ -76,6 +76,15 @@
       <div class="d-flex align-items-center gap-3" style="min-width:0;">
         <button id="sidebarBurger" class="sidebar-burger" aria-label="Open menu"><i class="fa-solid fa-bars"></i></button>
       </div>
+      <div class="app-topbar-filters">
+        <input type="search" class="form-control form-control-sm" id="staffSearch" placeholder="Search name, username or email…">
+        <select class="form-select form-select-sm" id="staffStatusFilter">
+          <option value="">All Status</option>
+          <option value="Active">Active</option>
+          <option value="Inactive">Inactive</option>
+        </select>
+        <span class="small text-muted-soft topbar-count-label" id="staffCountLabel">0 staff</span>
+      </div>
     </header>
 
     <!-- Main content -->
@@ -83,18 +92,6 @@
       <button class="btn btn-navy fab-btn" id="addStaffBtn">
         <i class="fa-solid fa-plus"></i>Add Staff
       </button>
-
-      <div class="ledger-card page-toolbar p-3">
-        <div class="toolbar-filters">
-          <input type="search" class="form-control form-control-sm" id="staffSearch" placeholder="Search name, username or email…">
-          <select class="form-select form-select-sm" id="staffStatusFilter">
-            <option value="">All Status</option>
-            <option value="Active">Active</option>
-            <option value="Inactive">Inactive</option>
-          </select>
-        </div>
-        <span class="small text-muted-soft" id="staffCountLabel">0 staff</span>
-      </div>
 
       <div class="ledger-card data-table-card">
         <div class="table-responsive">

@@ -89,16 +89,33 @@
 
 /* ---------- Topbar ---------- */
 .app-topbar {
-  height: var(--topbar-h);
+  min-height: var(--topbar-h);
   background: var(--surface);
   border-bottom: 1px solid var(--border);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 22px;
+  flex-wrap: wrap;
+  gap: 10px 16px;
+  padding: 10px 22px;
   position: sticky;
   top: 0;
   z-index: 1030;
+}
+
+.app-topbar-filters {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-left: auto;
+}
+.app-topbar-filters .form-select,
+.app-topbar-filters .form-control {
+  max-width: 190px;
+}
+.app-topbar-filters .topbar-count-label {
+  white-space: nowrap;
 }
 
 .topbar-search {
