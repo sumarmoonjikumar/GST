@@ -63,35 +63,6 @@
   [data-theme="dark"] .glass-panel { background: rgba(26,32,36,0.72); }
   .side-panel.is-highlighted { box-shadow: 0 0 0 3px rgba(212,175,55,0.45), 0 20px 40px rgba(17,33,47,0.06); }
 
-  /* ---- Ledger summary hero ---- */
-  .ledger-summary { display: flex; align-items: center; gap: 22px; padding: 18px 24px; margin-bottom: 16px; flex-wrap: wrap; }
-  .ledger-summary-hero { display: flex; align-items: center; gap: 14px; }
-  .ledger-summary-hero .hero-icon {
-    width: 52px; height: 52px; border-radius: 14px; flex-shrink: 0;
-    display: flex; align-items: center; justify-content: center;
-    background: var(--navy-950); color: var(--gold-vibrant); font-size: 1.15rem;
-  }
-  .ledger-summary-hero .hero-value { font-family: var(--font-display); font-size: 2.1rem; font-weight: 700; line-height: 1; color: var(--text-primary); }
-  .ledger-summary-hero .hero-label { font-size: 0.74rem; color: var(--text-muted); margin-top: 4px; text-transform: uppercase; letter-spacing: 0.06em; font-weight: 600; }
-  .ledger-summary-divider {
-    width: 1px; align-self: stretch; min-height: 46px;
-    background: repeating-linear-gradient(to bottom, var(--border-strong) 0 4px, transparent 4px 8px);
-  }
-  .ledger-summary-minis { display: flex; gap: 24px; flex-wrap: wrap; flex: 1; }
-  .mini-row { min-width: 108px; }
-  .mini-row-top { display: flex; align-items: center; gap: 6px; margin-bottom: 5px; }
-  .mini-row .mini-dot { width: 7px; height: 7px; border-radius: 2px; flex-shrink: 0; }
-  .mini-row.tone-success .mini-dot { background: var(--success); }
-  .mini-row.tone-warning .mini-dot { background: var(--gold-vibrant); }
-  .mini-row.tone-danger .mini-dot { background: var(--danger); }
-  .mini-row .mini-label { font-size: 0.72rem; color: var(--text-muted); font-weight: 600; }
-  .mini-row .mini-value { font-family: var(--font-mono); font-size: 0.82rem; font-weight: 700; margin-left: auto; }
-  .mini-track { height: 4px; border-radius: 999px; background: var(--border); width: 108px; overflow: hidden; }
-  .mini-fill { height: 100%; border-radius: 999px; width: 0%; transition: width 500ms ease; }
-  .tone-success .mini-fill { background: var(--success); }
-  .tone-warning .mini-fill { background: var(--gold-vibrant); }
-  .tone-danger .mini-fill { background: var(--danger); }
-
   /* ---- Toolbar ---- */
   .filing-toolbar { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
   .filing-toolbar .toolbar-filters .form-select,
@@ -221,13 +192,6 @@
     .filing-side { width: 100%; position: static; max-height: none; }
     .side-panel-body { max-height: 420px; }
   }
-  @media (max-width: 640px) {
-    .ledger-summary { flex-direction: column; align-items: flex-start; gap: 14px; padding: 16px 18px; }
-    .ledger-summary-divider { display: none; }
-    .ledger-summary-minis { width: 100%; justify-content: space-between; gap: 12px; }
-    .mini-track { width: 100%; }
-    .mini-row { flex: 1; min-width: 0; }
-  }
 </style>
 </head>
 <body>
@@ -312,33 +276,6 @@
         <div>
           <div class="breadcrumb-lite mb-1">GST Master / GST Filing</div>
           <h2>GST Filing — GSTR-1 &amp; GSTR-3B</h2>
-        </div>
-      </div>
-
-      <!-- Summary strip: Total Filings stays the headline; Filed/Pending/
-           Overdue fold into small ticker rows beside it, not full cards. -->
-      <div class="ledger-summary glass-panel">
-        <div class="ledger-summary-hero">
-          <span class="hero-icon"><i class="fa-solid fa-file-invoice"></i></span>
-          <div>
-            <div class="hero-value" id="statTotalFilings">0</div>
-            <div class="hero-label">Total Filings — Selected Period</div>
-          </div>
-        </div>
-        <div class="ledger-summary-divider"></div>
-        <div class="ledger-summary-minis">
-          <div class="mini-row tone-success">
-            <div class="mini-row-top"><span class="mini-dot"></span><span class="mini-label">Filed</span><span class="mini-value" id="statFiledCount">0</span></div>
-            <div class="mini-track"><div class="mini-fill" id="statFiledBar"></div></div>
-          </div>
-          <div class="mini-row tone-warning">
-            <div class="mini-row-top"><span class="mini-dot"></span><span class="mini-label">Pending</span><span class="mini-value" id="statPendingCount">0</span></div>
-            <div class="mini-track"><div class="mini-fill" id="statPendingBar"></div></div>
-          </div>
-          <div class="mini-row tone-danger">
-            <div class="mini-row-top"><span class="mini-dot"></span><span class="mini-label">Overdue</span><span class="mini-value" id="statOverdueCount">0</span></div>
-            <div class="mini-track"><div class="mini-fill" id="statOverdueBar"></div></div>
-          </div>
         </div>
       </div>
 

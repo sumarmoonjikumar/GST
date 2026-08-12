@@ -139,11 +139,15 @@ function renderSummary() {
     });
   });
 
-  document.getElementById("statTotalFilings").textContent = total;
-  document.getElementById("statFiledCount").textContent = filed;
-  document.getElementById("statPendingCount").textContent = pending;
-  document.getElementById("statOverdueCount").textContent = overdue;
-  document.getElementById("pendingTabCount").textContent = pending;
+  const set = (id, value) => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = value;
+  };
+  set("statTotalFilings", total);
+  set("statFiledCount", filed);
+  set("statPendingCount", pending);
+  set("statOverdueCount", overdue);
+  set("pendingTabCount", pending);
 
   const pct = (n) => (total ? Math.round((n / total) * 100) : 0);
   const bar = (id, value) => {
