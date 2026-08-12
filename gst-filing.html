@@ -12,66 +12,71 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
 
 <link rel="stylesheet" href="assets/css/theme.css">
 <link rel="stylesheet" href="assets/css/dashboard.css">
 <style>
   /* =========================================================
-     GST Filing — "Modern Ledger" page redesign
-     Tokens sourced from DESIGN.md, layered on top of the app's
-     shared navy/gold theme (the two palettes already agree on
-     navy, success, danger — so this is a refinement, not a
-     re-theme). Two signature moves:
-       1. A slim glass "hero" strip — Total Filings stays the
-          one big number up top; Filed/Pending/Overdue shrink
-          into compact ticker rows beside it, not full cards.
-       2. The Pending List is promoted out of a tab into a
-          sticky right-hand rail, always visible beside the
-          matrix instead of a click away.
+     GST Filing — Material flat redesign
+     Swaps the earlier gold/glass "Modern Ledger" look for a
+     flat Material-3-style navy theme: solid bordered panels
+     (no blur), square-ish 2–4px radii, and semantic status
+     chips (soft green/red/amber) with Material Symbols icons.
+     Page-scoped — only this file's palette/components change.
      ========================================================= */
 
   :root {
-    --bg-canvas: #fbf9f4;
+    --bg-canvas: #f9f9fc;
     --surface: #ffffff;
     --surface-raised: #ffffff;
-    --surface-dim: #f5f3ee;
-    --border: #e8e5de;
-    --border-strong: #d2ccbe;
-    --text-primary: #1b1c19;
-    --text-muted: #43474c;
-    --text-faint: #74777c;
-    --gold-vibrant: #d4af37;
-    --glass-border: rgba(255,255,255,0.55);
-    --glass-blur: 14px;
-    --radius-md: 12px;
-    --radius-lg: 16px;
-  }
-  [data-theme="dark"] {
-    --glass-border: rgba(255,255,255,0.08);
+    --surface-dim: #f3f3f6;
+    --surface-container: #edeef1;
+    --border: #c3c6cf;
+    --border-strong: #c3c6cf;
+    --text-primary: #1a1c1e;
+    --text-muted: #43474e;
+    --text-faint: #73777f;
+    --radius-sm: 2px;
+    --radius-md: 4px;
+    --radius-lg: 8px;
+    /* Shared chrome (sidebar/topbar/buttons) reads these same var
+       names — repointing them keeps the whole shell consistent. */
+    --navy-950: #133458;
+    --navy-900: #0f2a47;
+    --navy-800: #001f3d;
+    --gold-500: #2a486d;
+    --gold-100: #d3e3ff;
+    --gold-700: #2a486d;
   }
 
-  /* ---- Glass surface ---- */
-  .glass-panel {
-    background: rgba(255,255,255,0.68);
-    backdrop-filter: blur(var(--glass-blur));
-    -webkit-backdrop-filter: blur(var(--glass-blur));
-    border: 1px solid var(--glass-border);
+  .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 20; vertical-align: middle; line-height: 1; }
+  .sidebar-nav .nav-link.active .material-symbols-outlined { font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 20; }
+
+  /* Solid bordered panel — replaces the old blurred glass card */
+  .solid-panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
     border-radius: var(--radius-lg);
-    box-shadow: 0 20px 40px rgba(17,33,47,0.06);
-    transition: box-shadow var(--transition);
   }
-  [data-theme="dark"] .glass-panel { background: rgba(26,32,36,0.72); }
-  .side-panel.is-highlighted { box-shadow: 0 0 0 3px rgba(212,175,55,0.45), 0 20px 40px rgba(17,33,47,0.06); }
+
+  /* Flat navy active nav item (no gold tint/left-bar) */
+  .sidebar-nav .nav-link.active { background: var(--navy-800) !important; color: #fff !important; }
+  .sidebar-nav .nav-link.active i,
+  .sidebar-nav .nav-link.active .material-symbols-outlined { color: #fff !important; }
+  .sidebar-nav .nav-link.active::before { display: none !important; }
 
   /* ---- Toolbar ---- */
   .filing-toolbar { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
   .filing-toolbar .toolbar-filters .form-select,
-  .filing-toolbar .toolbar-filters .form-control { max-width: 190px; }
+  .filing-toolbar .toolbar-filters .form-control { max-width: 190px; border-radius: var(--radius-md); }
 
   /* ---- Topbar: FY / Month pulled up next to Quick Search ---- */
   .topbar-right { min-width: 0; }
-  .app-topbar .topbar-period-select { width: 128px; flex-shrink: 0; }
+  .app-topbar .topbar-period-select { width: 128px; flex-shrink: 0; border-radius: var(--radius-md); }
   .app-topbar .topbar-search { max-width: 230px; }
+  .app-topbar .topbar-search input { border-radius: var(--radius-md); }
+  .theme-toggle-btn { border-radius: var(--radius-md); }
   @media (max-width: 1320px) {
     .app-topbar .topbar-search { max-width: 180px; }
     .app-topbar .topbar-period-select { width: 108px; }
@@ -89,12 +94,13 @@
   .side-panel { display: flex; flex-direction: column; min-height: 0; overflow: hidden; flex: 1; }
   .side-panel-head {
     display: flex; align-items: center; justify-content: space-between;
-    padding: 14px 16px 12px; border-bottom: 1px dashed var(--border-strong); flex-shrink: 0;
+    padding: 14px 16px; background: var(--navy-950); color: #fff; flex-shrink: 0;
   }
-  .side-panel-head h6 { margin: 0; font-size: 0.86rem; font-weight: 700; display: flex; align-items: center; gap: 8px; }
-  .side-panel-head h6 i { color: var(--gold-vibrant); }
+  .side-panel-head h6 { margin: 0; font-size: 0.86rem; font-weight: 700; display: flex; align-items: center; gap: 8px; color: #fff; }
+  .side-panel-head h6 .material-symbols-outlined { font-size: 1.05rem; }
   .side-panel-body { overflow-y: auto; padding: 10px 12px 14px; flex: 1; min-height: 0; }
   .side-panel .empty-state { padding: 40px 18px; }
+  .side-panel.is-highlighted { box-shadow: 0 0 0 3px rgba(0,31,61,0.35); }
 
   /* ---- Pending item cards ---- */
   .pending-item {
@@ -106,23 +112,25 @@
   .pending-item:hover { box-shadow: var(--shadow-sm); transform: translateY(-1px); }
   .pending-item .pending-item-bar { width: 3px; flex-shrink: 0; }
   .pending-item.tone-overdue .pending-item-bar { background: var(--danger); }
-  .pending-item.tone-soon .pending-item-bar { background: var(--gold-vibrant); }
+  .pending-item.tone-soon .pending-item-bar { background: #f59e0b; }
   .pending-item.tone-normal .pending-item-bar { background: var(--border-strong); }
   .pending-item-main { padding: 10px 12px; flex: 1; min-width: 0; }
   .pending-item-top { display: flex; align-items: center; gap: 8px; }
-  .pending-item-top .avatar-chip { width: 26px; height: 26px; font-size: 0.62rem; }
+  .pending-item-top .avatar-chip { width: 26px; height: 26px; font-size: 0.62rem; border-radius: var(--radius-md); }
   .pending-item-name { font-size: 0.8rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 210px; }
   .pending-item-gstin { font-size: 0.66rem; color: var(--text-muted); }
   .pending-item-meta { display: flex; align-items: center; gap: 8px; margin: 7px 0 4px; }
   .pending-item-period { font-size: 0.72rem; color: var(--text-muted); }
   .pending-item-staff { font-size: 0.66rem; color: var(--text-faint); margin-bottom: 7px; }
   .pending-item-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-  .pending-item-foot .btn { padding: 3px 9px; font-size: 0.7rem; }
+  .pending-item-foot .btn { padding: 3px 9px; font-size: 0.7rem; border-radius: var(--radius-md); }
   .return-chip {
     display: inline-flex; align-items: center; gap: 5px;
     font-family: var(--font-mono); font-size: 0.66rem; font-weight: 700;
-    padding: 2px 8px; border-radius: 999px; background: var(--info-100); color: var(--blue-600);
+    padding: 2px 8px; border-radius: var(--radius-sm);
+    background: rgba(0,31,61,0.08); color: var(--navy-800);
   }
+  .return-chip .material-symbols-outlined { font-size: 0.85rem; }
 
   /* ---- Matrix ---- */
   .filing-matrix-wrap { overflow-x: auto; }
@@ -130,7 +138,7 @@
   .filing-matrix th, .filing-matrix td { white-space: nowrap; }
   .filing-matrix thead th {
     position: sticky; top: 0; z-index: 2;
-    background: var(--bg-canvas); color: var(--text-muted);
+    background: var(--surface-dim); color: var(--text-muted);
     font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 700;
     border-bottom: 1px solid var(--border); padding: 8px 6px;
   }
@@ -138,39 +146,41 @@
     position: sticky; left: 0; z-index: 1; background: var(--surface); min-width: 232px; white-space: normal;
     box-shadow: 2px 0 0 var(--border);
   }
-  .filing-matrix thead th.client-col { z-index: 3; background: var(--bg-canvas); }
+  .filing-matrix thead th.client-col { z-index: 3; background: var(--surface-dim); }
+  /* Full-width navy header band, matching the reference design's
+     quarter-group row (bg-primary-container across the whole row) */
   .filing-matrix .quarter-row th {
     position: sticky; top: 0; z-index: 2;
-    background: var(--navy-800); color: #d9c58f;
+    background: var(--navy-950); color: rgba(255,255,255,0.72);
     font-size: 0.64rem; letter-spacing: 0.08em; font-weight: 700;
-    padding: 5px 6px; border-bottom: none; text-align: center;
+    padding: 7px 6px; border-bottom: none; text-align: center;
   }
-  .filing-matrix .quarter-row th.client-col { background: var(--navy-900); color: #7e93a8; z-index: 3; text-align: left; }
-  .filing-matrix .quarter-row th.q-divider { border-left: 2px dashed rgba(255,255,255,0.25); }
-  .filing-matrix tbody tr:hover td { background: #ffffff !important; }
-  .filing-matrix tbody tr:hover td.client-col { background: #ffffff !important; }
+  .filing-matrix .quarter-row th.client-col { background: var(--navy-800); color: #fff; z-index: 3; text-align: left; font-weight: 800; }
+  .filing-matrix .quarter-row th.q-divider { border-left: 1px solid rgba(255,255,255,0.18); }
+  .filing-matrix tbody tr:hover td { background: var(--surface-dim) !important; }
+  .filing-matrix tbody tr:hover td.client-col { background: var(--surface-dim) !important; }
   .filing-matrix td { border-bottom: 1px solid var(--border); }
   .filing-matrix tbody tr:last-child td { border-bottom: none; }
 
   .client-cell { display: flex; align-items: center; gap: 10px; padding: 8px 4px; }
-  .client-cell .avatar-chip { width: 30px; height: 30px; font-size: 0.68rem; }
+  .client-cell .avatar-chip { width: 30px; height: 30px; font-size: 0.68rem; border-radius: var(--radius-md); }
 
   .month-cell { text-align: center; padding: 6px 5px !important; }
   .month-head-label { font-size: 10.5px; }
   .filing-pill-group { display: flex; gap: 5px; justify-content: center; }
 
+  /* Flat, square-cornered status chip — Material palette, icon + code */
   .filing-pill {
-    border: 1.5px solid transparent; border-radius: 8px; font-size: 11px; font-weight: 800;
-    font-family: var(--font-mono);
-    width: 42px; height: 32px; padding: 0; cursor: pointer; letter-spacing: 0.02em;
-    display: inline-flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+    border: 1px solid transparent; border-radius: var(--radius-sm); font-size: 10.5px; font-weight: 700;
+    width: 42px; height: 26px; padding: 0; cursor: pointer; letter-spacing: 0.01em;
+    display: inline-flex; align-items: center; justify-content: center; gap: 3px;
     transition: transform var(--transition), filter var(--transition), box-shadow var(--transition);
   }
-  .filing-pill i { font-size: 9px; }
-  .filing-pill.is-filed { background: #d7f3e3; color: #0f7a45; border-color: #9de3ba; }
-  .filing-pill.is-pending { background: #fdecc8; color: #96660a; border-color: #f7d693; }
-  .filing-pill.is-overdue { background: #dc2626; color: #fff; border-color: #b91c1c; box-shadow: 0 0 0 2px rgba(220,38,38,0.22); }
-  .filing-pill:hover { filter: brightness(0.95); transform: translateY(-1px); box-shadow: var(--shadow-sm); }
+  .filing-pill .material-symbols-outlined { font-size: 12px; }
+  .filing-pill.is-filed { background: rgba(34,197,94,0.1); color: rgb(21,128,61); border-color: rgba(34,197,94,0.3); }
+  .filing-pill.is-pending { background: rgba(245,158,11,0.1); color: rgb(180,83,9); border-color: rgba(245,158,11,0.3); }
+  .filing-pill.is-overdue { background: rgba(239,68,68,0.1); color: rgb(185,28,28); border-color: rgba(239,68,68,0.3); }
+  .filing-pill:hover { filter: brightness(0.96); transform: translateY(-1px); box-shadow: var(--shadow-sm); }
   .filing-pill:active { transform: translateY(0); }
 
   /* Quarterly (QRMP) clients — one merged stamp per quarter instead of 3 monthly ones */
@@ -182,9 +192,11 @@
   td.month-cell.not-due-qtr { text-align: right !important; padding-right: 14px !important; }
   .freq-tag {
     display: inline-flex; align-items: center; justify-content: center;
-    width: 15px; height: 15px; border-radius: 4px; font-size: 8.5px; font-weight: 800;
-    background: var(--gold-100, #f6e6b8); color: var(--gold-700, #8a6a10); flex-shrink: 0;
+    width: 15px; height: 15px; border-radius: var(--radius-sm); font-size: 8.5px; font-weight: 800;
+    background: rgba(0,31,61,0.1); color: var(--navy-800); flex-shrink: 0;
   }
+
+  .empty-state .material-symbols-outlined { display: inline-block; color: var(--border-strong); margin-bottom: 12px; }
 
   /* ---- Responsive: stack the pending rail below the matrix on narrow viewports ---- */
   @media (max-width: 1180px) {
@@ -217,22 +229,22 @@
     </div>
 
     <nav class="sidebar-nav">
-      <a href="dashboard.html" class="nav-link"><i class="fa-solid fa-gauge-high"></i> Dashboard</a>
+      <a href="dashboard.html" class="nav-link"><span class="material-symbols-outlined">dashboard</span> Dashboard</a>
 
       <div class="nav-section-label">Practice</div>
-      <a href="clients.html" class="nav-link" data-staff-plus><i class="fa-solid fa-users"></i> Clients</a>
-      <a href="gst-filing.html" class="nav-link active" data-staff-plus><i class="fa-solid fa-file-invoice"></i> GST Filing</a>
-      <a href="gstr1-json.html" class="nav-link" data-staff-plus><i class="fa-solid fa-file-code"></i> GSTR1 Excel</a>
-      <a href="payments.html" class="nav-link" data-staff-plus><i class="fa-solid fa-indian-rupee-sign"></i> Payments</a>
+      <a href="clients.html" class="nav-link" data-staff-plus><span class="material-symbols-outlined">group</span> Clients</a>
+      <a href="gst-filing.html" class="nav-link active" data-staff-plus><span class="material-symbols-outlined">description</span> GST Filing</a>
+      <a href="gstr1-json.html" class="nav-link" data-staff-plus><span class="material-symbols-outlined">table_view</span> GSTR1 Excel</a>
+      <a href="payments.html" class="nav-link" data-staff-plus><span class="material-symbols-outlined">payments</span> Payments</a>
 
       <div class="nav-section-label" data-admin-only>Team</div>
-      <a href="staff.html" class="nav-link" data-admin-only><i class="fa-solid fa-user-tie"></i> Staff</a>
-      <a href="#" class="nav-link" data-admin-only><i class="fa-solid fa-building-user"></i> Customers</a>
+      <a href="staff.html" class="nav-link" data-admin-only><span class="material-symbols-outlined">badge</span> Staff</a>
+      <a href="#" class="nav-link" data-admin-only><span class="material-symbols-outlined">domain</span> Customers</a>
 
       <div class="nav-section-label" data-admin-only>System</div>
-      <a href="reports.html" class="nav-link" data-admin-only><i class="fa-solid fa-chart-column"></i> Reports</a>
-      <a href="settings.html" class="nav-link" data-admin-only><i class="fa-solid fa-gear"></i> Settings</a>
-      <a href="backup.html" class="nav-link" data-admin-only><i class="fa-solid fa-box-archive"></i> Backup</a>
+      <a href="reports.html" class="nav-link" data-admin-only><span class="material-symbols-outlined">bar_chart</span> Reports</a>
+      <a href="settings.html" class="nav-link" data-admin-only><span class="material-symbols-outlined">settings</span> Settings</a>
+      <a href="backup.html" class="nav-link" data-admin-only><span class="material-symbols-outlined">archive</span> Backup</a>
     </nav>
 
     <div class="sidebar-foot">
@@ -243,7 +255,7 @@
           <div class="role" id="sidebarUserRole">—</div>
         </div>
       </div>
-      <a href="#" id="logoutBtn" class="nav-link mt-2 mb-0 px-0"><i class="fa-solid fa-right-from-bracket"></i> Logout</a>
+      <a href="#" id="logoutBtn" class="nav-link mt-2 mb-0 px-0"><span class="material-symbols-outlined">logout</span> Logout</a>
     </div>
   </aside>
 
@@ -252,9 +264,9 @@
     <!-- Topbar -->
     <header class="app-topbar">
       <div class="d-flex align-items-center gap-3" style="min-width:0;">
-        <button id="sidebarBurger" class="sidebar-burger" aria-label="Open menu"><i class="fa-solid fa-bars"></i></button>
+        <button id="sidebarBurger" class="sidebar-burger" aria-label="Open menu"><span class="material-symbols-outlined">menu</span></button>
         <div class="topbar-search d-none d-md-block">
-          <i class="fa-solid fa-magnifying-glass"></i>
+          <span class="material-symbols-outlined">search</span>
           <input type="search" class="form-control form-control-sm" placeholder="Quick search clients, GSTIN, invoices…">
         </div>
       </div>
@@ -265,7 +277,7 @@
         </select>
         <span class="small text-muted-soft d-none d-sm-inline" id="topbarWelcome">Welcome</span>
         <button id="themeToggleBtn" type="button" class="theme-toggle-btn" title="Toggle dark mode" aria-label="Toggle dark mode">
-          <i class="fa-solid fa-moon"></i>
+          <span class="material-symbols-outlined">dark_mode</span>
         </button>
       </div>
     </header>
@@ -280,7 +292,7 @@
       </div>
 
       <!-- Filters -->
-      <div class="ledger-card page-toolbar filing-toolbar p-3 mb-3">
+      <div class="solid-panel page-toolbar filing-toolbar p-3 mb-3">
         <div class="toolbar-filters">
           <select class="form-select form-select-sm" id="typeFilter">
             <option value="">GSTR-1 &amp; GSTR-3B</option>
@@ -297,7 +309,7 @@
       <!-- Matrix (left) + Pending List fixed on the right -->
       <div class="filing-layout">
         <div class="filing-main">
-          <div id="matrixPane" class="ledger-card data-table-card">
+          <div id="matrixPane" class="solid-panel data-table-card">
             <div class="filing-matrix-wrap">
               <table class="table filing-matrix">
                 <colgroup id="matrixColgroup"></colgroup>
@@ -306,7 +318,7 @@
               </table>
             </div>
             <div id="matrixEmptyState" class="empty-state d-none">
-              <i class="fa-solid fa-file-invoice"></i>
+              <span class="material-symbols-outlined" style="font-size:2.2rem;">description</span>
               <h6>No clients yet</h6>
               <p class="small mb-0">Add a client in Client Master to start tracking GST filings.</p>
             </div>
@@ -314,14 +326,14 @@
         </div>
 
         <aside class="filing-side">
-          <div class="side-panel glass-panel">
+          <div class="side-panel solid-panel">
             <div class="side-panel-head">
-              <h6><i class="fa-solid fa-list-check"></i> Pending &amp; Due</h6>
+              <h6><span class="material-symbols-outlined">checklist</span> Pending &amp; Due</h6>
               <span class="badge badge-soft-danger rounded-pill" id="pendingTabCount">0</span>
             </div>
             <div class="side-panel-body" id="pendingListBody"></div>
             <div id="pendingEmptyState" class="empty-state d-none">
-              <i class="fa-solid fa-circle-check"></i>
+              <span class="material-symbols-outlined" style="font-size:2.2rem;">check_circle</span>
               <h6>Nothing pending</h6>
               <p class="small mb-0">Every return in view is filed. Great work!</p>
             </div>
