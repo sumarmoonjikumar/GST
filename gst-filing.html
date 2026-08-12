@@ -69,11 +69,13 @@
 
   /* ---- Topbar: FY / Month pulled up next to Quick Search ---- */
   .topbar-right { min-width: 0; }
-  .app-topbar .topbar-period-select { width: 128px; flex-shrink: 0; }
+  .app-topbar #fyFilter.topbar-period-select { width: 172px; flex-shrink: 0; }
+  .app-topbar #monthFilter.topbar-period-select { width: 124px; flex-shrink: 0; }
   .app-topbar .topbar-search { max-width: 230px; }
   @media (max-width: 1320px) {
     .app-topbar .topbar-search { max-width: 180px; }
-    .app-topbar .topbar-period-select { width: 108px; }
+    .app-topbar #fyFilter.topbar-period-select { width: 148px; }
+    .app-topbar #monthFilter.topbar-period-select { width: 108px; }
   }
 
   /* ---- Layout ---- */
