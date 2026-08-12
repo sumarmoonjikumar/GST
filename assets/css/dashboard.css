@@ -94,9 +94,6 @@
   border-bottom: 1px solid var(--border);
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 10px 16px;
   padding: 10px 22px;
   position: sticky;
   top: 0;
@@ -104,18 +101,38 @@
 }
 
 .app-topbar-filters {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
   display: flex;
   align-items: center;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 10px;
-  margin-left: auto;
 }
 .app-topbar-filters .form-select,
 .app-topbar-filters .form-control {
-  max-width: 190px;
+  width: 160px;
+  flex-shrink: 0;
 }
+.app-topbar-filters #fyFilter { width: 178px; }
+.app-topbar-filters #monthFilter { width: 128px; }
 .app-topbar-filters .topbar-count-label {
   white-space: nowrap;
+}
+@media (max-width: 900px) {
+  .app-topbar { flex-wrap: wrap; justify-content: center; row-gap: 8px; }
+  .app-topbar-filters {
+    position: static;
+    transform: none;
+    flex-wrap: wrap;
+    justify-content: center;
+    width: 100%;
+  }
+}
+@media (max-width: 420px) {
+  .app-topbar-filters .form-select,
+  .app-topbar-filters .form-control { width: 130px; }
 }
 
 .topbar-search {

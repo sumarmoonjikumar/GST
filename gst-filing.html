@@ -62,29 +62,6 @@
   }
   [data-theme="dark"] .glass-panel { background: rgba(26,32,36,0.72); }
 
-  /* ---- Toolbar (centered, single line, in the topbar) ---- */
-  .app-topbar { position: relative; }
-  .filing-topbar-filters {
-    position: absolute;
-    left: 50%;
-    top: 50%;
-    transform: translate(-50%, -50%);
-    display: flex;
-    align-items: center;
-    flex-wrap: nowrap;
-    gap: 10px;
-  }
-  .filing-topbar-filters .form-select { width: 150px; flex-shrink: 0; }
-  .filing-topbar-filters #monthFilter { width: 130px; }
-  .filing-topbar-filters #staffFilter { width: 140px; }
-  @media (max-width: 860px) {
-    .filing-topbar-filters { position: static; transform: none; margin: 8px auto 0; }
-    .app-topbar { flex-wrap: wrap; justify-content: center; }
-  }
-  @media (max-width: 480px) {
-    .filing-topbar-filters .form-select { width: 108px; }
-  }
-
   /* ---- Layout ---- */
   .filing-layout { display: flex; align-items: flex-start; gap: 18px; }
   .filing-main { flex: 1; min-width: 0; }
@@ -216,7 +193,7 @@
       <div class="d-flex align-items-center gap-3" style="min-width:0;">
         <button id="sidebarBurger" class="sidebar-burger" aria-label="Open menu"><i class="fa-solid fa-bars"></i></button>
       </div>
-      <div class="filing-topbar-filters">
+      <div class="app-topbar-filters">
         <select class="form-select form-select-sm" id="fyFilter"></select>
         <select class="form-select form-select-sm" id="monthFilter">
           <option value="">All Months</option>
