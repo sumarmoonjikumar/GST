@@ -1,8 +1,8 @@
 import DB from "./db.js";
 import { requireSession } from "./auth.js";
-import { applyStoredTheme, toast, formatDate, currentFY, fyList, fyMonths, initials, whatsappLink } from "./utils.js";
+import { applyStoredTheme, toast, currentFY, fyList, fyMonths, initials, whatsappLink } from "./utils.js";
 import { initAppChrome } from "./chrome.js";
-import { buildFilingMap, getFilingStatus, filingRecordId, periodHasStarted, daysBetween, isQuarterEndMonth } from "./gst-status.js";
+import { buildFilingMap, getFilingStatus, filingRecordId, periodHasStarted, isQuarterEndMonth } from "./gst-status.js";
 
 applyStoredTheme();
 const session = requireSession(["admin", "staff"]);
@@ -47,16 +47,8 @@ function populateStaffFilter() {
 }
 
 function applyQueryParams() {
-  const params = new URLSearchParams(window.location.search);
-  const type = params.get("type");
-  const status = params.get("status");
-  const due = params.get("due");
-  if (type) document.getElementById("typeFilter").value = type;
-  if (status === "Pending") focusPendingRail();
-  if (due === "today") {
-    // leave "All Months" selected — the pending list itself sorts soonest-due first
-    focusPendingRail();
-  }
+  // type/status/due deep-link params no longer apply — the type dropdown
+  // and pending rail they used to target have been removed.
 }
 
 async function loadData() {
@@ -73,18 +65,15 @@ async function loadData() {
 
 function visibleClients() {
   const base = session.role === "staff" ? allClients.filter((c) => c.assignedStaffId === session.id) : allClients;
-  const q = document.getElementById("clientSearch").value.trim().toLowerCase();
   const staffId = document.getElementById("staffFilter")?.value || "";
   return base.filter((c) => {
-    if (q && !`${c.businessName} ${c.gstin}`.toLowerCase().includes(q)) return false;
     if (staffId && c.assignedStaffId !== staffId) return false;
     return true;
   });
 }
 
 function activeTypes() {
-  const t = document.getElementById("typeFilter").value;
-  return t ? [t] : ["GSTR-1", "GSTR-3B"];
+  return ["GSTR-1", "GSTR-3B"];
 }
 
 function activeMonths() {
@@ -112,7 +101,6 @@ function quarterlyPeriodLabel(m) {
 
 function render() {
   renderMatrix();
-  renderPendingList();
   renderSummary();
 }
 
@@ -147,7 +135,6 @@ function renderSummary() {
   set("statFiledCount", filed);
   set("statPendingCount", pending);
   set("statOverdueCount", overdue);
-  set("pendingTabCount", pending);
 
   const pct = (n) => (total ? Math.round((n / total) * 100) : 0);
   const bar = (id, value) => {
@@ -266,86 +253,6 @@ function renderMatrix() {
 
   body.querySelectorAll(".filing-pill").forEach((btn) =>
     btn.addEventListener("click", () => openStatusModal(btn.dataset.client, btn.dataset.month, btn.dataset.type))
-  );
-}
-
-function renderPendingList() {
-  const clients = visibleClients();
-  const months = activeMonths();
-  const types = activeTypes();
-  const today = new Date().toISOString().slice(0, 10);
-  const rows = [];
-
-  clients.forEach((c) => {
-    const freq = clientFrequency(c);
-    applicablePeriods(c, months).forEach((m) => {
-      if (!periodHasStarted(m.month, m.year)) return;
-      types.forEach((type) => {
-        const rec = getFilingStatus(filingMap, c.id, m.key, type, freq);
-        if (rec.status === "Filed") return;
-        const staffMember = allStaff.find((s) => s.id === c.assignedStaffId);
-        rows.push({
-          client: c,
-          staffName: staffMember?.name || "Unassigned",
-          monthLabel: freq === "Quarterly" ? quarterlyPeriodLabel(m) : m.label,
-          monthKey: m.key,
-          type,
-          dueDate: rec.dueDate,
-          overdue: rec.dueDate ? rec.dueDate < today : false,
-        });
-      });
-    });
-  });
-
-  rows.sort((a, b) => (a.dueDate || "").localeCompare(b.dueDate || ""));
-
-  const body = document.getElementById("pendingListBody");
-  const empty = document.getElementById("pendingEmptyState");
-  if (rows.length === 0) {
-    body.innerHTML = "";
-    empty.classList.remove("d-none");
-    return;
-  }
-  empty.classList.add("d-none");
-
-  body.innerHTML = rows
-    .map((r) => {
-      const days = r.dueDate ? daysBetween(today, r.dueDate) : null;
-      const daysLabel =
-        days === null ? "—" : days < 0 ? `${Math.abs(days)}d overdue` : days === 0 ? "Due today" : `${days}d left`;
-      const daysBadge = r.overdue ? "badge-soft-danger" : days !== null && days <= 3 ? "badge-soft-warning" : "badge-soft-info";
-      const urgencyTone = r.overdue ? "tone-overdue" : days !== null && days <= 3 ? "tone-soon" : "tone-normal";
-      return `<div class="pending-item ${urgencyTone}">
-        <div class="pending-item-bar"></div>
-        <div class="pending-item-main">
-          <div class="pending-item-top">
-            <span class="avatar-chip">${initials(r.client.businessName) || "GM"}</span>
-            <div style="min-width:0;">
-              <div class="pending-item-name">${escapeHtml(r.client.businessName)}</div>
-              <div class="pending-item-gstin font-mono">${escapeHtml(r.client.gstin)}</div>
-            </div>
-          </div>
-          <div class="pending-item-meta">
-            <span class="return-chip"><i class="fa-solid fa-file-invoice"></i>${r.type}</span>
-            <span class="pending-item-period">${r.monthLabel}</span>
-          </div>
-          <div class="pending-item-staff">${escapeHtml(r.staffName)} · Due ${formatDate(r.dueDate)}</div>
-          <div class="pending-item-foot">
-            <span class="badge ${daysBadge} rounded-pill">${daysLabel}</span>
-            <button class="btn btn-outline-success btn-sm" data-mark="${r.client.id}|${r.monthKey}|${r.type}">
-              <i class="fa-solid fa-check me-1"></i>Mark Filed
-            </button>
-          </div>
-        </div>
-      </div>`;
-    })
-    .join("");
-
-  body.querySelectorAll("[data-mark]").forEach((btn) =>
-    btn.addEventListener("click", () => {
-      const [clientId, monthKey, type] = btn.dataset.mark.split("|");
-      openStatusModal(clientId, monthKey, type, "Filed");
-    })
   );
 }
 
@@ -526,17 +433,6 @@ async function ensurePendingPayment(clientId, monthKey, client) {
   return { clientId, invoiceNo: record.invoiceNo };
 }
 
-/** The Pending rail is always visible now (sticky on the right), so a
- * deep-link that used to switch to the "Pending" tab just scrolls it into
- * view and gives it a brief highlight instead. */
-function focusPendingRail() {
-  const panel = document.querySelector(".filing-side .side-panel");
-  if (!panel) return;
-  panel.scrollIntoView({ behavior: "smooth", block: "nearest" });
-  panel.classList.add("is-highlighted");
-  setTimeout(() => panel.classList.remove("is-highlighted"), 1400);
-}
-
 function escapeHtml(str = "") {
   return String(str)
     .replace(/&/g, "&amp;")
@@ -551,9 +447,7 @@ function wireEvents() {
     render();
   });
   document.getElementById("monthFilter").addEventListener("change", render);
-  document.getElementById("typeFilter").addEventListener("change", render);
   document.getElementById("staffFilter")?.addEventListener("change", render);
-  document.getElementById("clientSearch").addEventListener("input", render);
 
   document.getElementById("fStatus").addEventListener("change", toggleFiledDateVisibility);
   document.getElementById("filingStatusForm").addEventListener("submit", onSaveStatus);
