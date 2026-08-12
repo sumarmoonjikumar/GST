@@ -21,7 +21,6 @@ async function init() {
 
   populateFYFilter();
   await loadData();
-  populateStaffFilter();
   applyQueryParams();
   populateMonthFilter();
   render();
@@ -38,12 +37,6 @@ function populateMonthFilter() {
   const sel = document.getElementById("monthFilter");
   sel.innerHTML = '<option value="">All Months</option>';
   fyMonths(document.getElementById("fyFilter").value).forEach((m) => sel.add(new Option(m.label, m.key)));
-}
-
-function populateStaffFilter() {
-  const sel = document.getElementById("staffFilter");
-  if (!sel) return;
-  allStaff.forEach((s) => sel.add(new Option(s.name, s.id)));
 }
 
 function applyQueryParams() {
@@ -64,12 +57,7 @@ async function loadData() {
 }
 
 function visibleClients() {
-  const base = session.role === "staff" ? allClients.filter((c) => c.assignedStaffId === session.id) : allClients;
-  const staffId = document.getElementById("staffFilter")?.value || "";
-  return base.filter((c) => {
-    if (staffId && c.assignedStaffId !== staffId) return false;
-    return true;
-  });
+  return session.role === "staff" ? allClients.filter((c) => c.assignedStaffId === session.id) : allClients;
 }
 
 function activeTypes() {
@@ -447,7 +435,6 @@ function wireEvents() {
     render();
   });
   document.getElementById("monthFilter").addEventListener("change", render);
-  document.getElementById("staffFilter")?.addEventListener("change", render);
 
   document.getElementById("fStatus").addEventListener("change", toggleFiledDateVisibility);
   document.getElementById("filingStatusForm").addEventListener("submit", onSaveStatus);
