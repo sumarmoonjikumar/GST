@@ -62,12 +62,28 @@
   }
   [data-theme="dark"] .glass-panel { background: rgba(26,32,36,0.72); }
 
-  /* ---- Toolbar ---- */
-  .filing-toolbar { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
-  .filing-toolbar .toolbar-filters .form-select,
-  .filing-toolbar .toolbar-filters .form-control { max-width: 190px; }
-  .filing-toolbar .toolbar-filters #fyFilter { max-width: 180px; }
-  .filing-toolbar .toolbar-filters #monthFilter { max-width: 150px; }
+  /* ---- Toolbar (centered, single line, in the topbar) ---- */
+  .app-topbar { position: relative; }
+  .filing-topbar-filters {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    display: flex;
+    align-items: center;
+    flex-wrap: nowrap;
+    gap: 10px;
+  }
+  .filing-topbar-filters .form-select { width: 150px; flex-shrink: 0; }
+  .filing-topbar-filters #monthFilter { width: 130px; }
+  .filing-topbar-filters #staffFilter { width: 140px; }
+  @media (max-width: 860px) {
+    .filing-topbar-filters { position: static; transform: none; margin: 8px auto 0; }
+    .app-topbar { flex-wrap: wrap; justify-content: center; }
+  }
+  @media (max-width: 480px) {
+    .filing-topbar-filters .form-select { width: 108px; }
+  }
 
   /* ---- Layout ---- */
   .filing-layout { display: flex; align-items: flex-start; gap: 18px; }
@@ -200,23 +216,19 @@
       <div class="d-flex align-items-center gap-3" style="min-width:0;">
         <button id="sidebarBurger" class="sidebar-burger" aria-label="Open menu"><i class="fa-solid fa-bars"></i></button>
       </div>
+      <div class="filing-topbar-filters">
+        <select class="form-select form-select-sm" id="fyFilter"></select>
+        <select class="form-select form-select-sm" id="monthFilter">
+          <option value="">All Months</option>
+        </select>
+        <select class="form-select form-select-sm" id="staffFilter" data-admin-only>
+          <option value="">All Staff</option>
+        </select>
+      </div>
     </header>
 
     <!-- Main content -->
     <main class="app-main">
-      <!-- Filters -->
-      <div class="ledger-card page-toolbar filing-toolbar p-3 mb-3">
-        <div class="toolbar-filters">
-          <select class="form-select form-select-sm" id="fyFilter"></select>
-          <select class="form-select form-select-sm" id="monthFilter">
-            <option value="">All Months</option>
-          </select>
-          <select class="form-select form-select-sm" id="staffFilter" data-admin-only>
-            <option value="">All Staff</option>
-          </select>
-        </div>
-      </div>
-
       <!-- Matrix -->
       <div class="filing-layout">
         <div class="filing-main">
