@@ -426,29 +426,3 @@
   padding-bottom: 6px;
   border-bottom: 1px dashed var(--border);
 }
-
-/* Floating action button — bottom-right page action (Add Client, Add Staff, etc.) */
-.fab-btn {
-  position: fixed;
-  right: 26px;
-  bottom: 26px;
-  z-index: 1040;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 13px 22px;
-  border-radius: 999px;
-  box-shadow: 0 12px 28px rgba(17, 33, 47, 0.22);
-  font-weight: 600;
-  font-size: 0.86rem;
-  border: none;
-  transition: transform var(--transition), box-shadow var(--transition);
-}
-.fab-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 16px 34px rgba(17, 33, 47, 0.28);
-}
-.fab-btn i { font-size: 0.86rem; }
-@media (max-width: 576px) {
-  .fab-btn { right: 16px; bottom: 16px; padding: 12px 18px; font-size: 0.8rem; }
-}
