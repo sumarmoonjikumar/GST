@@ -32,7 +32,6 @@ const STORES = {
   payments: "payments",     // payment records per client
   activity: "activity",     // recent activity feed
   settings: "settings",     // app-level settings (company name, logo, etc.)
-  leads: "leads",           // "New Customer" sign-up requests from the home page banner
 };
 
 function uid(prefix = "id") {
