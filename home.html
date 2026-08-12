@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>GST Master — GST Office Management</title>
+<meta name="description" content="GST Master — GST Consulting Office Management System" />
+<meta name="theme-color" content="#1a3049" />
+<link rel="icon" href="assets/icons/logo-icon.svg" type="image/svg+xml" />
+<link rel="manifest" href="manifest.json" />
+
+<!-- Bootstrap 5 (CDN, free) -->
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<!-- Font Awesome (CDN, free) -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+<!-- Google Fonts (CDN, free) -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Sora:wght@600;700;800&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+
+<link rel="stylesheet" href="assets/css/theme.css">
+<link rel="stylesheet" href="assets/css/login.css">
+<link rel="stylesheet" href="assets/css/home.css">
+</head>
+<body>
+
+<div class="home-shell">
+
+  <!-- ===================== BANNER (left) ===================== -->
+  <section class="gst-banner" aria-label="GST Master introduction">
+    <div class="banner-perf banner-perf-top" aria-hidden="true"></div>
+
+    <div class="banner-inner">
+      <span class="brand-mark">
+        GST MASTER
+        <span class="brand-sub">GST Office Management</span>
+      </span>
+
+      <div class="banner-seal" aria-hidden="true">
+        <span>GST</span>
+      </div>
+
+      <h1 class="banner-headline font-display">
+        Every filing,<br>stamped &amp; settled.
+      </h1>
+      <p class="banner-copy">
+        One ledger for every client's GSTR filings, payments and KYC —
+        run by your office, trusted by your customers.
+      </p>
+
+      <ul class="banner-points" role="list">
+        <li><i class="fa-solid fa-file-invoice"></i> GSTR-1 &amp; GSTR-3B tracked, period by period</li>
+        <li><i class="fa-solid fa-indian-rupee-sign"></i> Payments &amp; dues in one running challan</li>
+        <li><i class="fa-solid fa-folder-open"></i> KYC documents kept safe against every client</li>
+      </ul>
+
+      <button type="button" class="btn btn-gold btn-new-customer" id="newCustomerBtn">
+        <i class="fa-solid fa-user-plus me-2"></i>New Customer
+      </button>
+      <p class="banner-footnote">Not onboarded yet? Register in under a minute — our team will reach out.</p>
+    </div>
+
+    <div class="banner-perf banner-perf-bottom" aria-hidden="true"></div>
+  </section>
+
+  <!-- ===================== LOGIN (right) ===================== -->
+  <section class="login-box-wrap" aria-label="Sign in">
+    <div class="challan-wrap">
+      <div class="neon-ring" aria-hidden="true"></div>
+
+      <div class="challan" role="group" aria-label="GST Master sign in">
+        <div class="perf perf-top" aria-hidden="true"></div>
+
+        <section class="challan-applicant">
+          <div class="applicant-topline">
+            <h2 class="font-display mb-0">Sign in to <span id="activeRoleLabel">Admin Login</span></h2>
+            <button id="themeToggleBtn" type="button" class="theme-toggle-btn" title="Toggle dark mode" aria-label="Toggle dark mode">
+              <i class="fa-solid fa-moon"></i>
+            </button>
+          </div>
+          <p class="text-muted-soft small applicant-hint">Choose a login type, then sign in with your credentials.</p>
+
+          <div class="role-stamps role-stamps-2" role="tablist" aria-label="Login type">
+            <div class="role-card active" data-role="admin" role="tab" tabindex="0" aria-pressed="true">
+              <div class="stamp-ring"><i class="fa-solid fa-user-shield"></i></div>
+              <div class="role-title">Admin</div>
+            </div>
+            <div class="role-card" data-role="staff" role="tab" tabindex="0" aria-pressed="false">
+              <div class="stamp-ring"><i class="fa-solid fa-user-tie"></i></div>
+              <div class="role-title">Staff</div>
+            </div>
+          </div>
+          <p class="role-desc" id="roleDesc">Full control over clients, staff &amp; settings</p>
+
+          <div class="login-form-card">
+            <form id="loginForm" novalidate>
+              <div class="form-floating mb-3">
+                <input type="text" class="form-control" id="loginUsername" placeholder="Username" autocomplete="username" required>
+                <label id="usernameLabel" for="loginUsername">Admin Username</label>
+              </div>
+              <div class="form-floating mb-3">
+                <input type="password" class="form-control" id="loginPassword" placeholder="Password" autocomplete="current-password" required>
+                <label for="loginPassword">Password</label>
+              </div>
+
+              <div class="d-flex align-items-center justify-content-between mb-3">
+                <div class="form-check">
+                  <input class="form-check-input" type="checkbox" id="rememberMe">
+                  <label class="form-check-label small text-muted-soft" for="rememberMe">Remember me on this device</label>
+                </div>
+                <a href="#" id="forgotPasswordLink" class="small">Forgot password?</a>
+              </div>
+
+              <button id="loginSubmitBtn" type="submit" class="btn btn-navy w-100 py-2">Sign In</button>
+            </form>
+          </div>
+
+          <p class="login-footnote">GST Master v1.0</p>
+        </section>
+
+        <div class="perf perf-bottom" aria-hidden="true"></div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<!-- ===================== New Customer modal ===================== -->
+<div class="modal fade" id="newCustomerModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title font-display"><i class="fa-solid fa-user-plus me-2"></i>New Customer Registration</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form id="newCustomerForm" novalidate>
+        <div class="modal-body">
+          <p class="text-muted-soft small mb-3">Share your details below — our team will verify your KYC and set up your account.</p>
+
+          <div class="mb-3">
+            <label class="form-label" for="ncName">Customer Name</label>
+            <input type="text" class="form-control" id="ncName" placeholder="Full name / business name" required>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label" for="ncMobile">Mobile Number</label>
+            <input type="tel" class="form-control" id="ncMobile" placeholder="10-digit mobile number" inputmode="numeric" pattern="[0-9]{10}" maxlength="10" required>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label" for="ncEmail">Email ID</label>
+            <input type="email" class="form-control" id="ncEmail" placeholder="name@example.com" required>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label" for="ncKycType">KYC Document Type</label>
+            <select class="form-select" id="ncKycType" required>
+              <option value="" selected disabled>Select document type</option>
+              <option value="PAN Card">PAN Card</option>
+              <option value="Aadhaar Card">Aadhaar Card</option>
+              <option value="GST Registration Certificate">GST Registration Certificate</option>
+              <option value="Udyam / MSME Certificate">Udyam / MSME Certificate</option>
+              <option value="Certificate of Incorporation">Certificate of Incorporation</option>
+              <option value="Partnership Deed">Partnership Deed</option>
+              <option value="Passport">Passport</option>
+              <option value="Voter ID Card">Voter ID Card</option>
+              <option value="Driving License">Driving License</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+
+          <div class="mb-2">
+            <label class="form-label">KYC Document <span class="text-muted-soft small">(PDF or JPG)</span></label>
+            <div class="d-flex align-items-center gap-2 flex-wrap">
+              <input type="file" class="d-none" id="ncKycFile" accept=".pdf,.jpg,.jpeg,.png">
+              <button type="button" class="btn btn-outline-secondary btn-sm" id="ncKycFileBtn"><i class="fa-solid fa-upload me-1"></i>Choose File</button>
+              <span class="small text-muted-soft" id="ncKycFileInfo">No file selected</span>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-navy" id="ncSubmitBtn">Submit Registration</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script type="module" src="assets/js/home.js"></script>
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', function () {
+      navigator.serviceWorker.register('./service-worker.js').catch(function (err) {
+        console.warn('Service worker registration failed:', err);
+      });
+    });
+  }
+</script>
+</body>
+</html>
