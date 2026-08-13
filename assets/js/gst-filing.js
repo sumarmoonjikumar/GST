@@ -184,6 +184,12 @@ function renderMatrix() {
     ${months.map((m, i) => `<th class="month-cell${months.length === 12 && i % 3 === 0 ? " q-divider" : ""}"><span class="month-head-label">${m.label}</span></th>`).join("")}
   </tr>`;
 
+  // The month-row header sticks just below the quarter-divider row when
+  // that row is present; measure its real rendered height instead of
+  // guessing a pixel value (avoids the two rows overlapping/stacking).
+  const quarterRowEl = head.querySelector(".quarter-row");
+  document.getElementById("matrixPane").style.setProperty("--quarter-row-h", quarterRowEl ? `${quarterRowEl.offsetHeight}px` : "0px");
+
   const today = new Date().toISOString().slice(0, 10);
 
   const pillHtml = (c, monthKey, monthLabel, type, freq) => {
