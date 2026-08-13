@@ -90,8 +90,8 @@
 /* ---------- Topbar ---------- */
 .app-topbar {
   min-height: var(--topbar-h);
-  background: var(--surface);
-  border-bottom: 1px solid var(--border);
+  background: var(--gold-100);
+  border-bottom: 1px solid var(--gold-500);
   display: flex;
   align-items: center;
   padding: 10px 22px;
@@ -114,6 +114,11 @@
 .app-topbar-filters .form-control {
   width: 160px;
   flex-shrink: 0;
+  background-color: #fff;
+}
+[data-theme="dark"] .app-topbar-filters .form-select,
+[data-theme="dark"] .app-topbar-filters .form-control {
+  background-color: var(--surface-raised);
 }
 .app-topbar-filters #fyFilter { width: 178px; }
 .app-topbar-filters #monthFilter { width: 128px; }
@@ -385,13 +390,13 @@
   font-size: 0.87rem;
 }
 .data-table-card .table thead th {
-  background: var(--bg-canvas);
-  color: var(--text-muted);
+  background: var(--gold-100);
+  color: var(--gold-600);
   font-weight: 600;
   font-size: 0.72rem;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--gold-500);
   white-space: nowrap;
   padding: 12px 16px;
 }
