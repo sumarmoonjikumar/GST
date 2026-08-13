@@ -16,6 +16,7 @@
   --gold-600: #a8823f;
   --gold-500: #bc9a54;
   --gold-100: #f3ead4;
+  --gold-50: #faf5e9;
 
   /* --- Semantic (muted, non-alarming) --- */
   --success: #3d8462;
@@ -69,6 +70,7 @@
   --danger-100: #2c2019;
   --info-100: #1a2529;
   --gold-100: #2a2418;
+  --gold-50: #332c1e;
 }
 
 * { box-sizing: border-box; }
