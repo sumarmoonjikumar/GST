@@ -3,137 +3,464 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-<title>GST Master — Sign In</title>
-<meta name="description" content="GST Master — GST Consulting Office Management System" />
-<meta name="theme-color" content="#1a3049" />
+<title>Lexicon Tax Solutions — Sign In</title>
+<meta name="description" content="Lexicon Tax Solutions — GST Consulting Office Management System" />
+<meta name="theme-color" content="#001839" />
 <link rel="icon" href="assets/icons/logo-icon.svg" type="image/svg+xml" />
 <link rel="manifest" href="manifest.json" />
 
-<!-- Bootstrap 5 (CDN, free) -->
-<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-<!-- Font Awesome (CDN, free) -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;600;700&family=Inter:wght@400;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
+<!-- Font Awesome — only used for the app's toast notifications -->
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
-<!-- Google Fonts (CDN, free) -->
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Sora:wght@600;700;800&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<!-- Bootstrap CSS/JS — only used for the app's toast + spinner components -->
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
 
-<link rel="stylesheet" href="assets/css/theme.css">
-<link rel="stylesheet" href="assets/css/login.css">
+<style>
+  .material-symbols-outlined {
+    font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+  }
+  .material-symbols-outlined.fill {
+    font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+  }
+  /* Role-picker buttons (ADMIN / STAFF / LOGIN AS CLIENT) reuse the app's
+     .role-card hook so login.js's existing selectRole() wiring "just works" —
+     this just styles the active state to match the LOGIN button's navy accent. */
+  .role-card.active {
+    border-color: #112d55 !important;
+    background-color: rgba(17, 45, 85, 0.06) !important;
+    color: #112d55 !important;
+  }
+</style>
+
+<script id="tailwind-config">
+  tailwind.config = {
+    darkMode: "class",
+    theme: {
+      extend: {
+        "colors": {
+                "tertiary-fixed": "#ffdcc3",
+                "error-container": "#ffdad6",
+                "on-background": "#1a1b1e",
+                "inverse-surface": "#2f3033",
+                "surface-bright": "#faf9fd",
+                "on-error-container": "#93000a",
+                "secondary-container": "#80f98b",
+                "surface-container-low": "#f4f3f7",
+                "on-tertiary": "#ffffff",
+                "on-primary-fixed": "#001b3e",
+                "on-secondary-fixed": "#002106",
+                "primary-fixed": "#d6e3ff",
+                "inverse-primary": "#aec7f8",
+                "tertiary-container": "#492400",
+                "tertiary-fixed-dim": "#f9b987",
+                "tertiary": "#2b1300",
+                "primary-fixed-dim": "#aec7f8",
+                "on-tertiary-fixed-variant": "#673c15",
+                "border-neutral": "#E2E8F0",
+                "background": "#faf9fd",
+                "secondary-fixed": "#83fc8e",
+                "primary": "#001839",
+                "trust-navy-light": "#1B437D",
+                "inverse-on-surface": "#f1f0f4",
+                "on-secondary": "#ffffff",
+                "surface-dim": "#dbd9dd",
+                "surface-container-highest": "#e3e2e6",
+                "surface-container": "#efedf1",
+                "on-secondary-fixed-variant": "#00531a",
+                "secondary-fixed-dim": "#66df75",
+                "on-secondary-container": "#007327",
+                "on-surface": "#1a1b1e",
+                "on-surface-variant": "#44474e",
+                "outline-variant": "#c4c6d0",
+                "secondary": "#006e25",
+                "on-tertiary-fixed": "#2f1500",
+                "surface-container-high": "#e9e7eb",
+                "surface": "#faf9fd",
+                "error": "#ba1a1a",
+                "on-error": "#ffffff",
+                "on-tertiary-container": "#c1895b",
+                "surface-container-lowest": "#ffffff",
+                "on-primary": "#ffffff",
+                "growth-green": "#1E7D34",
+                "on-primary-fixed-variant": "#2e4770",
+                "surface-subtle": "#F8FAFC",
+                "surface-tint": "#465f89",
+                "on-primary-container": "#7d95c3",
+                "outline": "#74777f",
+                "surface-variant": "#e3e2e6",
+                "primary-container": "#112d55"
+        },
+        "borderRadius": {
+                "DEFAULT": "0.125rem",
+                "lg": "0.25rem",
+                "xl": "0.5rem",
+                "full": "0.75rem"
+        },
+        "spacing": {
+                "stack-md": "16px",
+                "container-max": "1280px",
+                "margin-desktop": "48px",
+                "stack-sm": "8px",
+                "margin-mobile": "16px",
+                "gutter": "24px",
+                "stack-lg": "32px"
+        },
+        "fontFamily": {
+                "headline-md": [
+                        "IBM Plex Sans"
+                ],
+                "body-md": [
+                        "Inter"
+                ],
+                "headline-xl": [
+                        "IBM Plex Sans"
+                ],
+                "headline-lg-mobile": [
+                        "IBM Plex Sans"
+                ],
+                "headline-lg": [
+                        "IBM Plex Sans"
+                ],
+                "label-md": [
+                        "Inter"
+                ],
+                "body-lg": [
+                        "Inter"
+                ]
+        },
+        "fontSize": {
+                "headline-md": [
+                        "24px",
+                        {
+                                "lineHeight": "32px",
+                                "fontWeight": "600"
+                        }
+                ],
+                "body-md": [
+                        "16px",
+                        {
+                                "lineHeight": "24px",
+                                "fontWeight": "400"
+                        }
+                ],
+                "headline-xl": [
+                        "48px",
+                        {
+                                "lineHeight": "56px",
+                                "letterSpacing": "-0.02em",
+                                "fontWeight": "700"
+                        }
+                ],
+                "headline-lg-mobile": [
+                        "28px",
+                        {
+                                "lineHeight": "36px",
+                                "fontWeight": "700"
+                        }
+                ],
+                "headline-lg": [
+                        "32px",
+                        {
+                                "lineHeight": "40px",
+                                "letterSpacing": "-0.01em",
+                                "fontWeight": "700"
+                        }
+                ],
+                "label-md": [
+                        "14px",
+                        {
+                                "lineHeight": "20px",
+                                "fontWeight": "600"
+                        }
+                ],
+                "body-lg": [
+                        "18px",
+                        {
+                                "lineHeight": "28px",
+                                "fontWeight": "400"
+                        }
+                ]
+        }
+},
+    },
+  }
+</script>
 </head>
-<body>
+<body class="bg-background text-on-background font-body-md min-h-screen flex flex-col relative overflow-x-hidden">
+<!-- Ambient Background Graphic -->
+<div aria-hidden="true" class="absolute inset-0 pointer-events-none z-0 overflow-hidden" id="math-animation-container"></div>
 
-<div class="login-shell">
-  <div class="challan-wrap">
-    <div class="neon-ring" aria-hidden="true"></div>
+<!-- Main Hero Content -->
+<main class="flex-grow relative z-10 w-full max-w-container-max mx-auto px-margin-mobile md:px-margin-desktop py-stack-lg md:py-16">
+  <div class="flex flex-col md:flex-row gap-gutter md:gap-24 items-start">
 
-    <div class="challan" role="group" aria-label="GST Master sign in">
+    <!-- Left Column: Value Prop -->
+    <div class="w-full md:w-7/12 flex flex-col space-y-stack-lg pt-4 md:pt-12">
+      <div class="space-y-6">
+        <div class="flex items-center gap-4">
+          <img alt="Lexicon Tax Solutions Logo" class="h-24 w-24 object-contain" src="assets/img/lexicon-logo.png">
+          <span class="font-headline-md text-headline-xl text-primary-container">Lexicon Tax Solutions</span>
+        </div>
+      </div>
 
-      <!-- top perforation -->
-      <div class="perf perf-top" aria-hidden="true"></div>
+      <!-- Services Icons Grid -->
+      <div class="grid grid-cols-2 md:grid-cols-2 gap-6 py-6">
+        <div class="flex flex-col sm:flex-row items-center sm:items-start text-center sm:text-left gap-4 p-6 bg-surface-container-lowest rounded-xl border border-border-neutral shadow-sm hover:shadow-md hover:border-primary-container/30 transition-all group">
+          <div class="w-14 h-14 rounded-full bg-surface-container-low flex items-center justify-center shrink-0 group-hover:bg-primary-container/5 transition-colors relative">
+            <span class="material-symbols-outlined text-primary-container text-3xl">groups</span>
+            <span class="material-symbols-outlined text-growth-green text-sm absolute bottom-0 right-0 fill">check_circle</span>
+          </div>
+          <div>
+            <h3 class="font-label-md text-base text-primary-container mb-1">Client Master Records</h3>
+          </div>
+        </div>
+        <div class="flex flex-col sm:flex-row items-center sm:items-start text-center sm:text-left gap-4 p-6 bg-surface-container-lowest rounded-xl border border-border-neutral shadow-sm hover:shadow-md hover:border-primary-container/30 transition-all group">
+          <div class="w-14 h-14 rounded-full bg-surface-container-low flex items-center justify-center shrink-0 group-hover:bg-primary-container/5 transition-colors relative">
+            <span class="material-symbols-outlined text-primary-container text-3xl">receipt_long</span>
+          </div>
+          <div>
+            <h3 class="font-label-md text-base text-primary-container mb-1">GST Filing &amp; Returns</h3>
+          </div>
+        </div>
+        <div class="flex flex-col sm:flex-row items-center sm:items-start text-center sm:text-left gap-4 p-6 bg-surface-container-lowest rounded-xl border border-border-neutral shadow-sm hover:shadow-md hover:border-primary-container/30 transition-all group">
+          <div class="w-14 h-14 rounded-full bg-surface-container-low flex items-center justify-center shrink-0 group-hover:bg-primary-container/5 transition-colors relative">
+            <span class="material-symbols-outlined text-primary-container text-3xl">request_quote</span>
+            <span class="material-symbols-outlined text-growth-green text-sm absolute bottom-0 right-0 fill">check_circle</span>
+          </div>
+          <div>
+            <h3 class="font-label-md text-base text-primary-container mb-1">Invoicing &amp; Payments</h3>
+          </div>
+        </div>
+        <div class="flex flex-col sm:flex-row items-center sm:items-start text-center sm:text-left gap-4 p-6 bg-surface-container-lowest rounded-xl border border-border-neutral shadow-sm hover:shadow-md hover:border-primary-container/30 transition-all group">
+          <div class="w-14 h-14 rounded-full bg-surface-container-low flex items-center justify-center shrink-0 group-hover:bg-primary-container/5 transition-colors relative">
+            <span class="material-symbols-outlined text-primary-container text-3xl">trending_up</span>
+          </div>
+          <div>
+            <h3 class="font-label-md text-base text-primary-container mb-1">Reports &amp; Analytics</h3>
+          </div>
+        </div>
+      </div>
 
-      <section class="challan-applicant">
-        <span class="brand-mark">
-          GST MASTER
-          <span class="brand-sub">GST Office Management</span>
-        </span>
+      <!-- Registration Banner -->
+      <div class="bg-primary-container rounded-xl p-8 shadow-lg flex flex-col md:flex-row items-center justify-between gap-6 relative overflow-hidden">
+        <div class="absolute inset-0 bg-gradient-to-r from-trust-navy-light/20 to-transparent pointer-events-none"></div>
+        <div class="flex flex-col z-10 relative">
+          <p class="font-label-md text-surface-variant mb-1 uppercase tracking-wider text-sm">Start Your Journey Towards</p>
+          <p class="font-headline-md text-on-primary uppercase">STRESS-FREE GST COMPLIANCE</p>
+        </div>
+        <button type="button" id="newCustomerWhatsAppBtn" class="w-full md:w-auto bg-growth-green hover:bg-secondary text-on-primary px-8 py-4 rounded-xl font-label-md text-label-md transition-all flex items-center justify-center gap-2 shadow-md hover:shadow-lg shrink-0 z-10 relative border border-secondary">
+          <i class="fa-brands fa-whatsapp text-lg"></i>
+          NEW CUSTOMER? REQUEST ON WHATSAPP
+        </button>
+      </div>
+    </div>
 
-        <div class="applicant-topline">
-          <h2 class="font-display mb-0">Sign in to <span id="activeRoleLabel">Admin Login</span></h2>
-          <button id="themeToggleBtn" type="button" class="theme-toggle-btn" title="Toggle dark mode" aria-label="Toggle dark mode">
-            <i class="fa-solid fa-moon"></i>
+    <!-- Right Column: Login Portal -->
+    <div class="w-full md:w-5/12 max-w-md mx-auto md:ml-auto md:mt-10">
+      <div class="bg-surface-container-lowest rounded-2xl shadow-xl border border-border-neutral/80 p-8 flex flex-col items-center relative z-20">
+        <div class="w-20 h-20 bg-primary-container text-on-primary rounded-2xl flex items-center justify-center mb-6 shadow-sm rotate-3">
+          <span class="material-symbols-outlined text-4xl fill -rotate-3">account_circle</span>
+        </div>
+        <h2 class="font-headline-md text-headline-md text-primary-container uppercase mb-1 tracking-wide">LOGIN</h2>
+        <p id="activeRoleLabel" class="font-body-md text-xs text-on-surface-variant uppercase tracking-wider mb-6">Admin Login</p>
+
+        <form class="w-full space-y-5" id="loginForm" novalidate>
+          <div class="flex gap-3 w-full">
+            <button class="role-card active flex-1 bg-surface-container-lowest border border-outline-variant text-on-surface-variant py-2.5 rounded-xl font-label-md text-xs sm:text-sm transition-all" type="button" data-role="admin">
+              ADMIN
+            </button>
+            <button class="role-card flex-1 bg-surface-container-lowest border border-outline-variant text-on-surface-variant py-2.5 rounded-xl font-label-md text-xs sm:text-sm transition-all" type="button" data-role="staff">
+              STAFF
+            </button>
+            <button class="role-card flex-1 bg-surface-container-lowest border border-outline-variant text-on-surface-variant py-2.5 rounded-xl font-label-md text-xs sm:text-sm transition-all" type="button" data-role="customer">
+              CLIENT
+            </button>
+          </div>
+          <div class="relative">
+            <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+              <span class="material-symbols-outlined text-outline-variant">person</span>
+            </div>
+            <label for="loginUsername" id="usernameLabel" class="sr-only">Admin Username</label>
+            <input class="w-full pl-12 pr-4 py-3.5 border border-border-neutral rounded-xl bg-surface-subtle text-on-surface placeholder:text-outline-variant focus:ring-2 focus:ring-primary-container/20 focus:border-primary-container transition-all font-body-md text-body-md" placeholder="Username" type="text" id="loginUsername" autocomplete="username" required>
+          </div>
+          <div class="relative">
+            <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+              <span class="material-symbols-outlined text-outline-variant">lock</span>
+            </div>
+            <label for="loginPassword" class="sr-only">Password</label>
+            <input class="w-full pl-12 pr-12 py-3.5 border border-border-neutral rounded-xl bg-surface-subtle text-on-surface placeholder:text-outline-variant focus:ring-2 focus:ring-primary-container/20 focus:border-primary-container transition-all font-body-md text-body-md" placeholder="Password" type="password" id="loginPassword" autocomplete="current-password" required>
+            <button class="absolute inset-y-0 right-0 pr-4 flex items-center text-outline hover:text-on-surface-variant transition-colors" type="button" id="togglePasswordBtn" aria-label="Show password">
+              <span class="material-symbols-outlined text-lg">visibility</span>
+            </button>
+          </div>
+          <div class="flex items-center justify-between pt-1">
+            <label class="flex items-center gap-2 cursor-pointer group">
+              <input class="w-4 h-4 rounded border-border-neutral text-primary-container focus:ring-primary-container" type="checkbox" id="rememberMe">
+              <span class="font-body-md text-sm text-on-surface-variant group-hover:text-on-surface transition-colors">Remember Me</span>
+            </label>
+            <a class="font-body-md text-sm text-trust-navy-light hover:text-primary-container transition-colors" href="#" id="forgotPasswordLink">Forgot Password?</a>
+          </div>
+          <button class="w-full bg-primary-container hover:bg-trust-navy-light text-on-primary py-4 rounded-xl font-label-md text-label-md mt-2 transition-all shadow-md hover:shadow-lg" type="submit" id="loginSubmitBtn">
+            LOGIN
           </button>
-        </div>
-        <p class="text-muted-soft small applicant-hint">Choose a login type, then sign in with your credentials.</p>
-
-        <div class="role-stamps" role="tablist" aria-label="Login type">
-          <div class="role-card active" data-role="admin" role="tab" tabindex="0" aria-pressed="true">
-            <div class="stamp-ring"><i class="fa-solid fa-user-shield"></i></div>
-            <div class="role-title">Admin</div>
-          </div>
-          <div class="role-card" data-role="staff" role="tab" tabindex="0" aria-pressed="false">
-            <div class="stamp-ring"><i class="fa-solid fa-user-tie"></i></div>
-            <div class="role-title">Staff</div>
-          </div>
-          <div class="role-card" data-role="customer" role="tab" tabindex="0" aria-pressed="false">
-            <div class="stamp-ring"><i class="fa-solid fa-building-user"></i></div>
-            <div class="role-title">Customer</div>
-          </div>
-        </div>
-        <p class="role-desc" id="roleDesc">Full control over clients, staff &amp; settings</p>
-
-        <div class="login-form-card">
-          <form id="loginForm" novalidate>
-            <div class="form-floating mb-3">
-              <input type="text" class="form-control" id="loginUsername" placeholder="Username" autocomplete="username" required>
-              <label id="usernameLabel" for="loginUsername">Admin Username</label>
-            </div>
-            <div class="form-floating mb-3">
-              <input type="password" class="form-control" id="loginPassword" placeholder="Password" autocomplete="current-password" required>
-              <label for="loginPassword">Password</label>
-            </div>
-
-            <div class="d-flex align-items-center justify-content-between mb-3">
-              <div class="form-check">
-                <input class="form-check-input" type="checkbox" id="rememberMe">
-                <label class="form-check-label small text-muted-soft" for="rememberMe">Remember me on this device</label>
-              </div>
-              <a href="#" id="forgotPasswordLink" class="small">Forgot password?</a>
-            </div>
-
-            <button id="loginSubmitBtn" type="submit" class="btn btn-navy w-100 py-2">Sign In</button>
-          </form>
-        </div>
-
-        <p class="login-footnote">GST Master v1.0</p>
-      </section>
-
-      <!-- bottom perforation -->
-      <div class="perf perf-bottom" aria-hidden="true"></div>
+        </form>
+      </div>
     </div>
   </div>
-</div>
+
+  <!-- Bottom Trust Bar -->
+  <div class="mt-20 py-8 border-t border-border-neutral block bg-surface-container-lowest/50 overflow-x-auto">
+    <div class="flex flex-nowrap justify-between items-center w-full min-w-max md:min-w-0 gap-6 px-8 max-w-container-max mx-auto">
+      <div class="flex items-center gap-4 group">
+        <div class="w-10 h-10 rounded-full bg-primary-container/5 flex items-center justify-center group-hover:bg-primary-container/10 transition-colors">
+          <span class="material-symbols-outlined text-trust-navy-light text-xl">verified_user</span>
+        </div>
+        <span class="font-body-md text-sm text-on-surface-variant font-semibold">Confidentiality<br>Guaranteed</span>
+      </div>
+      <div class="h-10 w-px bg-border-neutral"></div>
+      <div class="flex items-center gap-4 group">
+        <div class="w-10 h-10 rounded-full bg-primary-container/5 flex items-center justify-center group-hover:bg-primary-container/10 transition-colors">
+          <span class="material-symbols-outlined text-trust-navy-light text-xl">groups</span>
+        </div>
+        <span class="font-body-md text-sm text-on-surface-variant font-semibold">Expert Team of<br>Professionals</span>
+      </div>
+      <div class="h-10 w-px bg-border-neutral"></div>
+      <div class="flex items-center gap-4 group">
+        <div class="w-10 h-10 rounded-full bg-primary-container/5 flex items-center justify-center group-hover:bg-primary-container/10 transition-colors">
+          <span class="material-symbols-outlined text-trust-navy-light text-xl">schedule</span>
+        </div>
+        <span class="font-body-md text-sm text-on-surface-variant font-semibold">Timely Filing<br>&amp; Accuracy</span>
+      </div>
+      <div class="h-10 w-px bg-border-neutral"></div>
+      <div class="flex items-center gap-4 group">
+        <div class="w-10 h-10 rounded-full bg-primary-container/5 flex items-center justify-center group-hover:bg-primary-container/10 transition-colors">
+          <span class="material-symbols-outlined text-trust-navy-light text-xl">workspace_premium</span>
+        </div>
+        <span class="font-body-md text-sm text-on-surface-variant font-semibold">Your Growth is<br>Our Priority</span>
+      </div>
+    </div>
+  </div>
+</main>
+
+<!-- Footer -->
+<footer class="bg-surface-container-lowest border-t border-border-neutral py-6 w-full relative z-20">
+  <div class="max-w-container-max mx-auto px-margin-mobile md:px-margin-desktop text-center">
+    <p class="font-body-md text-sm text-on-surface-variant">© 2026 Lexicon Tax Solutions. All rights reserved.</p>
+  </div>
+</footer>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script type="module" src="assets/js/login.js"></script>
+
 <script>
-  // Keeps the visual "selected" state (colored ring + description) in sync
-  // for every role card, independent of the module script's own timing.
-  // Does not touch app/auth logic.
+  // Password show/hide toggle (decorative UX touch, doesn't affect auth logic)
   (function () {
-    const roleDescMap = {
-      admin: "Full control over clients, staff &amp; settings",
-      staff: "Manage your assigned clients' filings",
-      customer: "View your GST &amp; payment status",
-    };
-    const desc = document.getElementById("roleDesc");
-    const cards = document.querySelectorAll(".role-card");
-    cards.forEach((card) => {
-      card.addEventListener("click", () => sync(card.dataset.role));
-      card.addEventListener("keydown", (e) => {
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          sync(card.dataset.role);
-        }
-      });
+    const btn = document.getElementById('togglePasswordBtn');
+    const input = document.getElementById('loginPassword');
+    if (!btn || !input) return;
+    btn.addEventListener('click', () => {
+      const show = input.type === 'password';
+      input.type = show ? 'text' : 'password';
+      btn.querySelector('.material-symbols-outlined').textContent = show ? 'visibility_off' : 'visibility';
+      btn.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
     });
-    function sync(role) {
-      cards.forEach((c) => {
-        const isActive = c.dataset.role === role;
-        c.classList.toggle("active", isActive);
-        c.setAttribute("aria-pressed", isActive ? "true" : "false");
-      });
-      if (desc) desc.innerHTML = roleDescMap[role];
-    }
   })();
 </script>
-  <script>
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', function () {
-        navigator.serviceWorker.register('./service-worker.js').catch(function (err) {
-          console.warn('Service worker registration failed:', err);
-        });
+
+<script>
+  // New customer request → opens WhatsApp with a pre-filled message.
+  // TODO: replace with your office's WhatsApp number (country code + number, no + or spaces/dashes).
+  (function () {
+    const WHATSAPP_NUMBER = "919999999999";
+    const btn = document.getElementById('newCustomerWhatsAppBtn');
+    if (!btn) return;
+    btn.addEventListener('click', () => {
+      const message = "Hi GST Master team, I'd like to register as a new customer. " +
+        "Name: \nBusiness Name: \nGSTIN (if any): ";
+      const url = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`;
+      window.open(url, '_blank', 'noopener');
+    });
+  })();
+</script>
+
+<script>
+(function() {
+  const container = document.getElementById('math-animation-container') || document.body;
+  container.innerHTML = '';
+
+  const numbers = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '+', '-', '×', '÷', '+', '-', '×', '÷'];
+  const colors = [
+    'rgba(17, 45, 85, 0.10)',   // navy
+    'rgba(30, 125, 52, 0.10)',  // growth green
+    'rgba(214, 40, 40, 0.10)',  // red
+    'rgba(242, 153, 0, 0.10)',  // amber
+    'rgba(111, 66, 193, 0.10)', // purple
+    'rgba(0, 150, 199, 0.10)'   // teal/blue
+  ];
+  const particleCount = 30;
+  const particles = [];
+
+  function createParticle() {
+    const el = document.createElement('div');
+    const num = numbers[Math.floor(Math.random() * numbers.length)];
+    el.innerText = num;
+    el.style.position = 'absolute';
+    el.style.color = colors[Math.floor(Math.random() * colors.length)];
+    el.style.fontSize = Math.random() * 30 + 20 + 'px';
+    el.style.fontWeight = 'bold';
+    el.style.userSelect = 'none';
+    el.style.pointerEvents = 'none';
+    el.style.zIndex = '0';
+    el.style.transition = 'transform 0.1s linear';
+
+    const particle = {
+      el: el,
+      x: Math.random() * window.innerWidth,
+      y: Math.random() * window.innerHeight,
+      vx: (Math.random() - 0.5) * 0.8,
+      vy: (Math.random() - 0.5) * 0.8,
+      rotation: Math.random() * 360,
+      vRotation: (Math.random() - 0.5) * 2
+    };
+
+    container.appendChild(el);
+    return particle;
+  }
+
+  for (let i = 0; i < particleCount; i++) {
+    particles.push(createParticle());
+  }
+
+  function animate() {
+    particles.forEach(p => {
+      p.x += p.vx;
+      p.y += p.vy;
+      p.rotation += p.vRotation;
+
+      if (p.x < -100) p.x = window.innerWidth + 100;
+      if (p.x > window.innerWidth + 100) p.x = -100;
+      if (p.y < -100) p.y = window.innerHeight + 100;
+      if (p.y > window.innerHeight + 100) p.y = -100;
+
+      p.el.style.transform = `translate(${p.x}px, ${p.y}px) rotate(${p.rotation}deg)`;
+    });
+    requestAnimationFrame(animate);
+  }
+
+  animate();
+})();
+</script>
+
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', function () {
+      navigator.serviceWorker.register('./service-worker.js').catch(function (err) {
+        console.warn('Service worker registration failed:', err);
       });
-    }
-  </script>
+    });
+  }
+</script>
 </body>
 </html>

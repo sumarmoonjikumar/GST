@@ -1,7 +1,9 @@
 /* =========================================================
    GST MASTER — Sign In
    A single centered "challan slip" card, with a slow-travelling
-   neon light animated around its outline.
+   neon light animated around its outline. Panel styling (avatar
+   icon, icon-prefixed pill inputs, generous rounded corners)
+   is modelled closely on the supplied reference login design.
    ========================================================= */
 
 .login-shell {
@@ -37,8 +39,8 @@
 .challan-wrap {
   position: relative;
   width: 100%;
-  max-width: 480px;
-  border-radius: calc(var(--radius-lg) + 3px);
+  max-width: 460px;
+  border-radius: 26px;
 }
 
 .neon-ring {
@@ -77,7 +79,7 @@
   z-index: 1;
   width: 100%;
   background: var(--surface);
-  border-radius: var(--radius-lg);
+  border-radius: 22px;
   box-shadow: var(--shadow-lg);
   overflow: hidden;
 }
@@ -95,10 +97,27 @@
 
 /* ---------- The login panel itself ---------- */
 .challan-applicant {
-  padding: 26px 28px 22px;
+  padding: 30px 30px 24px;
   background: var(--surface);
   display: flex;
   flex-direction: column;
+  align-items: center;
+}
+
+/* Avatar icon badge, mirrors the reference login portal's rotated icon tile */
+.login-avatar {
+  width: 68px;
+  height: 68px;
+  border-radius: 20px;
+  background: var(--navy-800);
+  color: var(--gold-500);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.7rem;
+  box-shadow: var(--shadow-md);
+  transform: rotate(3deg);
+  margin-bottom: 16px;
 }
 
 .challan-applicant .brand-mark {
@@ -107,9 +126,10 @@
   font-weight: 700;
   font-size: 1.05rem;
   color: var(--text-primary);
-  letter-spacing: 0.02em;
+  letter-spacing: 0.04em;
   text-align: center;
-  margin-bottom: 14px;
+  margin-bottom: 4px;
+  text-transform: uppercase;
 }
 .challan-applicant .brand-mark .brand-sub {
   display: block;
@@ -123,21 +143,26 @@
 }
 
 .applicant-topline {
+  width: 100%;
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
   border-top: 1px dashed var(--border-strong);
-  padding-top: 14px;
+  margin-top: 14px;
+  padding-top: 16px;
 }
 .applicant-topline h2 {
   font-family: var(--font-display);
-  font-size: 1.1rem;
+  font-size: 1.2rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
   margin-top: 4px;
 }
 .applicant-hint {
+  width: 100%;
   margin-top: 2px;
-  margin-bottom: 14px;
+  margin-bottom: 16px;
   font-size: 0.8rem;
 }
 
@@ -154,6 +179,7 @@
 }
 
 .role-stamps {
+  width: 100%;
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 10px;
@@ -166,12 +192,13 @@
   flex-direction: column;
   align-items: center;
   gap: 6px;
-  padding: 10px 6px;
-  border: 1px solid transparent;
-  border-radius: var(--radius-md);
-  transition: transform var(--transition), background var(--transition);
+  padding: 12px 6px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--bg-canvas);
+  transition: transform var(--transition), background var(--transition), border-color var(--transition);
 }
-.role-card:hover { background: var(--bg-canvas); }
+.role-card:hover { background: var(--surface-raised); border-color: var(--border-strong); }
 .role-card:focus-visible { outline: 2px solid var(--gold-500); outline-offset: 2px; }
 
 .stamp-ring {
@@ -187,6 +214,11 @@
   transition: transform var(--transition), border-color var(--transition), color var(--transition), box-shadow var(--transition);
 }
 
+.role-card.active {
+  background: var(--surface-raised);
+  border-color: var(--stamp-red);
+  box-shadow: var(--shadow-sm);
+}
 .role-card.active .stamp-ring {
   border-color: var(--stamp-red);
   color: var(--stamp-red);
@@ -194,6 +226,7 @@
   box-shadow: 0 0 0 3px rgba(162, 59, 46, 0.12);
 }
 [data-theme="dark"] .role-card.active .stamp-ring { color: var(--stamp-red-dark); border-color: var(--stamp-red-dark); }
+[data-theme="dark"] .role-card.active { border-color: var(--stamp-red-dark); }
 
 .role-card .role-title {
   font-family: var(--font-display);
@@ -204,60 +237,118 @@
 .role-card.active .role-title { color: var(--text-primary); }
 
 .role-desc {
+  width: 100%;
   text-align: center;
   font-size: 0.74rem;
   color: var(--text-muted);
-  margin-bottom: 12px;
+  margin-bottom: 14px;
   min-height: 1.2em;
 }
 
 .login-form-card {
+  width: 100%;
   border-top: 1px dashed var(--border-strong);
-  padding-top: 14px;
+  padding-top: 18px;
 }
 
-.login-form-card .mb-3 { margin-bottom: 10px !important; }
+.login-form-card .mb-3 { margin-bottom: 14px !important; }
 
-.form-floating > label { color: var(--text-muted); }
-.form-floating > .form-control { min-height: calc(2.6rem + 2px); padding: 0.9rem 0.75rem; }
-.form-floating > label { padding: 0.9rem 0.75rem; }
+/* Icon-prefixed pill inputs, replacing Bootstrap's floating-label style
+   with the icon-in-input look from the reference design. */
+.input-icon-group {
+  position: relative;
+}
+.input-icon-group i {
+  position: absolute;
+  top: 50%;
+  left: 16px;
+  transform: translateY(-50%);
+  color: var(--text-faint);
+  font-size: 0.95rem;
+  pointer-events: none;
+}
+.input-icon-group .form-control {
+  width: 100%;
+  padding: 0.85rem 1rem 0.85rem 2.75rem;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  background: var(--bg-canvas);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-size: 0.95rem;
+}
+.input-icon-group .form-control::placeholder { color: var(--text-faint); }
+.input-icon-group .form-control:focus {
+  outline: none;
+  border-color: var(--blue-500);
+  box-shadow: 0 0 0 3px rgba(74, 122, 151, 0.15);
+  background: var(--surface-raised);
+}
+.input-icon-group .visually-hidden-label {
+  position: absolute;
+  width: 1px; height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+.input-toggle-visibility {
+  position: absolute;
+  top: 50%;
+  right: 12px;
+  transform: translateY(-50%);
+  border: none;
+  background: none;
+  color: var(--text-faint);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+}
+.input-toggle-visibility:hover { color: var(--text-muted); }
 
-#loginSubmitBtn { padding-top: 0.55rem; padding-bottom: 0.55rem; }
+#loginSubmitBtn {
+  border-radius: 14px;
+  padding-top: 0.85rem;
+  padding-bottom: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  font-size: 0.85rem;
+}
 
 .login-footnote {
   text-align: center;
   font-size: 0.7rem;
   color: var(--text-faint);
-  margin-top: 10px;
+  margin-top: 14px;
 }
 
 @media (max-width: 480px) {
   .login-shell { padding: 14px 10px; }
-  .challan-applicant { padding: 20px 16px 16px; }
-  .brand-mark { display: none; }
-  .applicant-topline { border-top: none; padding-top: 0; }
-  .role-stamps { gap: 6px; }
-  .brand-mark { font-size: 0.95rem; margin-bottom: 10px; }
-  .applicant-topline h2 { font-size: 1rem; }
+  .challan-applicant { padding: 24px 18px 18px; }
+  .login-avatar { width: 56px; height: 56px; border-radius: 16px; font-size: 1.4rem; margin-bottom: 12px; }
+  .brand-mark { font-size: 0.95rem; }
+  .applicant-topline h2 { font-size: 1.05rem; }
   .stamp-ring { width: 38px; height: 38px; font-size: 0.85rem; }
-  .role-card { padding: 8px 4px; }
+  .role-card { padding: 10px 4px; }
   .role-desc { margin-bottom: 10px; }
 }
 
 @media (max-height: 750px) {
   .login-shell { padding: 12px 10px; }
-  .challan-applicant { padding: 18px 16px 14px; }
-  .brand-mark { margin-bottom: 8px; }
-  .applicant-topline { padding-top: 10px; }
+  .challan-applicant { padding: 20px 18px 16px; }
+  .login-avatar { width: 52px; height: 52px; margin-bottom: 8px; }
+  .applicant-topline { padding-top: 10px; margin-top: 10px; }
   .applicant-hint { margin-bottom: 8px; }
   .role-stamps { margin-bottom: 6px; }
   .role-desc { margin-bottom: 8px; }
-  .login-form-card { padding-top: 10px; }
-  .login-form-card .mb-3 { margin-bottom: 8px !important; }
-  .login-footnote { margin-top: 6px; }
+  .login-form-card { padding-top: 12px; }
+  .login-form-card .mb-3 { margin-bottom: 10px !important; }
+  .login-footnote { margin-top: 8px; }
 }
 
 @media (max-height: 620px) {
+  .login-avatar { display: none; }
   .stamp-ring { width: 34px; height: 34px; font-size: 0.8rem; }
   .role-card .role-title { font-size: 0.68rem; }
   .role-desc { display: none; }
