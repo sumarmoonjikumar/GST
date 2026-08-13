@@ -72,23 +72,23 @@
   .filing-matrix th, .filing-matrix td { white-space: nowrap; }
   .filing-matrix thead th {
     position: sticky; top: 0; z-index: 2;
-    background: var(--bg-canvas); color: var(--text-muted);
+    background: var(--gold-100); color: var(--gold-600);
     font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 700;
-    border-bottom: 1px solid var(--border); padding: 8px 6px;
+    border-bottom: 1px solid var(--gold-500); padding: 8px 6px;
   }
   .filing-matrix th.client-col, .filing-matrix td.client-col {
     position: sticky; left: 0; z-index: 1; background: var(--surface); min-width: 232px; white-space: normal;
     box-shadow: 2px 0 0 var(--border);
   }
-  .filing-matrix thead th.client-col { z-index: 3; background: var(--bg-canvas); }
+  .filing-matrix thead th.client-col { z-index: 3; background: var(--gold-100); }
   .filing-matrix .quarter-row th {
     position: sticky; top: 0; z-index: 2;
-    background: var(--navy-800); color: #d9c58f;
+    background: var(--gold-100); color: var(--gold-600);
     font-size: 0.64rem; letter-spacing: 0.08em; font-weight: 700;
-    padding: 5px 6px; border-bottom: none; text-align: center;
+    padding: 5px 6px; border-bottom: 1px solid var(--gold-500); text-align: center;
   }
-  .filing-matrix .quarter-row th.client-col { background: var(--navy-900); color: #7e93a8; z-index: 3; text-align: left; }
-  .filing-matrix .quarter-row th.q-divider { border-left: 2px dashed rgba(255,255,255,0.25); }
+  .filing-matrix .quarter-row th.client-col { background: var(--gold-100); color: var(--gold-600); z-index: 3; text-align: left; }
+  .filing-matrix .quarter-row th.q-divider { border-left: 2px dashed var(--gold-500); }
   .filing-matrix tbody tr:hover td { background: #ffffff !important; }
   .filing-matrix tbody tr:hover td.client-col { background: #ffffff !important; }
   .filing-matrix td { border-bottom: 1px solid var(--border); }
