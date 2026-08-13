@@ -26,11 +26,11 @@
   }
   /* Role-picker buttons (ADMIN / STAFF / LOGIN AS CLIENT) reuse the app's
      .role-card hook so login.js's existing selectRole() wiring "just works" —
-     this just styles the active state to match the LOGIN button's navy accent. */
+     this just styles the active state as a solid dark blue fill. */
   .role-card.active {
     border-color: #112d55 !important;
-    background-color: rgba(17, 45, 85, 0.06) !important;
-    color: #112d55 !important;
+    background-color: #112d55 !important;
+    color: #ffffff !important;
   }
 </style>
 
@@ -194,7 +194,7 @@
 
 <!-- Main Hero Content -->
 <main class="flex-grow relative z-10 w-full max-w-container-max mx-auto px-margin-mobile md:px-margin-desktop py-stack-lg md:py-16">
-  <div class="flex flex-col md:flex-row gap-gutter md:gap-24 items-start">
+  <div class="flex flex-col md:flex-row gap-gutter md:gap-40 items-start">
 
     <!-- Left Column: Value Prop -->
     <div class="w-full md:w-7/12 flex flex-col space-y-stack-lg pt-4 md:pt-12">
@@ -258,7 +258,7 @@
     </div>
 
     <!-- Right Column: Login Portal -->
-    <div class="w-full md:w-5/12 max-w-md mx-auto md:ml-auto md:mt-10">
+    <div class="w-full md:w-5/12 max-w-md mx-auto md:ml-auto md:mt-20">
       <div class="bg-surface-container-lowest rounded-2xl shadow-xl border border-border-neutral/80 p-8 flex flex-col items-center relative z-20">
         <div class="w-20 h-20 bg-primary-container text-on-primary rounded-2xl flex items-center justify-center mb-6 shadow-sm rotate-3">
           <span class="material-symbols-outlined text-4xl fill -rotate-3">account_circle</span>
@@ -283,14 +283,14 @@
               <span class="material-symbols-outlined text-outline-variant">person</span>
             </div>
             <label for="loginUsername" id="usernameLabel" class="sr-only">Admin Username</label>
-            <input class="w-full pl-12 pr-4 py-3.5 border border-border-neutral rounded-xl bg-surface-subtle text-on-surface placeholder:text-outline-variant focus:ring-2 focus:ring-primary-container/20 focus:border-primary-container transition-all font-body-md text-body-md" placeholder="Username" type="text" id="loginUsername" autocomplete="username" required>
+            <input class="w-full pl-12 pr-4 py-3.5 border border-border-neutral rounded-xl bg-surface-subtle text-on-surface placeholder:text-outline-variant focus:ring-2 focus:ring-border-neutral focus:border-border-neutral transition-all font-body-md text-body-md" placeholder="Username" type="text" id="loginUsername" autocomplete="username" required>
           </div>
           <div class="relative">
             <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
               <span class="material-symbols-outlined text-outline-variant">lock</span>
             </div>
             <label for="loginPassword" class="sr-only">Password</label>
-            <input class="w-full pl-12 pr-12 py-3.5 border border-border-neutral rounded-xl bg-surface-subtle text-on-surface placeholder:text-outline-variant focus:ring-2 focus:ring-primary-container/20 focus:border-primary-container transition-all font-body-md text-body-md" placeholder="Password" type="password" id="loginPassword" autocomplete="current-password" required>
+            <input class="w-full pl-12 pr-12 py-3.5 border border-border-neutral rounded-xl bg-surface-subtle text-on-surface placeholder:text-outline-variant focus:ring-2 focus:ring-border-neutral focus:border-border-neutral transition-all font-body-md text-body-md" placeholder="Password" type="password" id="loginPassword" autocomplete="current-password" required>
             <button class="absolute inset-y-0 right-0 pr-4 flex items-center text-outline hover:text-on-surface-variant transition-colors" type="button" id="togglePasswordBtn" aria-label="Show password">
               <span class="material-symbols-outlined text-lg">visibility</span>
             </button>
@@ -309,40 +309,40 @@
       </div>
     </div>
   </div>
+</main>
 
-  <!-- Bottom Trust Bar -->
-  <div class="mt-20 py-8 border-t border-border-neutral block bg-surface-container-lowest/50 overflow-x-auto">
-    <div class="flex flex-nowrap justify-between items-center w-full min-w-max md:min-w-0 gap-6 px-8 max-w-container-max mx-auto">
-      <div class="flex items-center gap-4 group">
-        <div class="w-10 h-10 rounded-full bg-primary-container/5 flex items-center justify-center group-hover:bg-primary-container/10 transition-colors">
-          <span class="material-symbols-outlined text-trust-navy-light text-xl">verified_user</span>
-        </div>
-        <span class="font-body-md text-sm text-on-surface-variant font-semibold">Confidentiality<br>Guaranteed</span>
+<!-- Bottom Trust Bar -->
+<div class="mt-28 md:mt-40 py-8 border-t border-border-neutral w-full bg-surface-container-lowest/50 overflow-x-auto relative z-20">
+  <div class="flex flex-nowrap justify-between items-center w-full min-w-max md:min-w-0 gap-6 px-8">
+    <div class="flex items-center gap-4 group">
+      <div class="w-10 h-10 rounded-full bg-primary-container/5 flex items-center justify-center group-hover:bg-primary-container/10 transition-colors">
+        <span class="material-symbols-outlined text-trust-navy-light text-xl">verified_user</span>
       </div>
-      <div class="h-10 w-px bg-border-neutral"></div>
-      <div class="flex items-center gap-4 group">
-        <div class="w-10 h-10 rounded-full bg-primary-container/5 flex items-center justify-center group-hover:bg-primary-container/10 transition-colors">
-          <span class="material-symbols-outlined text-trust-navy-light text-xl">groups</span>
-        </div>
-        <span class="font-body-md text-sm text-on-surface-variant font-semibold">Expert Team of<br>Professionals</span>
+      <span class="font-body-md text-sm text-on-surface-variant font-semibold">Confidentiality<br>Guaranteed</span>
+    </div>
+    <div class="h-10 w-px bg-border-neutral"></div>
+    <div class="flex items-center gap-4 group">
+      <div class="w-10 h-10 rounded-full bg-primary-container/5 flex items-center justify-center group-hover:bg-primary-container/10 transition-colors">
+        <span class="material-symbols-outlined text-trust-navy-light text-xl">groups</span>
       </div>
-      <div class="h-10 w-px bg-border-neutral"></div>
-      <div class="flex items-center gap-4 group">
-        <div class="w-10 h-10 rounded-full bg-primary-container/5 flex items-center justify-center group-hover:bg-primary-container/10 transition-colors">
-          <span class="material-symbols-outlined text-trust-navy-light text-xl">schedule</span>
-        </div>
-        <span class="font-body-md text-sm text-on-surface-variant font-semibold">Timely Filing<br>&amp; Accuracy</span>
+      <span class="font-body-md text-sm text-on-surface-variant font-semibold">Expert Team of<br>Professionals</span>
+    </div>
+    <div class="h-10 w-px bg-border-neutral"></div>
+    <div class="flex items-center gap-4 group">
+      <div class="w-10 h-10 rounded-full bg-primary-container/5 flex items-center justify-center group-hover:bg-primary-container/10 transition-colors">
+        <span class="material-symbols-outlined text-trust-navy-light text-xl">schedule</span>
       </div>
-      <div class="h-10 w-px bg-border-neutral"></div>
-      <div class="flex items-center gap-4 group">
-        <div class="w-10 h-10 rounded-full bg-primary-container/5 flex items-center justify-center group-hover:bg-primary-container/10 transition-colors">
-          <span class="material-symbols-outlined text-trust-navy-light text-xl">workspace_premium</span>
-        </div>
-        <span class="font-body-md text-sm text-on-surface-variant font-semibold">Your Growth is<br>Our Priority</span>
+      <span class="font-body-md text-sm text-on-surface-variant font-semibold">Timely Filing<br>&amp; Accuracy</span>
+    </div>
+    <div class="h-10 w-px bg-border-neutral"></div>
+    <div class="flex items-center gap-4 group">
+      <div class="w-10 h-10 rounded-full bg-primary-container/5 flex items-center justify-center group-hover:bg-primary-container/10 transition-colors">
+        <span class="material-symbols-outlined text-trust-navy-light text-xl">workspace_premium</span>
       </div>
+      <span class="font-body-md text-sm text-on-surface-variant font-semibold">Your Growth is<br>Our Priority</span>
     </div>
   </div>
-</main>
+</div>
 
 <!-- Footer -->
 <footer class="bg-surface-container-lowest border-t border-border-neutral py-6 w-full relative z-20">
