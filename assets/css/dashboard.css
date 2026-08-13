@@ -108,26 +108,25 @@
   display: flex;
   align-items: center;
   flex-wrap: nowrap;
-  justify-content: space-between;
-  gap: 16px;
-  width: min(94%, 1100px);
+  justify-content: center;
+  gap: 12px;
 }
 .app-topbar-filters .form-control {
-  flex: 1 1 220px;
-  min-width: 160px;
+  width: 200px;
+  flex: 0 0 200px;
   background-color: #fff;
 }
 .app-topbar-filters .form-select {
-  width: 160px;
-  flex: 0 0 160px;
+  width: 150px;
+  flex: 0 0 150px;
   background-color: #fff;
 }
 [data-theme="dark"] .app-topbar-filters .form-select,
 [data-theme="dark"] .app-topbar-filters .form-control {
   background-color: var(--surface-raised);
 }
-.app-topbar-filters #fyFilter { width: 178px; flex-basis: 178px; }
-.app-topbar-filters #monthFilter { width: 128px; flex-basis: 128px; }
+.app-topbar-filters #fyFilter { width: 170px; flex-basis: 170px; }
+.app-topbar-filters #monthFilter { width: 120px; flex-basis: 120px; }
 .app-topbar-filters .topbar-count-label {
   white-space: nowrap;
   flex: 0 0 auto;
