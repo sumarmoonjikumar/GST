@@ -297,13 +297,6 @@
    on 320px phones through 4K/ultra-wide monitors.
    ========================================================= */
 
-/* Ultra-wide / 4K — cap content width so lines don't stretch
-   edge-to-edge on very large monitors; no effect below ~1760px. */
-.app-main {
-  max-width: min(100%, 1760px);
-  margin-inline: auto;
-}
-
 @media (max-width: 1440px) {
   .app-main { padding: 22px; }
 }
