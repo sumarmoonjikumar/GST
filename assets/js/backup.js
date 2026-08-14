@@ -1,6 +1,6 @@
 import DB from "./db.js";
 import { requireSession } from "./auth.js";
-import { applyStoredTheme, toast } from "./utils.js";
+import { applyStoredTheme, toast, confirmAdminDelete } from "./utils.js";
 import { initAppChrome } from "./chrome.js";
 
 applyStoredTheme();
@@ -65,8 +65,8 @@ async function onRestore() {
 }
 
 async function onClearAll() {
-  if (!confirm("This will permanently delete ALL data (clients, staff, payments, filings, settings). Continue?")) return;
-  if (!confirm("Are you absolutely sure? This cannot be undone.")) return;
+  const ok = await confirmAdminDelete("This will PERMANENTLY delete ALL data (clients, staff, payments, filings, settings) — this full wipe skips Trash entirely and cannot be undone.");
+  if (!ok) return;
 
   await DB.clearAll();
   toast("All data cleared.", "success");

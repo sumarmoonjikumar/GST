@@ -1,6 +1,6 @@
 import DB from "./db.js";
 import { requireSession } from "./auth.js";
-import { applyStoredTheme, toast } from "./utils.js";
+import { applyStoredTheme, toast, formatDate, formatCurrency } from "./utils.js";
 import { initAppChrome } from "./chrome.js";
 
 applyStoredTheme();
@@ -45,6 +45,45 @@ async function init() {
   document.getElementById("invoiceNumberingForm").addEventListener("submit", onSaveInvoiceNumbering);
   ["invoicePrefix", "invoiceFY", "invoiceNextNo"].forEach((id) =>
     document.getElementById(id).addEventListener("input", updateInvoicePreview)
+  );
+
+  await loadTrash();
+}
+
+const TRASH_LABELS = { clients: "Client", staff: "Staff", payments: "Payment", gstRecords: "Filing record", gstr1Sales: "GSTR-1 data" };
+
+function trashItemLabel(storeName, record) {
+  if (storeName === "clients") return record.businessName || "Unnamed client";
+  if (storeName === "staff") return record.name || "Unnamed staff";
+  if (storeName === "payments") return `Payment of ${formatCurrency(record.amount)}`;
+  return record.name || record.id;
+}
+
+async function loadTrash() {
+  const trash = await DB.getTrash();
+  const listEl = document.getElementById("trashList");
+  const emptyEl = document.getElementById("trashEmpty");
+  const countEl = document.getElementById("trashCount");
+
+  countEl.textContent = trash.length;
+  emptyEl.classList.toggle("d-none", trash.length > 0);
+  listEl.innerHTML = trash.map(({ storeName, record, daysLeft }) => `
+    <div class="d-flex align-items-center justify-content-between gap-2 p-2" style="border:1px solid var(--border); border-radius:8px;">
+      <div class="min-width-0" style="min-width:0;">
+        <div class="small fw-semibold text-truncate">${trashItemLabel(storeName, record)}</div>
+        <div class="small text-muted-soft">${TRASH_LABELS[storeName] || storeName} · deleted ${formatDate(record.deletedAt)} · <span class="${daysLeft <= 5 ? "text-danger" : ""}">${daysLeft} day${daysLeft === 1 ? "" : "s"} left</span></div>
+      </div>
+      <button type="button" class="btn btn-outline-success btn-sm flex-shrink-0" data-restore="${storeName}:${record.id}"><i class="fa-solid fa-clock-rotate-left me-1"></i>Restore</button>
+    </div>`).join("");
+
+  listEl.querySelectorAll("[data-restore]").forEach((btn) =>
+    btn.addEventListener("click", async () => {
+      const [storeName, id] = btn.dataset.restore.split(":");
+      await DB.restore(storeName, id);
+      await DB.logActivity(`Restored ${TRASH_LABELS[storeName] || storeName.toLowerCase()} from Trash`, "fa-clock-rotate-left", "success");
+      toast("Restored from Trash.", "success");
+      await loadTrash();
+    })
   );
 }
 

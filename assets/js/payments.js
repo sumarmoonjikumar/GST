@@ -1,6 +1,6 @@
 import DB from "./db.js";
 import { requireSession } from "./auth.js";
-import { applyStoredTheme, toast, formatDate, formatCurrency, currentFY, fyList, fyMonths, initials } from "./utils.js";
+import { applyStoredTheme, toast, formatDate, formatCurrency, currentFY, fyList, fyMonths, initials, confirmAdminDelete } from "./utils.js";
 import { initAppChrome } from "./chrome.js";
 
 applyStoredTheme();
@@ -463,11 +463,12 @@ async function deletePayment(id) {
   if (session.role !== "admin") return;
   const p = allPayments.find((x) => x.id === id);
   if (!p) return;
-  if (!confirm("Delete this payment record? This cannot be undone.")) return;
+  const ok = await confirmAdminDelete("Delete this payment record? It will move to Trash.");
+  if (!ok) return;
 
-  await DB.delete(DB.STORES.payments, id);
-  await DB.logActivity("Deleted a payment record", "fa-trash", "danger");
-  toast("Payment deleted.", "success");
+  await DB.softDelete(DB.STORES.payments, id, session.username);
+  await DB.logActivity("Deleted a payment record (moved to Trash)", "fa-trash", "danger");
+  toast("Payment moved to Trash. Recoverable for 30 days.", "success");
   await loadData();
   render();
 }

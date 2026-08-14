@@ -22,6 +22,14 @@ import {
 import { db as firestore, firebaseReady } from "./firebase.js";
 
 const DB_VERSION = 2; // bumped: v1 was IndexedDB, v2 is Firestore
+const TRASH_HOLD_DAYS = 30;
+// Stores that get a soft-delete + 30-day trash hold instead of an
+// immediate hard delete. Login accounts, settings, and the activity
+// feed are excluded from the visible Trash list — see softDelete()/
+// getTrash() below. Staff logins ride along with their staff record
+// (see PURGE_STORES) but aren't shown as separate trash entries.
+const TRASH_STORES = ["clients", "staff", "payments", "gstRecords", "gstr1Sales"];
+const PURGE_STORES = [...TRASH_STORES, "users"];
 
 const STORES = {
   users: "users",           // login accounts: admin / staff / customer
@@ -70,22 +78,85 @@ const DB = {
     return snap.exists() ? snap.data() : undefined;
   },
 
-  async getAll(storeName) {
+  async getAll(storeName, { includeDeleted = false } = {}) {
     const fs = await ready();
     const snap = await getDocs(collection(fs, storeName));
-    return snap.docs.map((d) => d.data());
+    const rows = snap.docs.map((d) => d.data());
+    return includeDeleted ? rows : rows.filter((r) => !r.deleted);
   },
 
-  async getByIndex(storeName, indexName, value) {
+  async getByIndex(storeName, indexName, value, { includeDeleted = false } = {}) {
     const fs = await ready();
     const q = query(collection(fs, storeName), where(indexName, "==", value));
     const snap = await getDocs(q);
-    return snap.docs.map((d) => d.data());
+    const rows = snap.docs.map((d) => d.data());
+    return includeDeleted ? rows : rows.filter((r) => !r.deleted);
   },
 
   async delete(storeName, key) {
     const fs = await ready();
     await deleteDoc(doc(fs, storeName, key));
+  },
+
+  /**
+   * Soft-delete: marks the doc `deleted:true` (with a timestamp + who
+   * deleted it) instead of removing it, so it can be restored from
+   * Trash within the hold window. Use this for anything a user might
+   * want undone — actual hard removal happens in purgeExpiredTrash().
+   */
+  async softDelete(storeName, key, deletedBy = null) {
+    const existing = await this.get(storeName, key);
+    if (!existing) return false;
+    await this.put(storeName, {
+      ...existing,
+      deleted: true,
+      deletedAt: new Date().toISOString(),
+      deletedBy,
+    });
+    return true;
+  },
+
+  /** Pulls an item back out of Trash before its hold period expires. */
+  async restore(storeName, key) {
+    const existing = await this.get(storeName, key);
+    if (!existing) return false;
+    const { deleted, deletedAt, deletedBy, ...clean } = existing;
+    await this.put(storeName, clean);
+    return true;
+  },
+
+  /** Every soft-deleted item still within its 30-day hold, newest first. */
+  async getTrash() {
+    const out = [];
+    for (const storeName of TRASH_STORES) {
+      const rows = await this.getAll(storeName, { includeDeleted: true });
+      for (const r of rows) {
+        if (!r.deleted) continue;
+        const deletedAt = new Date(r.deletedAt).getTime();
+        const daysLeft = Math.max(0, TRASH_HOLD_DAYS - Math.floor((Date.now() - deletedAt) / 86400000));
+        out.push({ storeName, record: r, daysLeft });
+      }
+    }
+    out.sort((a, b) => new Date(b.record.deletedAt) - new Date(a.record.deletedAt));
+    return out;
+  },
+
+  /**
+   * Permanently removes anything that's been sitting in Trash for
+   * longer than the hold window. Safe (and cheap) to call on every
+   * page load — see chrome.js. Best-effort, not a transaction.
+   */
+  async purgeExpiredTrash() {
+    const fs = await ready();
+    const cutoff = Date.now() - TRASH_HOLD_DAYS * 86400000;
+    for (const storeName of PURGE_STORES) {
+      const rows = await this.getAll(storeName, { includeDeleted: true });
+      const expired = rows.filter((r) => r.deleted && new Date(r.deletedAt).getTime() <= cutoff);
+      if (!expired.length) continue;
+      const batch = writeBatch(fs);
+      expired.forEach((r) => batch.delete(doc(fs, storeName, r.id)));
+      await batch.commit();
+    }
   },
 
   async count(storeName) {

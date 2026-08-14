@@ -240,6 +240,16 @@
               <button type="submit" class="btn btn-navy">Update Password</button>
             </form>
           </div>
+
+          <div class="ledger-card section-card mt-3">
+            <div class="section-card-head d-flex align-items-center justify-content-between">
+              <h5 class="mb-0"><i class="fa-solid fa-trash-can me-2 text-muted-soft"></i>Trash</h5>
+              <span class="badge badge-soft-info" id="trashCount">0</span>
+            </div>
+            <p class="small text-muted-soft">Deleted clients, staff, and payments are held here for <strong>30 days</strong> before being permanently removed. Restore anything you didn't mean to delete.</p>
+            <div id="trashList" class="d-flex flex-column gap-2"></div>
+            <div class="small text-muted-soft" id="trashEmpty">Trash is empty.</div>
+          </div>
         </div>
       </div>
     </main>

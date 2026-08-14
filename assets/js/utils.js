@@ -2,6 +2,8 @@
  * GST MASTER — Shared Utilities
  */
 
+import DB from "./db.js";
+
 export function formatDate(iso, opts = {}) {
   if (!iso) return "—";
   const d = new Date(iso);
@@ -200,4 +202,111 @@ export function currentSession() {
 export function clearSession() {
   sessionStorage.removeItem("gstm_session");
   localStorage.removeItem("gstm_session");
+}
+
+/**
+ * Deletion guard: shows a small modal asking for an ADMIN user ID +
+ * password before anything gets removed, and explains the 30-day
+ * Trash hold. Resolves `true` only once a valid admin login has been
+ * entered; resolves `false` on Cancel/close. Lazily builds its own
+ * markup so no page needs to add anything to its HTML.
+ */
+let adminConfirmEl = null;
+let adminConfirmModal = null;
+
+function ensureAdminConfirmModal() {
+  if (adminConfirmEl) return;
+  adminConfirmEl = document.createElement("div");
+  adminConfirmEl.className = "modal fade";
+  adminConfirmEl.tabIndex = -1;
+  adminConfirmEl.innerHTML = `
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title mb-0"><i class="fa-solid fa-triangle-exclamation text-danger me-2"></i>Confirm Deletion</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <form id="adminConfirmForm">
+          <div class="modal-body">
+            <p class="small mb-2" id="adminConfirmMsg"></p>
+            <p class="small text-muted-soft mb-3">Deleted items move to <strong>Trash</strong> and are held for <strong>30 days</strong> before being permanently removed. Enter an admin login to confirm.</p>
+            <div class="mb-2">
+              <label class="form-label small mb-1">Admin User ID</label>
+              <input type="text" class="form-control form-control-sm" id="adminConfirmUser" autocomplete="username" required />
+            </div>
+            <div class="mb-2">
+              <label class="form-label small mb-1">Admin Password</label>
+              <input type="password" class="form-control form-control-sm" id="adminConfirmPass" autocomplete="current-password" required />
+            </div>
+            <div class="small text-danger d-none" id="adminConfirmError"></div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+            <button type="submit" class="btn btn-danger btn-sm" id="adminConfirmSubmitBtn"><i class="fa-solid fa-trash me-1"></i>Confirm Delete</button>
+          </div>
+        </form>
+      </div>
+    </div>`;
+  document.body.appendChild(adminConfirmEl);
+  adminConfirmModal = new bootstrap.Modal(adminConfirmEl);
+}
+
+export function confirmAdminDelete(message) {
+  ensureAdminConfirmModal();
+  const msgEl = adminConfirmEl.querySelector("#adminConfirmMsg");
+  const userEl = adminConfirmEl.querySelector("#adminConfirmUser");
+  const passEl = adminConfirmEl.querySelector("#adminConfirmPass");
+  const errEl = adminConfirmEl.querySelector("#adminConfirmError");
+  const form = adminConfirmEl.querySelector("#adminConfirmForm");
+  const submitBtn = adminConfirmEl.querySelector("#adminConfirmSubmitBtn");
+  const resetSubmitBtn = () => {
+    submitBtn.disabled = false;
+    submitBtn.innerHTML = `<i class="fa-solid fa-trash me-1"></i>Confirm Delete`;
+  };
+
+  msgEl.textContent = message;
+  userEl.value = "";
+  passEl.value = "";
+  errEl.classList.add("d-none");
+  errEl.textContent = "";
+  resetSubmitBtn();
+
+  return new Promise((resolve) => {
+    let settled = false;
+    const cleanup = (result) => {
+      if (settled) return;
+      settled = true;
+      form.removeEventListener("submit", onSubmit);
+      adminConfirmEl.removeEventListener("hidden.bs.modal", onHidden);
+      resolve(result);
+    };
+
+    async function onSubmit(e) {
+      e.preventDefault();
+      const username = userEl.value.trim().toLowerCase();
+      const password = passEl.value;
+      if (!username || !password) return;
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = `<span class="spinner-border spinner-border-sm me-1"></span>Verifying…`;
+      const matches = await DB.getByIndex(DB.STORES.users, "username", username);
+      const admin = matches.find((u) => u.role === "admin");
+      if (!admin || admin.password !== password) {
+        errEl.textContent = "Invalid admin ID or password.";
+        errEl.classList.remove("d-none");
+        resetSubmitBtn();
+        return;
+      }
+      cleanup(true);
+      adminConfirmModal.hide();
+    }
+
+    function onHidden() {
+      cleanup(false);
+    }
+
+    form.addEventListener("submit", onSubmit);
+    adminConfirmEl.addEventListener("hidden.bs.modal", onHidden);
+    adminConfirmModal.show();
+    setTimeout(() => userEl.focus(), 300);
+  });
 }

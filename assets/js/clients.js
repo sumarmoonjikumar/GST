@@ -1,6 +1,6 @@
 import DB from "./db.js";
 import { requireSession } from "./auth.js";
-import { applyStoredTheme, toast, initials, whatsappLink } from "./utils.js";
+import { applyStoredTheme, toast, initials, whatsappLink, confirmAdminDelete } from "./utils.js";
 import { initAppChrome } from "./chrome.js";
 import { cloudinaryConfig } from "./cloudinary-config.js";
 
@@ -500,11 +500,12 @@ async function onSaveClient(e) {
 async function deleteClient(id) {
   const c = allClients.find((x) => x.id === id);
   if (!c) return;
-  if (!confirm(`Delete client "${c.businessName}"? This cannot be undone.`)) return;
+  const ok = await confirmAdminDelete(`Delete client "${c.businessName}"? It will move to Trash.`);
+  if (!ok) return;
 
-  await DB.delete(DB.STORES.clients, id);
-  await DB.logActivity(`Deleted client "${c.businessName}"`, "fa-trash", "danger");
-  toast("Client deleted.", "success");
+  await DB.softDelete(DB.STORES.clients, id, session.username);
+  await DB.logActivity(`Deleted client "${c.businessName}" (moved to Trash)`, "fa-trash", "danger");
+  toast("Client moved to Trash. Recoverable for 30 days.", "success");
   await loadData();
   render();
 }

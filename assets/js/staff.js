@@ -1,6 +1,6 @@
 import DB from "./db.js";
 import { requireSession } from "./auth.js";
-import { applyStoredTheme, toast, initials, formatDate } from "./utils.js";
+import { applyStoredTheme, toast, initials, formatDate, confirmAdminDelete } from "./utils.js";
 import { initAppChrome } from "./chrome.js";
 
 applyStoredTheme();
@@ -236,7 +236,8 @@ async function deleteStaff(id) {
   const warning = assignedCount > 0
     ? ` They are currently assigned to ${assignedCount} client${assignedCount === 1 ? "" : "s"}, which will become unassigned.`
     : "";
-  if (!confirm(`Delete staff member "${s.name}"? This also removes their login.${warning}`)) return;
+  const ok = await confirmAdminDelete(`Delete staff member "${s.name}"? This also disables their login.${warning} It will move to Trash.`);
+  if (!ok) return;
 
   // Unassign any clients pointed at this staff member.
   const assignedClients = allClients.filter((c) => c.assignedStaffId === id);
@@ -244,11 +245,11 @@ async function deleteStaff(id) {
     await DB.put(DB.STORES.clients, { ...c, assignedStaffId: null, updatedAt: new Date().toISOString() });
   }
 
-  await DB.delete(DB.STORES.staff, id);
-  if (s.userId) await DB.delete(DB.STORES.users, s.userId);
+  await DB.softDelete(DB.STORES.staff, id, session.username);
+  if (s.userId) await DB.softDelete(DB.STORES.users, s.userId, session.username);
 
-  await DB.logActivity(`Deleted staff member "${s.name}"`, "fa-trash", "danger");
-  toast("Staff member deleted.", "success");
+  await DB.logActivity(`Deleted staff member "${s.name}" (moved to Trash)`, "fa-trash", "danger");
+  toast("Staff member moved to Trash. Recoverable for 30 days.", "success");
   await loadData();
   render();
 }

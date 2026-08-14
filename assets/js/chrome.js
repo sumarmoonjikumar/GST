@@ -7,9 +7,14 @@
 
 import { logout } from "./auth.js";
 import { toggleTheme, initials } from "./utils.js";
+import DB from "./db.js";
 
 export function initAppChrome(session) {
   if (!session) return;
+
+  // Best-effort, non-blocking: permanently clear anything that's been
+  // sitting in Trash past its 30-day hold. Cheap no-op most loads.
+  DB.purgeExpiredTrash().catch(() => {});
 
   const nameEl = document.getElementById("sidebarUserName");
   const roleEl = document.getElementById("sidebarUserRole");
