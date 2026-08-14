@@ -6,37 +6,37 @@
    ========================================================= */
 
 :root {
-  /* --- Brand palette (softened, lower-saturation) --- */
-  --navy-950: #11212f;
-  --navy-900: #16293a;
-  --navy-800: #1a3049;
-  --blue-700: #2c5170;
-  --blue-600: #375f7d;
-  --blue-500: #4a7a97;
-  --gold-600: #a8823f;
-  --gold-500: #bc9a54;
-  --gold-100: #f3ead4;
-  --gold-50: #faf5e9;
+  /* --- Brand palette (from index.html sign-in page) --- */
+  --navy-950: #001225;
+  --navy-900: #001839;
+  --navy-800: #112d55;
+  --blue-700: #1b437d;
+  --blue-600: #2e4770;
+  --blue-500: #465f89;
+  --gold-600: #673c15;
+  --gold-500: #c1895b;
+  --gold-100: #ffdcc3;
+  --gold-50: #fdf0e6;
 
   /* --- Semantic (muted, non-alarming) --- */
-  --success: #3d8462;
-  --success-100: #e7f2ec;
-  --warning: #bc9a54;
-  --warning-100: #f7f0df;
-  --danger: #b25849;
-  --danger-100: #f6e8e4;
-  --info: #4a7a97;
-  --info-100: #e9f0f3;
+  --success: #1e7d34;
+  --success-100: #e3f6e7;
+  --warning: #c1895b;
+  --warning-100: #f7ecdf;
+  --danger: #ba1a1a;
+  --danger-100: #ffdad6;
+  --info: #1b437d;
+  --info-100: #e8eef7;
 
   /* --- Surfaces (light mode) — warm, low-glare neutrals --- */
-  --bg-canvas: #f3f1ec;
-  --surface: #fdfcf9;
+  --bg-canvas: #faf9fd;
+  --surface: #ffffff;
   --surface-raised: #ffffff;
-  --border: #e4e0d6;
-  --border-strong: #d2ccbe;
-  --text-primary: #2a2f33;
-  --text-muted: #6b6d68;
-  --text-faint: #96958d;
+  --border: #e3e2e6;
+  --border-strong: #c4c6d0;
+  --text-primary: #1a1b1e;
+  --text-muted: #44474e;
+  --text-faint: #74777f;
 
   /* --- Typography --- */
   --font-display: "Sora", "Segoe UI", sans-serif;
@@ -60,17 +60,17 @@
   --bg-canvas: #14181c;
   --surface: #1a2024;
   --surface-raised: #1f2629;
-  --border: #2c3337;
-  --border-strong: #3a4247;
-  --text-primary: #e6e4de;
-  --text-muted: #a3a49d;
-  --text-faint: #797a73;
-  --success-100: #1c2b23;
-  --warning-100: #2a2519;
-  --danger-100: #2c2019;
-  --info-100: #1a2529;
-  --gold-100: #2a2418;
-  --gold-50: #332c1e;
+  --border: #2b3542;
+  --border-strong: #3a4657;
+  --text-primary: #e3e2e6;
+  --text-muted: #a5aab3;
+  --text-faint: #74777f;
+  --success-100: #16281c;
+  --warning-100: #2b2013;
+  --danger-100: #331512;
+  --info-100: #16212f;
+  --gold-100: #2b2013;
+  --gold-50: #33261a;
 }
 
 * { box-sizing: border-box; }
