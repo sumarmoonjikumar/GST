@@ -31,16 +31,8 @@
      ========================================================= */
 
   :root {
-    --bg-canvas: #fbf9f4;
-    --surface: #ffffff;
-    --surface-raised: #ffffff;
-    --surface-dim: #f5f3ee;
-    --border: #e8e5de;
-    --border-strong: #d2ccbe;
-    --text-primary: #1b1c19;
-    --text-muted: #43474c;
-    --text-faint: #74777c;
-    --gold-vibrant: #d4af37;
+    --surface-dim: #f4f3f7;
+    --gold-vibrant: var(--gold-500);
     --glass-border: rgba(255,255,255,0.55);
     --glass-blur: 14px;
     --radius-md: 12px;
@@ -107,9 +99,9 @@
     transition: transform var(--transition), filter var(--transition), box-shadow var(--transition);
   }
   .filing-pill i { font-size: 9px; }
-  .filing-pill.is-filed { background: #d7f3e3; color: #0f7a45; border-color: #9de3ba; }
-  .filing-pill.is-pending { background: #fdecc8; color: #96660a; border-color: #f7d693; }
-  .filing-pill.is-overdue { background: #dc2626; color: #fff; border-color: #b91c1c; box-shadow: 0 0 0 2px rgba(220,38,38,0.22); }
+  .filing-pill.is-filed { background: var(--success-100); color: var(--success); border-color: color-mix(in srgb, var(--success) 45%, var(--success-100)); }
+  .filing-pill.is-pending { background: var(--warning-100); color: var(--gold-600); border-color: color-mix(in srgb, var(--warning) 45%, var(--warning-100)); }
+  .filing-pill.is-overdue { background: var(--danger); color: #fff; border-color: color-mix(in srgb, var(--danger) 70%, black); box-shadow: 0 0 0 2px rgba(186,26,26,0.22); }
   .filing-pill:hover { filter: brightness(0.95); transform: translateY(-1px); box-shadow: var(--shadow-sm); }
   .filing-pill:active { transform: translateY(0); }
 
@@ -123,7 +115,7 @@
   .freq-tag {
     display: inline-flex; align-items: center; justify-content: center;
     width: 15px; height: 15px; border-radius: 4px; font-size: 8.5px; font-weight: 800;
-    background: var(--gold-100, #f6e6b8); color: var(--gold-700, #8a6a10); flex-shrink: 0;
+    background: var(--gold-100, #ffdcc3); color: var(--gold-600, #673c15); flex-shrink: 0;
   }
 
   @media (max-width: 1180px) {
