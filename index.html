@@ -36,19 +36,9 @@
     0%, 100% { background-position: 0% 50%; }
     50% { background-position: 100% 50%; }
   }
-  @keyframes gstm-ring-pulse {
-    0% { transform: scale(1); opacity: 0.55; }
-    100% { transform: scale(1.9); opacity: 0; }
-  }
   .gstm-cta-banner {
     background-size: 200% 200%;
     animation: gstm-gradient-pan 8s ease-in-out infinite;
-  }
-  .gstm-ring {
-    animation: gstm-ring-pulse 2.2s cubic-bezier(0.2, 0.6, 0.4, 1) infinite;
-  }
-  .gstm-ring.delay {
-    animation-delay: 1.1s;
   }
 </style>
 
@@ -211,13 +201,9 @@
 <div aria-hidden="true" class="absolute inset-0 pointer-events-none z-0 overflow-hidden" id="math-animation-container"></div>
 
 <!-- Floating WhatsApp Button (fixed, bottom-right) -->
-<button type="button" id="newCustomerWhatsAppBtn" class="js-whatsapp-cta" aria-label="Chat on WhatsApp"
-  class="fixed bottom-6 right-6 z-50 w-14 h-14 flex items-center justify-center rounded-full shadow-lg hover:shadow-xl transition-all hover:scale-105">
-  <span class="gstm-ring absolute inset-0 rounded-full" style="background: rgba(30,125,52,0.55);"></span>
-  <span class="gstm-ring delay absolute inset-0 rounded-full" style="background: rgba(30,125,52,0.55);"></span>
-  <span class="relative w-14 h-14 rounded-full bg-growth-green flex items-center justify-center">
-    <i class="fa-brands fa-whatsapp text-2xl text-white"></i>
-  </span>
+<button type="button" id="newCustomerWhatsAppBtn" aria-label="Chat on WhatsApp"
+  class="js-whatsapp-cta fixed bottom-6 right-6 z-50 w-14 h-14 flex items-center justify-center rounded-full bg-growth-green shadow-lg hover:shadow-xl transition-all hover:scale-105">
+  <i class="fa-brands fa-whatsapp text-2xl text-white"></i>
 </button>
 
 <!-- Main Hero Content -->
