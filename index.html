@@ -32,6 +32,24 @@
     background-color: #112d55 !important;
     color: #ffffff !important;
   }
+  @keyframes gstm-gradient-pan {
+    0%, 100% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+  }
+  @keyframes gstm-ring-pulse {
+    0% { transform: scale(1); opacity: 0.55; }
+    100% { transform: scale(1.9); opacity: 0; }
+  }
+  .gstm-cta-banner {
+    background-size: 200% 200%;
+    animation: gstm-gradient-pan 8s ease-in-out infinite;
+  }
+  .gstm-ring {
+    animation: gstm-ring-pulse 2.2s cubic-bezier(0.2, 0.6, 0.4, 1) infinite;
+  }
+  .gstm-ring.delay {
+    animation-delay: 1.1s;
+  }
 </style>
 
 <script id="tailwind-config">
@@ -192,6 +210,16 @@
 <!-- Ambient Background Graphic -->
 <div aria-hidden="true" class="absolute inset-0 pointer-events-none z-0 overflow-hidden" id="math-animation-container"></div>
 
+<!-- Floating WhatsApp Button (fixed, bottom-right) -->
+<button type="button" id="newCustomerWhatsAppBtn" class="js-whatsapp-cta" aria-label="Chat on WhatsApp"
+  class="fixed bottom-6 right-6 z-50 w-14 h-14 flex items-center justify-center rounded-full shadow-lg hover:shadow-xl transition-all hover:scale-105">
+  <span class="gstm-ring absolute inset-0 rounded-full" style="background: rgba(30,125,52,0.55);"></span>
+  <span class="gstm-ring delay absolute inset-0 rounded-full" style="background: rgba(30,125,52,0.55);"></span>
+  <span class="relative w-14 h-14 rounded-full bg-growth-green flex items-center justify-center">
+    <i class="fa-brands fa-whatsapp text-2xl text-white"></i>
+  </span>
+</button>
+
 <!-- Main Hero Content -->
 <main class="flex-grow relative z-10 w-full max-w-container-max mx-auto px-margin-mobile md:px-margin-desktop py-stack-lg md:py-16">
   <div class="flex flex-col md:flex-row gap-gutter md:gap-40 items-start">
@@ -205,77 +233,64 @@
         </div>
       </div>
 
-      <!-- Services Icons Grid -->
-      <div class="grid grid-cols-2 md:grid-cols-2 gap-6 py-6">
-        <div class="flex flex-col sm:flex-row items-center sm:items-start text-center sm:text-left gap-4 p-6 bg-surface-container-lowest rounded-xl border border-border-neutral shadow-sm hover:shadow-md hover:border-primary-container/30 transition-all group">
-          <div class="w-14 h-14 rounded-full bg-surface-container-low flex items-center justify-center shrink-0 group-hover:bg-primary-container/5 transition-colors relative">
-            <span class="material-symbols-outlined text-primary-container text-3xl">groups</span>
-            <span class="material-symbols-outlined text-growth-green text-sm absolute bottom-0 right-0 fill">check_circle</span>
-          </div>
-          <div>
-            <h3 class="font-label-md text-base text-primary-container mb-1">Client Master Records</h3>
-          </div>
+      <!-- Services Grid -->
+      <div class="grid grid-cols-2 md:grid-cols-3 gap-3 py-2">
+        <div class="flex flex-row items-center gap-3 px-4 py-3 rounded-xl transition-all hover:-translate-y-0.5 hover:shadow-md" style="background:#112d55; border:1px solid #1b437d;">
+          <span class="material-symbols-outlined text-2xl shrink-0" style="color:#5fd382;">apartment</span>
+          <h3 class="font-label-md text-sm font-semibold leading-tight" style="color:#ffffff;">Company Registration</h3>
         </div>
-        <div class="flex flex-col sm:flex-row items-center sm:items-start text-center sm:text-left gap-4 p-6 bg-surface-container-lowest rounded-xl border border-border-neutral shadow-sm hover:shadow-md hover:border-primary-container/30 transition-all group">
-          <div class="w-14 h-14 rounded-full bg-surface-container-low flex items-center justify-center shrink-0 group-hover:bg-primary-container/5 transition-colors relative">
-            <span class="material-symbols-outlined text-primary-container text-3xl">receipt_long</span>
-          </div>
-          <div>
-            <h3 class="font-label-md text-base text-primary-container mb-1">GST Filing &amp; Returns</h3>
-          </div>
+        <div class="flex flex-row items-center gap-3 px-4 py-3 rounded-xl transition-all hover:-translate-y-0.5 hover:shadow-md" style="background:#112d55; border:1px solid #1b437d;">
+          <span class="material-symbols-outlined text-2xl shrink-0 fill" style="color:#5fd382;">check_circle</span>
+          <h3 class="font-label-md text-sm font-semibold leading-tight" style="color:#ffffff;">Business Compliance</h3>
         </div>
-        <div class="flex flex-col sm:flex-row items-center sm:items-start text-center sm:text-left gap-4 p-6 bg-surface-container-lowest rounded-xl border border-border-neutral shadow-sm hover:shadow-md hover:border-primary-container/30 transition-all group">
-          <div class="w-14 h-14 rounded-full bg-surface-container-low flex items-center justify-center shrink-0 group-hover:bg-primary-container/5 transition-colors relative">
-            <span class="material-symbols-outlined text-primary-container text-3xl">request_quote</span>
-            <span class="material-symbols-outlined text-growth-green text-sm absolute bottom-0 right-0 fill">check_circle</span>
-          </div>
-          <div>
-            <h3 class="font-label-md text-base text-primary-container mb-1">Invoicing &amp; Payments</h3>
-          </div>
+        <div class="flex flex-row items-center gap-3 px-4 py-3 rounded-xl transition-all hover:-translate-y-0.5 hover:shadow-md" style="background:#112d55; border:1px solid #1b437d;">
+          <span class="material-symbols-outlined text-2xl shrink-0" style="color:#5fd382;">receipt_long</span>
+          <h3 class="font-label-md text-sm font-semibold leading-tight" style="color:#ffffff;">GST Registration</h3>
         </div>
-        <div class="flex flex-col sm:flex-row items-center sm:items-start text-center sm:text-left gap-4 p-6 bg-surface-container-lowest rounded-xl border border-border-neutral shadow-sm hover:shadow-md hover:border-primary-container/30 transition-all group">
-          <div class="w-14 h-14 rounded-full bg-surface-container-low flex items-center justify-center shrink-0 group-hover:bg-primary-container/5 transition-colors relative">
-            <span class="material-symbols-outlined text-primary-container text-3xl">trending_up</span>
-          </div>
-          <div>
-            <h3 class="font-label-md text-base text-primary-container mb-1">Reports &amp; Analytics</h3>
-          </div>
+        <div class="flex flex-row items-center gap-3 px-4 py-3 rounded-xl transition-all hover:-translate-y-0.5 hover:shadow-md" style="background:#112d55; border:1px solid #1b437d;">
+          <span class="material-symbols-outlined text-2xl shrink-0" style="color:#5fd382;">calculate</span>
+          <h3 class="font-label-md text-sm font-semibold leading-tight" style="color:#ffffff;">Tax &amp; Accounting</h3>
+        </div>
+        <div class="flex flex-row items-center gap-3 px-4 py-3 rounded-xl transition-all hover:-translate-y-0.5 hover:shadow-md" style="background:#112d55; border:1px solid #1b437d;">
+          <span class="material-symbols-outlined text-2xl shrink-0" style="color:#5fd382;">verified</span>
+          <h3 class="font-label-md text-sm font-semibold leading-tight" style="color:#ffffff;">Licenses</h3>
+        </div>
+        <div class="flex flex-row items-center gap-3 px-4 py-3 rounded-xl transition-all hover:-translate-y-0.5 hover:shadow-md" style="background:#112d55; border:1px solid #1b437d;">
+          <span class="material-symbols-outlined text-2xl shrink-0 fill" style="color:#5fd382;">add_circle</span>
+          <h3 class="font-label-md text-sm font-semibold leading-tight" style="color:#ffffff;">Other Services</h3>
+        </div>
+        <div class="flex flex-row items-center gap-3 px-4 py-3 rounded-xl transition-all hover:-translate-y-0.5 hover:shadow-md" style="background:#112d55; border:1px solid #1b437d;">
+          <span class="material-symbols-outlined text-2xl shrink-0" style="color:#5fd382;">account_balance</span>
+          <h3 class="font-label-md text-sm font-semibold leading-tight" style="color:#ffffff;">Income Tax</h3>
+        </div>
+        <div class="flex flex-row items-center gap-3 px-4 py-3 rounded-xl transition-all hover:-translate-y-0.5 hover:shadow-md" style="background:#112d55; border:1px solid #1b437d;">
+          <span class="material-symbols-outlined text-2xl shrink-0" style="color:#5fd382;">health_and_safety</span>
+          <h3 class="font-label-md text-sm font-semibold leading-tight" style="color:#ffffff;">ESI / PF</h3>
+        </div>
+        <div class="flex flex-row items-center gap-3 px-4 py-3 rounded-xl transition-all hover:-translate-y-0.5 hover:shadow-md" style="background:#112d55; border:1px solid #1b437d;">
+          <span class="material-symbols-outlined text-2xl shrink-0" style="color:#5fd382;">factory</span>
+          <h3 class="font-label-md text-sm font-semibold leading-tight" style="color:#ffffff;">MSME / Udyam</h3>
         </div>
       </div>
 
       <!-- Registration Banner -->
-      <div class="relative overflow-hidden rounded-2xl p-8 md:p-10 shadow-lg" style="background: linear-gradient(135deg, #001839 0%, #112d55 55%, #1b437d 100%);">
+      <div class="gstm-cta-banner relative overflow-hidden rounded-2xl px-8 py-5 md:px-10 md:py-6 shadow-lg" style="background: linear-gradient(120deg, #001839 0%, #112d55 45%, #1b437d 75%, #112d55 100%);">
         <!-- decorative glows -->
         <div class="absolute -top-16 -right-10 w-56 h-56 rounded-full pointer-events-none" style="background: radial-gradient(circle, rgba(30,125,52,0.35) 0%, transparent 70%);"></div>
         <div class="absolute -bottom-20 -left-10 w-48 h-48 rounded-full pointer-events-none" style="background: radial-gradient(circle, rgba(193,137,91,0.22) 0%, transparent 70%);"></div>
 
-        <div class="relative z-10 flex flex-col md:flex-row items-center md:items-center justify-between gap-8">
-          <div class="flex flex-col items-center md:items-start text-center md:text-left">
-            <span class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 border border-white/15 mb-4">
-              <span class="material-symbols-outlined text-growth-green text-base fill">bolt</span>
-              <span class="font-label-md text-xs uppercase tracking-widest text-white/80">Start Your Journey Towards</span>
+        <div class="relative z-10 flex flex-col items-center text-center">
+          <span class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 border border-white/15 mb-2">
+            <span class="material-symbols-outlined text-growth-green text-base fill">bolt</span>
+            <span class="font-label-md text-xs uppercase tracking-widest text-white/80">Start Your Journey Towards</span>
+          </span>
+          <button type="button" class="js-whatsapp-cta group relative inline-flex items-center gap-3 mt-1 pl-5 pr-6 py-3 rounded-full bg-growth-green hover:brightness-110 text-white font-headline-md text-base md:text-lg leading-tight shadow-md hover:shadow-xl transition-all hover:-translate-y-0.5">
+            <span class="relative w-8 h-8 rounded-full bg-white/15 flex items-center justify-center shrink-0">
+              <i class="fa-brands fa-whatsapp text-lg"></i>
             </span>
-            <h2 class="font-headline-md text-2xl md:text-3xl leading-tight text-white">
-              Stress-Free <span style="color:#f9b987;">GST Compliance</span>
-            </h2>
-            <p class="font-label-md text-sm text-white/60 mt-2 max-w-xs">
-              Filings, invoicing, and payments — handled for you, end to end.
-            </p>
-          </div>
-
-          <div class="flex flex-col items-center gap-2 shrink-0">
-            <button type="button" id="newCustomerWhatsAppBtn"
-              class="group inline-flex items-center gap-3 bg-growth-green hover:brightness-110 text-white pl-5 pr-7 py-4 rounded-full font-label-md text-label-md transition-all shadow-md hover:shadow-xl hover:-translate-y-0.5">
-              <span class="w-9 h-9 rounded-full bg-white/15 flex items-center justify-center shrink-0">
-                <i class="fa-brands fa-whatsapp text-lg"></i>
-              </span>
-              <span class="text-left leading-tight">
-                <span class="block text-[11px] uppercase tracking-wide text-white/70">New Customer?</span>
-                <span class="block text-sm font-bold">Request on WhatsApp</span>
-              </span>
-            </button>
-            <span class="font-label-md text-[11px] text-white/40">No account needed to get in touch</span>
-          </div>
+            <span class="relative">New Customer? Request on WhatsApp</span>
+            <span class="material-symbols-outlined relative text-lg transition-transform group-hover:translate-x-1">arrow_forward</span>
+          </button>
         </div>
       </div>
     </div>
@@ -397,13 +412,15 @@
   // TODO: replace with your office's WhatsApp number (country code + number, no + or spaces/dashes).
   (function () {
     const WHATSAPP_NUMBER = "919999999999";
-    const btn = document.getElementById('newCustomerWhatsAppBtn');
-    if (!btn) return;
-    btn.addEventListener('click', () => {
-      const message = "Hi GST Master team, I'd like to register as a new customer. " +
-        "Name: \nBusiness Name: \nGSTIN (if any): ";
-      const url = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`;
-      window.open(url, '_blank', 'noopener');
+    const btns = document.querySelectorAll('.js-whatsapp-cta');
+    if (!btns.length) return;
+    btns.forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const message = "Hi GST Master team, I'd like to register as a new customer. " +
+          "Name: \nBusiness Name: \nGSTIN (if any): ";
+        const url = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`;
+        window.open(url, '_blank', 'noopener');
+      });
     });
   })();
 </script>
