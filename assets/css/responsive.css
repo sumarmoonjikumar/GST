@@ -1,0 +1,445 @@
+/*
+ * Lexicon Tax Solutions — Responsive Optimization Layer
+ * Loaded last so it safely normalizes the existing Bootstrap/Tailwind/custom CSS
+ * without changing the application's visual language.
+ */
+
+/* ---------- Global viewport safety ---------- */
+html {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+  scroll-behavior: smooth;
+}
+body {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overflow-x: hidden;
+}
+img, svg, video, canvas, iframe {
+  max-width: 100%;
+}
+img {
+  height: auto;
+}
+button, input, select, textarea {
+  max-width: 100%;
+}
+textarea {
+  resize: vertical;
+}
+
+/* Flex/grid children must be allowed to shrink instead of creating
+   a horizontal page overflow. */
+.app-shell > *,
+.app-main,
+.app-topbar,
+.app-topbar > *,
+.app-topbar-filters,
+.page-toolbar > *,
+.page-toolbar .toolbar-filters > *,
+.section-card,
+.ledger-card,
+.row,
+[class*="col-"] {
+  min-width: 0;
+}
+
+/* Long IDs, GSTINs, emails and URLs should wrap where appropriate. */
+.text-break,
+.cell-primary,
+.cell-sub,
+.form-text,
+.alert,
+.modal-body,
+.offcanvas-body {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+/* ---------- Dashboard shell ---------- */
+.app-main {
+  width: 100%;
+  overflow-x: hidden;
+}
+.app-topbar {
+  width: 100%;
+  min-width: 0;
+}
+.app-topbar-filters {
+  min-width: 0;
+}
+.app-topbar-filters .form-control,
+.app-topbar-filters .form-select {
+  min-width: 0;
+}
+
+@media (min-width: 1025px) {
+  .app-main {
+    padding-left: clamp(18px, 2vw, 40px);
+    padding-right: clamp(18px, 2vw, 40px);
+  }
+}
+
+@media (max-width: 1024px) {
+  .app-topbar {
+    position: sticky;
+  }
+  .app-topbar-filters {
+    max-width: 100%;
+  }
+  .sidebar-burger {
+    flex: 0 0 auto;
+  }
+}
+
+@media (max-width: 768px) {
+  .app-topbar {
+    padding-top: 10px !important;
+    padding-bottom: 10px !important;
+    gap: 8px;
+  }
+
+  .app-topbar-filters {
+    width: 100%;
+    gap: 8px;
+  }
+
+  .app-topbar-filters .form-control,
+  .app-topbar-filters .form-select,
+  .app-topbar-filters #fyFilter,
+  .app-topbar-filters #monthFilter {
+    width: auto;
+    max-width: none;
+    flex: 1 1 140px;
+  }
+
+  .page-toolbar {
+    align-items: stretch;
+  }
+  .page-toolbar > .btn,
+  .page-toolbar > a.btn {
+    width: 100%;
+  }
+  .page-toolbar .toolbar-filters {
+    width: 100%;
+  }
+  .page-toolbar .toolbar-filters .form-control,
+  .page-toolbar .toolbar-filters .form-select {
+    width: 100%;
+    max-width: none;
+    flex: 1 1 180px;
+  }
+
+  .section-card,
+  .achievement-card,
+  .stat-card {
+    max-width: 100%;
+  }
+
+  .chart-medium,
+  .chart-medium canvas {
+    max-width: 100%;
+  }
+}
+
+@media (max-width: 576px) {
+  .app-main {
+    padding: 12px !important;
+  }
+
+  .app-topbar {
+    padding-left: 12px !important;
+    padding-right: 12px !important;
+  }
+
+  .app-topbar-filters {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    width: 100%;
+  }
+
+  .app-topbar-filters .topbar-count-label {
+    grid-column: 1 / -1;
+    text-align: center;
+  }
+
+  .app-topbar-filters .form-control,
+  .app-topbar-filters .form-select,
+  .app-topbar-filters #fyFilter,
+  .app-topbar-filters #monthFilter {
+    width: 100%;
+    flex: none;
+  }
+
+  .page-heading {
+    margin-bottom: 14px;
+  }
+
+  .page-heading h2 {
+    font-size: 1.2rem;
+    line-height: 1.25;
+  }
+
+  .row-actions {
+    width: 100%;
+  }
+
+  .row-actions .btn {
+    min-height: 36px;
+  }
+
+  .offcanvas {
+    max-width: 100vw !important;
+  }
+
+  .modal-dialog {
+    margin: 10px !important;
+  }
+
+  .modal-content {
+    max-width: 100%;
+  }
+
+  .fab-btn {
+    right: 12px !important;
+    bottom: calc(12px + env(safe-area-inset-bottom)) !important;
+    max-width: calc(100vw - 24px);
+  }
+}
+
+@media (max-width: 380px) {
+  .app-main {
+    padding: 10px !important;
+  }
+
+  .app-topbar-filters {
+    grid-template-columns: 1fr;
+  }
+
+  .app-topbar-filters .topbar-count-label {
+    grid-column: auto;
+  }
+
+  .sidebar-brand,
+  .sidebar-foot {
+    padding-left: 14px !important;
+    padding-right: 14px !important;
+  }
+
+  .btn {
+    white-space: normal;
+  }
+}
+
+/* ---------- Tables: contain overflow inside their component ---------- */
+.table-responsive,
+.data-table-card,
+.tally-table-wrap {
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+}
+
+.data-table-card .table {
+  width: max-content;
+  min-width: 100%;
+}
+
+@media (max-width: 576px) {
+  .data-table-card .table {
+    min-width: 640px;
+  }
+
+  .data-table-card .table th,
+  .data-table-card .table td {
+    padding-left: 10px;
+    padding-right: 10px;
+  }
+}
+
+/* ---------- Forms ---------- */
+.form-control,
+.form-select,
+.input-group,
+.input-group > .form-control,
+.input-group > .form-select {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.input-group {
+  flex-wrap: nowrap;
+}
+
+@media (max-width: 480px) {
+  .input-group {
+    flex-wrap: wrap;
+  }
+  .input-group > .form-control,
+  .input-group > .form-select,
+  .input-group > .input-group-text,
+  .input-group > .btn {
+    flex: 1 1 auto;
+    width: auto;
+  }
+
+  .form-control,
+  .form-select,
+  .btn {
+    min-height: 40px;
+  }
+}
+
+/* ---------- Invoice ---------- */
+.invoice-wrap {
+  width: 100%;
+  max-width: 820px;
+  box-sizing: border-box;
+}
+
+.tally-invoice {
+  width: 100%;
+  max-width: 100%;
+}
+
+.tally-grid > .tally-box,
+.tally-bottom-grid > .tally-box {
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 640px) {
+  .invoice-wrap {
+    margin: 14px auto;
+    padding-left: 8px;
+    padding-right: 8px;
+  }
+
+  .tally-title {
+    font-size: 0.92rem;
+    padding: 9px 8px;
+  }
+
+  .tally-grid > .tally-box,
+  .tally-bottom-grid > .tally-box {
+    padding: 10px 12px;
+  }
+
+  .tally-meta-row {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .tally-meta-row .v {
+    text-align: left;
+    overflow-wrap: anywhere;
+  }
+
+  .tally-table {
+    min-width: 480px;
+  }
+}
+
+/* ---------- Login / sign-in ---------- */
+.login-shell {
+  width: 100%;
+  max-width: 100vw;
+  box-sizing: border-box;
+}
+.challan-wrap {
+  width: 100%;
+  max-width: 460px;
+}
+.challan {
+  max-width: 100%;
+}
+.challan-applicant {
+  min-width: 0;
+}
+
+@media (max-width: 480px) {
+  .login-shell {
+    padding: 18px 10px !important;
+  }
+
+  .challan-wrap {
+    max-width: 100%;
+  }
+
+  .challan-applicant {
+    padding: 24px 16px 20px;
+  }
+
+  .applicant-topline {
+    gap: 8px;
+  }
+
+  .applicant-topline h2 {
+    font-size: 1.05rem;
+  }
+}
+
+/* ---------- Landing / index page ---------- */
+main {
+  min-width: 0;
+  max-width: 100%;
+}
+
+@media (max-width: 767px) {
+  main {
+    padding-left: 16px !important;
+    padding-right: 16px !important;
+  }
+
+  .gstm-cta-banner {
+    background-size: 200% 200%;
+  }
+
+  /* Prevent decorative/marketing cards from forcing a wide viewport. */
+  main > *,
+  main section,
+  main article,
+  main form {
+    min-width: 0;
+    max-width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  main {
+    padding-left: 12px !important;
+    padding-right: 12px !important;
+  }
+
+  /* Stack common two-column Tailwind layouts on very narrow phones. */
+  main .grid {
+    min-width: 0;
+  }
+
+  main input,
+  main select,
+  main textarea,
+  main button {
+    max-width: 100%;
+  }
+}
+
+/* ---------- Safe-area support for modern phones ---------- */
+@supports (padding: max(0px)) {
+  .app-topbar {
+    padding-left: max(12px, env(safe-area-inset-left));
+    padding-right: max(12px, env(safe-area-inset-right));
+  }
+  .app-main {
+    padding-bottom: max(12px, env(safe-area-inset-bottom));
+  }
+}
+
+/* ---------- Accessibility / stability ---------- */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+}
