@@ -1,482 +1,734 @@
 <!DOCTYPE html>
 <html lang="en" data-theme="light">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-<title>Lexicon Tax Solutions — Sign In</title>
-<meta name="description" content="Lexicon Tax Solutions — GST Consulting Office Management System" />
-<meta name="theme-color" content="#001839" />
-<link rel="icon" href="assets/icons/logo-icon.svg" type="image/svg+xml" />
-<link rel="manifest" href="manifest.json" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lexicon Tax Solutions — Client Portal</title>
+  <meta name="description" content="Lexicon Tax Solutions — GST Consulting Office Management System">
+  <meta name="theme-color" content="#001839">
+  <link rel="icon" href="assets/icons/logo-icon.svg" type="image/svg+xml">
+  <link rel="manifest" href="manifest.json">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+  <!-- Bootstrap CSS/JS — required by login.js's toast() calls (bootstrap.Toast) -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
 
-<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;600;700&family=Inter:wght@400;600&display=swap" rel="stylesheet">
-<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
-<!-- Font Awesome — only used for the app's toast notifications -->
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
-<!-- Bootstrap CSS/JS — only used for the app's toast + spinner components -->
-<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    :root{
+      --navy:#12304A;
+      --navy2:#174B68;
+      --green:#0E8B8B;
+      --green2:#35B8A6;
+      --ink:#173042;
+      --muted:#687B89;
+      --line:#DDE7EA;
+      --soft:#F3F8F8;
+      --white:#fff;
+      --shadow:0 24px 70px rgba(18,48,74,.12);
+    }
+    *{box-sizing:border-box}
+    html{scroll-behavior:smooth}
+    body{
+      margin:0;
+      min-height:100vh;
+      font-family:"DM Sans",sans-serif;
+      color:var(--ink);
+      background:
+        radial-gradient(circle at 8% 8%,rgba(14,139,139,.10),transparent 25%),
+        radial-gradient(circle at 92% 12%,rgba(13,43,80,.11),transparent 30%),
+        #F5F9FA;
+    }
+    button,input{font:inherit}
+    button{cursor:pointer}
+    .page{min-height:100vh;display:flex;flex-direction:column}
+    .topbar{
+      height:76px;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      padding:0 5vw;
+      background:rgba(255,255,255,.88);
+      backdrop-filter:blur(18px);
+      border-bottom:1px solid rgba(229,234,240,.8);
+      position:relative;
+      z-index:5;
+    }
+    .brand{display:flex;align-items:center;gap:12px;text-decoration:none;color:var(--navy)}
+    .brand img{width:46px;height:46px;object-fit:contain}
+    .brand strong{font-family:Manrope,sans-serif;font-size:18px;letter-spacing:-.02em}
+    .brand small{display:block;color:var(--muted);font-size:11px;margin-top:1px}
+    .top-status{display:flex;align-items:center;gap:16px;color:#536B79;font-size:13px}
+    .header-contact{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+    .header-contact a{display:inline-flex;align-items:center;gap:6px;color:#536B79;text-decoration:none;white-space:nowrap;font-size:12px;font-weight:600}
+    .header-contact a:hover{color:var(--green)}
+    .header-contact .material-symbols-outlined{font-size:17px;color:var(--green)}
+    .social-icons{display:flex;align-items:center;gap:8px}
+    .social-icons a{width:30px;height:30px;border-radius:8px;background:#f1f5f8;display:grid;place-items:center;font-size:14px}
+    .social-icons a:hover{background:#E8F6F4}
+    .dot{width:8px;height:8px;border-radius:50%;background:var(--green);box-shadow:0 0 0 5px rgba(14,139,139,.10)}
 
-<style>
-  .material-symbols-outlined {
-    font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
-  }
-  .material-symbols-outlined.fill {
-    font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
-  }
-  /* Role-picker buttons (ADMIN / STAFF / LOGIN AS CLIENT) reuse the app's
-     .role-card hook so login.js's existing selectRole() wiring "just works" —
-     this just styles the active state as a solid dark blue fill. */
-  .role-card.active {
-    border-color: #112d55 !important;
-    background-color: #112d55 !important;
-    color: #ffffff !important;
-  }
-  @keyframes gstm-gradient-pan {
-    0%, 100% { background-position: 0% 50%; }
-    50% { background-position: 100% 50%; }
-  }
-  .gstm-cta-banner {
-    background-size: 200% 200%;
-    animation: gstm-gradient-pan 8s ease-in-out infinite;
-  }
-</style>
+    .hero{
+      width:min(1440px,94vw);
+      margin:28px auto 0;
+      display:grid;
+      grid-template-columns:minmax(0,1fr) 350px;
+      gap:34px;
+      align-items:center;
+      flex:1;
+    }
+    .eyebrow{
+      display:inline-flex;align-items:center;gap:8px;
+      padding:8px 12px;border-radius:999px;
+      background:#E8F6F4;color:#0B7070;font-size:12px;font-weight:700;
+      letter-spacing:.06em;text-transform:uppercase;
+    }
+    .eyebrow .material-symbols-outlined{font-size:17px}
+    h1{
+      font-family:Manrope,sans-serif;
+      font-size:clamp(42px,5vw,70px);
+      line-height:1.03;
+      letter-spacing:-.055em;
+      margin:20px 0 18px;
+      color:var(--navy);
+      max-width:700px;
+    }
+    h1 span{color:var(--green)}
+    .lead{
+      max-width:640px;
+      font-size:18px;
+      line-height:1.7;
+      color:#657985;
+      margin:0 0 28px;
+    }
 
-<script id="tailwind-config">
-  tailwind.config = {
-    darkMode: "class",
-    theme: {
-      extend: {
-        "colors": {
-                "tertiary-fixed": "#ffdcc3",
-                "error-container": "#ffdad6",
-                "on-background": "#1a1b1e",
-                "inverse-surface": "#2f3033",
-                "surface-bright": "#faf9fd",
-                "on-error-container": "#93000a",
-                "secondary-container": "#80f98b",
-                "surface-container-low": "#f4f3f7",
-                "on-tertiary": "#ffffff",
-                "on-primary-fixed": "#001b3e",
-                "on-secondary-fixed": "#002106",
-                "primary-fixed": "#d6e3ff",
-                "inverse-primary": "#aec7f8",
-                "tertiary-container": "#492400",
-                "tertiary-fixed-dim": "#f9b987",
-                "tertiary": "#2b1300",
-                "primary-fixed-dim": "#aec7f8",
-                "on-tertiary-fixed-variant": "#673c15",
-                "border-neutral": "#E2E8F0",
-                "background": "#faf9fd",
-                "secondary-fixed": "#83fc8e",
-                "primary": "#001839",
-                "trust-navy-light": "#1B437D",
-                "inverse-on-surface": "#f1f0f4",
-                "on-secondary": "#ffffff",
-                "surface-dim": "#dbd9dd",
-                "surface-container-highest": "#e3e2e6",
-                "surface-container": "#efedf1",
-                "on-secondary-fixed-variant": "#00531a",
-                "secondary-fixed-dim": "#66df75",
-                "on-secondary-container": "#007327",
-                "on-surface": "#1a1b1e",
-                "on-surface-variant": "#44474e",
-                "outline-variant": "#c4c6d0",
-                "secondary": "#006e25",
-                "on-tertiary-fixed": "#2f1500",
-                "surface-container-high": "#e9e7eb",
-                "surface": "#faf9fd",
-                "error": "#ba1a1a",
-                "on-error": "#ffffff",
-                "on-tertiary-container": "#c1895b",
-                "surface-container-lowest": "#ffffff",
-                "on-primary": "#ffffff",
-                "growth-green": "#1E7D34",
-                "on-primary-fixed-variant": "#2e4770",
-                "surface-subtle": "#F8FAFC",
-                "surface-tint": "#465f89",
-                "on-primary-container": "#7d95c3",
-                "outline": "#74777f",
-                "surface-variant": "#e3e2e6",
-                "primary-container": "#112d55"
-        },
-        "borderRadius": {
-                "DEFAULT": "0.125rem",
-                "lg": "0.25rem",
-                "xl": "0.5rem",
-                "full": "0.75rem"
-        },
-        "spacing": {
-                "stack-md": "16px",
-                "container-max": "1280px",
-                "margin-desktop": "48px",
-                "stack-sm": "8px",
-                "margin-mobile": "16px",
-                "gutter": "24px",
-                "stack-lg": "32px"
-        },
-        "fontFamily": {
-                "headline-md": [
-                        "IBM Plex Sans"
-                ],
-                "body-md": [
-                        "Inter"
-                ],
-                "headline-xl": [
-                        "IBM Plex Sans"
-                ],
-                "headline-lg-mobile": [
-                        "IBM Plex Sans"
-                ],
-                "headline-lg": [
-                        "IBM Plex Sans"
-                ],
-                "label-md": [
-                        "Inter"
-                ],
-                "body-lg": [
-                        "Inter"
-                ]
-        },
-        "fontSize": {
-                "headline-md": [
-                        "24px",
-                        {
-                                "lineHeight": "32px",
-                                "fontWeight": "600"
-                        }
-                ],
-                "body-md": [
-                        "16px",
-                        {
-                                "lineHeight": "24px",
-                                "fontWeight": "400"
-                        }
-                ],
-                "headline-xl": [
-                        "48px",
-                        {
-                                "lineHeight": "56px",
-                                "letterSpacing": "-0.02em",
-                                "fontWeight": "700"
-                        }
-                ],
-                "headline-lg-mobile": [
-                        "28px",
-                        {
-                                "lineHeight": "36px",
-                                "fontWeight": "700"
-                        }
-                ],
-                "headline-lg": [
-                        "32px",
-                        {
-                                "lineHeight": "40px",
-                                "letterSpacing": "-0.01em",
-                                "fontWeight": "700"
-                        }
-                ],
-                "label-md": [
-                        "14px",
-                        {
-                                "lineHeight": "20px",
-                                "fontWeight": "600"
-                        }
-                ],
-                "body-lg": [
-                        "18px",
-                        {
-                                "lineHeight": "28px",
-                                "fontWeight": "400"
-                        }
-                ]
-        }
-},
-    },
-  }
-</script>
-  <link rel="stylesheet" href="assets/css/responsive.css">
+    .services-section{
+      margin-top:0;
+      padding-top:0;
+      border-top:0;
+    }
+    .section-heading{
+      display:flex;
+      align-items:flex-end;
+      justify-content:space-between;
+      gap:30px;
+      margin-bottom:24px;
+    }
+    .services-heading{
+      position:relative;
+      padding:0 0 16px;
+      margin-bottom:18px;
+      border-bottom:0;
+    }
+    .services-title-wrap{
+      position:relative;
+      padding-left:18px;
+    }
+    .services-title-wrap::before{
+      content:"";
+      position:absolute;
+      left:0;
+      top:5px;
+      width:3px;
+      height:52px;
+      border-radius:999px;
+      background:linear-gradient(180deg,var(--green),var(--navy));
+    }
+    .services-label{
+      display:block;
+      color:var(--green);
+      font-size:10px;
+      font-weight:800;
+      letter-spacing:.16em;
+      text-transform:uppercase;
+      margin-bottom:5px;
+    }
+    .services-heading h2{
+      margin:0;
+      font-size:34px;
+      line-height:1.1;
+      letter-spacing:-.045em;
+    }
+    .services-heading p{
+      position:relative;
+      max-width:500px;
+      margin:0 0 2px;
+      padding-left:18px;
+      color:#667487;
+      font-size:13px;
+      line-height:1.7;
+      text-align:left;
+    }
+    .services-heading p::before{
+      content:"";
+      position:absolute;
+      left:0;
+      top:3px;
+      bottom:3px;
+      width:1px;
+      background:var(--line);
+    }
+    .section-kicker{
+      color:var(--green);
+      font-size:11px;
+      font-weight:800;
+      text-transform:uppercase;
+      letter-spacing:.13em;
+    }
+    .services-subtitle{margin-top:8px;color:var(--muted);font-size:13px;line-height:1.5;max-width:520px}
+    .section-heading h2{
+      margin:6px 0 0;
+      font-family:Manrope,sans-serif;
+      color:var(--navy);
+      font-size:34px;
+      letter-spacing:-.04em;
+    }
+    .section-heading p{
+      max-width:430px;
+      margin:0;
+      color:var(--muted);
+      font-size:14px;
+      line-height:1.65;
+      text-align:right;
+    }
+    .services-grid{
+      display:grid;
+      grid-template-columns:repeat(3,minmax(0,1fr));
+      gap:14px;
+      margin-top:0;
+    }
+    .service-card{
+      position:relative;
+      overflow:hidden;
+      padding:22px;
+      height:190px;
+      min-height:190px;
+      background:rgba(255,255,255,.86);
+      border:1px solid var(--line);
+      border-radius:18px;
+      box-shadow:0 8px 26px rgba(18,48,74,.045);
+      transition:.25s ease;
+    }
+    .service-card::after{
+      content:"";
+      position:absolute;
+      width:100px;height:100px;
+      right:-48px;bottom:-48px;
+      border-radius:50%;
+      background:rgba(14,139,139,.07);
+    }
+    .service-card:hover{
+      transform:translateY(-4px);
+      border-color:#B6DCD7;
+      box-shadow:0 16px 38px rgba(18,48,74,.09);
+    }
+    .service-number{
+      position:absolute;
+      top:17px;right:20px;
+      color:#AEBFC8;
+      font-family:Manrope,sans-serif;
+      font-size:12px;
+      font-weight:800;
+      letter-spacing:.08em;
+    }
+    .service-icon{
+      width:42px;height:42px;
+      display:grid;place-items:center;
+      border-radius:12px;
+      background:#E8F6F4;
+      color:var(--green);
+      margin-bottom:14px;
+    }
+    .service-icon .material-symbols-outlined{font-size:21px}
+    .service-card h3{
+      margin:0 35px 12px 0;
+      color:var(--navy);
+      font-family:Manrope,sans-serif;
+      font-size:16px;
+      line-height:1.35;
+    }
+    .service-card ul{
+      list-style:none;
+      padding:0;margin:0;
+      display:grid;gap:7px;
+    }
+    .service-card li{
+      position:relative;
+      padding-left:18px;
+      color:#697789;
+      font-size:12.5px;
+      line-height:1.45;
+    }
+    .service-card li::before{
+      content:"";
+      position:absolute;
+      left:0;top:.58em;
+      width:6px;height:6px;
+      border-radius:50%;
+      background:var(--green);
+    }
+
+    .login-wrap{position:relative;transform:translate(0,18px)}
+    .login-glow{
+      position:absolute;inset:-35px;
+      background:radial-gradient(circle at 50% 45%,rgba(14,139,139,.18),transparent 65%);
+      filter:blur(8px);pointer-events:none;
+    }
+    .login-card{
+      position:relative;
+      background:rgba(255,255,255,.98);
+      border:1px solid rgba(229,234,240,.9);
+      border-radius:24px;
+      padding:24px;
+      box-shadow:0 22px 55px rgba(18,48,74,.14),0 3px 12px rgba(18,48,74,.05);
+      z-index:1;
+    }
+    .login-head{display:flex;align-items:center;gap:13px;margin-bottom:18px;padding-bottom:17px;border-bottom:1px solid var(--line)}
+    .login-icon{
+      width:50px;height:50px;border-radius:15px;
+      background:linear-gradient(145deg,var(--navy),var(--navy2));
+      color:#fff;display:grid;place-items:center;
+      box-shadow:0 12px 24px rgba(18,48,74,.18);
+    }
+    .login-icon .material-symbols-outlined{font-size:25px}
+    .login-head h2{font-family:Manrope;margin:0;font-size:22px;color:var(--navy)}
+    .login-head p{margin:4px 0 0;color:var(--muted);font-size:13px}
+    .roles{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;background:#EFF5F6;padding:4px;border-radius:12px;margin-bottom:18px}
+    .role-card{
+      border:0!important;background:transparent;color:#657985;
+      padding:10px 6px;border-radius:8px;font-size:11px;font-weight:800;
+      transition:.2s;
+    }
+    .role-card.active{background:var(--navy)!important;color:#fff!important;box-shadow:0 5px 14px rgba(18,48,74,.18)}
+    .field{position:relative;margin-bottom:14px}
+    .field > .material-symbols-outlined{
+      position:absolute;left:15px;top:50%;transform:translateY(-50%);
+      color:#7A8E9B;font-size:21px;pointer-events:none;
+    }
+    .field .toggle .material-symbols-outlined{
+      position:static;
+      transform:none;
+      color:inherit;
+      font-size:20px;
+      pointer-events:none;
+    }
+    .field input{
+      width:100%;height:52px;border:1px solid var(--line);border-radius:11px;
+      outline:none;background:#f9fbfc;color:var(--ink);padding:0 44px;
+      transition:.2s;
+    }
+    #loginPassword{padding-right:52px}
+    .field input:focus{border-color:#8CCDC7;box-shadow:0 0 0 4px rgba(14,139,139,.08);background:#fff}
+    .field input::placeholder{color:#96A7B2}
+    .toggle{
+      position:absolute;right:8px;top:50%;transform:translateY(-50%);
+      width:38px;height:38px;
+      display:grid;place-items:center;
+      border:0;border-radius:8px;
+      background:transparent;color:#7A8E9B;
+      padding:0;z-index:2;
+    }
+    .toggle:hover{background:#E8F2F3;color:var(--navy)}
+    .toggle:focus-visible{outline:2px solid rgba(30,155,90,.35);outline-offset:1px}
+    .options{display:flex;justify-content:space-between;align-items:center;margin:3px 0 17px;font-size:11px}
+    .remember{display:flex;align-items:center;gap:7px;color:#667487}
+    .remember input{accent-color:var(--green)}
+    .forgot{color:#0B7070;text-decoration:none;font-weight:700}
+    #loginSubmitBtn{
+      width:100%;height:52px;border:0;border-radius:11px;
+      color:#fff;background:linear-gradient(135deg,var(--navy),#17416d);
+      font-weight:800;letter-spacing:.03em;
+      box-shadow:0 12px 25px rgba(18,48,74,.18);
+      transition:.2s;
+    }
+    #loginSubmitBtn:hover{transform:translateY(-2px);box-shadow:0 16px 30px rgba(18,48,74,.23)}
+    .new-customer{
+      margin-top:16px;padding-top:16px;border-top:0;
+      display:flex;align-items:center;justify-content:space-between;gap:12px;
+    }
+    .new-customer span{font-size:12px;color:#758792}
+    .whatsapp{
+      border:0;background:#E8F6F4;color:#0B7070;border-radius:10px;
+      padding:10px 13px;font-weight:800;font-size:12px;display:flex;align-items:center;gap:7px;
+    }
+
+    .bottom-trust{
+      width:min(1100px,92vw);
+      margin:28px auto 0;
+      padding:14px 18px;
+      display:grid;
+      grid-template-columns:repeat(3,1fr);
+      gap:10px;
+      background:rgba(255,255,255,.78);
+      border:1px solid var(--line);
+      border-radius:16px;
+      box-shadow:0 8px 24px rgba(7,26,51,.04);
+    }
+    .bottom-trust-item{
+      min-width:0;
+      display:flex;
+      align-items:center;
+      gap:11px;
+      padding:7px 14px;
+      border-right:1px solid var(--line);
+    }
+    .bottom-trust-item:last-child{border-right:0}
+    .bottom-trust-item > .material-symbols-outlined{
+      width:34px;
+      height:34px;
+      flex:0 0 34px;
+      display:grid;
+      place-items:center;
+      border-radius:10px;
+      background:#E8F6F4;
+      color:var(--green);
+      font-size:18px;
+    }
+    .bottom-trust-item strong{
+      display:block;
+      color:var(--navy);
+      font-size:12px;
+      font-weight:800;
+      line-height:1.25;
+    }
+    .bottom-trust-item small{
+      display:block;
+      margin-top:3px;
+      color:#7a8797;
+      font-size:10px;
+      line-height:1.3;
+    }
+    .bottom{
+      width:min(1440px,94vw);margin:38px auto 24px;
+      display:flex;justify-content:center;align-items:center;gap:28px;
+      color:#71848F;font-size:12px;text-align:center;
+    }
+    @media(max-width:900px){
+      .services-heading{
+        align-items:flex-start;
+        gap:14px;
+      }
+      .services-heading p{
+        max-width:100%;
+      }
+      .topbar{padding:0 4vw}
+      .top-status{display:flex}
+      .header-contact{gap:8px}
+      .header-contact a{font-size:11px}
+      .header-contact a:first-child{display:none}
+      .social-icons{display:none}
+      .hero{grid-template-columns:1fr;gap:38px;margin-top:32px}
+      .intro{text-align:center}
+      h1{margin-left:auto;margin-right:auto}
+      .lead{margin-left:auto;margin-right:auto}
+      .section-heading{align-items:flex-start;flex-direction:column}
+      .services-grid{grid-template-columns:1fr}
+      .login-wrap{max-width:520px;width:100%;margin:auto;transform:none}
+    }
+    @media(max-width:560px){
+      .math-bg{display:none}
+      .bottom-trust{
+        width:90vw;
+        grid-template-columns:1fr;
+        gap:0;
+        padding:8px 12px;
+        margin-top:20px;
+      }
+      .bottom-trust-item{
+        padding:10px 6px;
+        border-right:0;
+        border-bottom:1px solid var(--line);
+      }
+      .bottom-trust-item:last-child{border-bottom:0}
+      .topbar{height:64px;padding:0 4vw}
+      .brand{gap:8px}
+      .brand strong{font-size:15px}
+      .brand small{font-size:9px}
+      .brand img{width:40px;height:40px}
+      .hero{width:90vw}
+      h1{font-size:40px}
+      .lead{font-size:16px}
+      .login-card{padding:20px;border-radius:22px}
+      .services-section{margin-top:20px;padding-top:20px}
+      .services-subtitle{margin-top:8px;color:var(--muted);font-size:13px;line-height:1.5;max-width:520px}
+    .section-heading h2{font-size:25px}
+      .service-card{padding:19px;height:auto;min-height:190px}
+      .bottom{margin-top:30px;justify-content:center;text-align:center}
+    }
+
+    .math-bg{
+      position:fixed;
+      inset:0;
+      overflow:hidden;
+      pointer-events:none;
+      z-index:0;
+      opacity:.16;
+      font-family:"DM Sans",sans-serif;
+    }
+    .math-bg span{
+      position:absolute;
+      left:var(--x);
+      top:var(--y);
+      font-size:var(--size);
+      font-weight:700;
+      color:var(--c);
+      animation:mathFloat var(--duration) linear infinite;
+      animation-delay:var(--delay);
+      user-select:none;
+      white-space:nowrap;
+    }
+    @keyframes mathFloat{
+      0%{
+        transform:translate3d(0,24px,0) rotate(0deg);
+        opacity:0;
+      }
+      12%{opacity:1}
+      50%{
+        transform:translate3d(var(--drift),-12px,0) rotate(90deg);
+      }
+      88%{opacity:1}
+      100%{
+        transform:translate3d(calc(var(--drift) * -1),-24px,0) rotate(180deg);
+        opacity:0;
+      }
+    }
+    .page{position:relative;z-index:1}
+  </style>
 </head>
-<body class="bg-background text-on-background font-body-md min-h-screen flex flex-col relative overflow-x-hidden">
-<!-- Ambient Background Graphic -->
-<div aria-hidden="true" class="absolute inset-0 pointer-events-none z-0 overflow-hidden" id="math-animation-container"></div>
 
-<!-- Floating WhatsApp Button (fixed, bottom-right) -->
-<button type="button" id="newCustomerWhatsAppBtn" aria-label="Chat on WhatsApp"
-  class="js-whatsapp-cta fixed bottom-6 right-6 z-50 w-14 h-14 flex items-center justify-center rounded-full bg-growth-green shadow-lg hover:shadow-xl transition-all hover:scale-105">
-  <i class="fa-brands fa-whatsapp text-2xl text-white"></i>
-</button>
-
-<!-- Main Hero Content -->
-<main class="flex-grow relative z-10 w-full max-w-container-max mx-auto px-margin-mobile md:px-margin-desktop py-stack-lg md:py-16">
-  <div class="flex flex-col md:flex-row gap-gutter md:gap-40 items-start">
-
-    <!-- Left Column: Value Prop -->
-    <div class="w-full md:w-7/12 flex flex-col space-y-stack-lg pt-4 md:pt-12">
-      <div class="space-y-6">
-        <div class="flex items-center gap-4">
-          <img alt="Lexicon Tax Solutions Logo" class="h-24 w-24 object-contain" src="assets/img/lexicon-logo.png">
-          <span class="font-headline-md text-headline-xl text-primary-container">Lexicon Tax Solutions</span>
-        </div>
-      </div>
-
-      <!-- Services Grid -->
-      <div class="grid grid-cols-2 md:grid-cols-3 gap-3 py-2">
-        <div class="flex flex-row items-center gap-3 px-4 py-3 rounded-xl transition-all hover:-translate-y-0.5 hover:shadow-md" style="background:#112d55; border:1px solid #1b437d;">
-          <span class="material-symbols-outlined text-2xl shrink-0" style="color:#5fd382;">apartment</span>
-          <h3 class="font-label-md text-sm font-semibold leading-tight" style="color:#ffffff;">Company Registration</h3>
-        </div>
-        <div class="flex flex-row items-center gap-3 px-4 py-3 rounded-xl transition-all hover:-translate-y-0.5 hover:shadow-md" style="background:#112d55; border:1px solid #1b437d;">
-          <span class="material-symbols-outlined text-2xl shrink-0 fill" style="color:#5fd382;">check_circle</span>
-          <h3 class="font-label-md text-sm font-semibold leading-tight" style="color:#ffffff;">Business Compliance</h3>
-        </div>
-        <div class="flex flex-row items-center gap-3 px-4 py-3 rounded-xl transition-all hover:-translate-y-0.5 hover:shadow-md" style="background:#112d55; border:1px solid #1b437d;">
-          <span class="material-symbols-outlined text-2xl shrink-0" style="color:#5fd382;">receipt_long</span>
-          <h3 class="font-label-md text-sm font-semibold leading-tight" style="color:#ffffff;">GST Registration</h3>
-        </div>
-        <div class="flex flex-row items-center gap-3 px-4 py-3 rounded-xl transition-all hover:-translate-y-0.5 hover:shadow-md" style="background:#112d55; border:1px solid #1b437d;">
-          <span class="material-symbols-outlined text-2xl shrink-0" style="color:#5fd382;">calculate</span>
-          <h3 class="font-label-md text-sm font-semibold leading-tight" style="color:#ffffff;">Tax &amp; Accounting</h3>
-        </div>
-        <div class="flex flex-row items-center gap-3 px-4 py-3 rounded-xl transition-all hover:-translate-y-0.5 hover:shadow-md" style="background:#112d55; border:1px solid #1b437d;">
-          <span class="material-symbols-outlined text-2xl shrink-0" style="color:#5fd382;">verified</span>
-          <h3 class="font-label-md text-sm font-semibold leading-tight" style="color:#ffffff;">Licenses</h3>
-        </div>
-        <div class="flex flex-row items-center gap-3 px-4 py-3 rounded-xl transition-all hover:-translate-y-0.5 hover:shadow-md" style="background:#112d55; border:1px solid #1b437d;">
-          <span class="material-symbols-outlined text-2xl shrink-0 fill" style="color:#5fd382;">add_circle</span>
-          <h3 class="font-label-md text-sm font-semibold leading-tight" style="color:#ffffff;">Other Services</h3>
-        </div>
-        <div class="flex flex-row items-center gap-3 px-4 py-3 rounded-xl transition-all hover:-translate-y-0.5 hover:shadow-md" style="background:#112d55; border:1px solid #1b437d;">
-          <span class="material-symbols-outlined text-2xl shrink-0" style="color:#5fd382;">account_balance</span>
-          <h3 class="font-label-md text-sm font-semibold leading-tight" style="color:#ffffff;">Income Tax</h3>
-        </div>
-        <div class="flex flex-row items-center gap-3 px-4 py-3 rounded-xl transition-all hover:-translate-y-0.5 hover:shadow-md" style="background:#112d55; border:1px solid #1b437d;">
-          <span class="material-symbols-outlined text-2xl shrink-0" style="color:#5fd382;">health_and_safety</span>
-          <h3 class="font-label-md text-sm font-semibold leading-tight" style="color:#ffffff;">ESI / PF</h3>
-        </div>
-        <div class="flex flex-row items-center gap-3 px-4 py-3 rounded-xl transition-all hover:-translate-y-0.5 hover:shadow-md" style="background:#112d55; border:1px solid #1b437d;">
-          <span class="material-symbols-outlined text-2xl shrink-0" style="color:#5fd382;">factory</span>
-          <h3 class="font-label-md text-sm font-semibold leading-tight" style="color:#ffffff;">MSME / Udyam</h3>
-        </div>
-      </div>
-
-      <!-- Registration Banner -->
-      <div class="gstm-cta-banner relative overflow-hidden rounded-2xl px-8 py-5 md:px-10 md:py-6 shadow-lg" style="background: linear-gradient(120deg, #001839 0%, #112d55 45%, #1b437d 75%, #112d55 100%);">
-        <!-- decorative glows -->
-        <div class="absolute -top-16 -right-10 w-56 h-56 rounded-full pointer-events-none" style="background: radial-gradient(circle, rgba(30,125,52,0.35) 0%, transparent 70%);"></div>
-        <div class="absolute -bottom-20 -left-10 w-48 h-48 rounded-full pointer-events-none" style="background: radial-gradient(circle, rgba(193,137,91,0.22) 0%, transparent 70%);"></div>
-
-        <div class="relative z-10 flex flex-col items-center text-center">
-          <span class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 border border-white/15 mb-2">
-            <span class="material-symbols-outlined text-growth-green text-base fill">bolt</span>
-            <span class="font-label-md text-xs uppercase tracking-widest text-white/80">Start Your Journey Towards</span>
-          </span>
-          <button type="button" class="js-whatsapp-cta group relative inline-flex items-center gap-3 mt-1 pl-5 pr-6 py-3 rounded-full bg-growth-green hover:brightness-110 text-white font-headline-md text-base md:text-lg leading-tight shadow-md hover:shadow-xl transition-all hover:-translate-y-0.5">
-            <span class="relative w-8 h-8 rounded-full bg-white/15 flex items-center justify-center shrink-0">
-              <i class="fa-brands fa-whatsapp text-lg"></i>
-            </span>
-            <span class="relative">New Customer? Request on WhatsApp</span>
-            <span class="material-symbols-outlined relative text-lg transition-transform group-hover:translate-x-1">arrow_forward</span>
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <!-- Right Column: Login Portal -->
-    <div class="w-full md:w-5/12 max-w-md mx-auto md:ml-auto md:mt-20">
-      <div class="bg-surface-container-lowest rounded-2xl shadow-xl border border-border-neutral/80 p-8 flex flex-col items-center relative z-20">
-        <div class="w-20 h-20 bg-primary-container text-on-primary rounded-2xl flex items-center justify-center mb-6 shadow-sm rotate-3">
-          <span class="material-symbols-outlined text-4xl fill -rotate-3">account_circle</span>
-        </div>
-        <h2 class="font-headline-md text-headline-md text-primary-container uppercase mb-1 tracking-wide">LOGIN</h2>
-        <p id="activeRoleLabel" class="font-body-md text-xs text-on-surface-variant uppercase tracking-wider mb-6">Admin Login</p>
-
-        <form class="w-full space-y-5" id="loginForm" novalidate>
-          <div class="flex gap-3 w-full">
-            <button class="role-card active flex-1 bg-surface-container-lowest border border-outline-variant text-on-surface-variant py-2.5 rounded-xl font-label-md text-xs sm:text-sm transition-all" type="button" data-role="admin">
-              ADMIN
-            </button>
-            <button class="role-card flex-1 bg-surface-container-lowest border border-outline-variant text-on-surface-variant py-2.5 rounded-xl font-label-md text-xs sm:text-sm transition-all" type="button" data-role="staff">
-              STAFF
-            </button>
-            <button class="role-card flex-1 bg-surface-container-lowest border border-outline-variant text-on-surface-variant py-2.5 rounded-xl font-label-md text-xs sm:text-sm transition-all" type="button" data-role="customer">
-              CLIENT
-            </button>
-          </div>
-          <div class="relative">
-            <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-              <span class="material-symbols-outlined text-outline-variant">person</span>
-            </div>
-            <label for="loginUsername" id="usernameLabel" class="sr-only">Admin Username</label>
-            <input class="w-full pl-12 pr-4 py-3.5 border border-border-neutral rounded-xl bg-surface-subtle text-on-surface placeholder:text-outline-variant focus:ring-2 focus:ring-border-neutral focus:border-border-neutral transition-all font-body-md text-body-md" placeholder="Username" type="text" id="loginUsername" autocomplete="username" required>
-          </div>
-          <div class="relative">
-            <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-              <span class="material-symbols-outlined text-outline-variant">lock</span>
-            </div>
-            <label for="loginPassword" class="sr-only">Password</label>
-            <input class="w-full pl-12 pr-12 py-3.5 border border-border-neutral rounded-xl bg-surface-subtle text-on-surface placeholder:text-outline-variant focus:ring-2 focus:ring-border-neutral focus:border-border-neutral transition-all font-body-md text-body-md" placeholder="Password" type="password" id="loginPassword" autocomplete="current-password" required>
-            <button class="absolute inset-y-0 right-0 pr-4 flex items-center text-outline hover:text-on-surface-variant transition-colors" type="button" id="togglePasswordBtn" aria-label="Show password">
-              <span class="material-symbols-outlined text-lg">visibility</span>
-            </button>
-          </div>
-          <div class="flex items-center justify-between pt-1">
-            <label class="flex items-center gap-2 cursor-pointer group">
-              <input class="w-4 h-4 rounded border-border-neutral text-primary-container focus:ring-primary-container" type="checkbox" id="rememberMe">
-              <span class="font-body-md text-sm text-on-surface-variant group-hover:text-on-surface transition-colors">Remember Me</span>
-            </label>
-            <a class="font-body-md text-sm text-trust-navy-light hover:text-primary-container transition-colors" href="#" id="forgotPasswordLink">Forgot Password?</a>
-          </div>
-          <button class="w-full bg-primary-container hover:bg-trust-navy-light text-on-primary py-4 rounded-xl font-label-md text-label-md mt-2 transition-all shadow-md hover:shadow-lg" type="submit" id="loginSubmitBtn">
-            LOGIN
-          </button>
-        </form>
-      </div>
-    </div>
-  </div>
-</main>
-
-<!-- Bottom Trust Bar -->
-<div class="mt-28 md:mt-40 py-8 border-t border-border-neutral w-full bg-surface-container-lowest/50 overflow-x-auto relative z-20">
-  <div class="flex flex-nowrap justify-between items-center w-full min-w-max md:min-w-0 gap-6 px-8">
-    <div class="flex items-center gap-4 group">
-      <div class="w-10 h-10 rounded-full bg-primary-container/5 flex items-center justify-center group-hover:bg-primary-container/10 transition-colors">
-        <span class="material-symbols-outlined text-trust-navy-light text-xl">verified_user</span>
-      </div>
-      <span class="font-body-md text-sm text-on-surface-variant font-semibold">Confidentiality<br>Guaranteed</span>
-    </div>
-    <div class="h-10 w-px bg-border-neutral"></div>
-    <div class="flex items-center gap-4 group">
-      <div class="w-10 h-10 rounded-full bg-primary-container/5 flex items-center justify-center group-hover:bg-primary-container/10 transition-colors">
-        <span class="material-symbols-outlined text-trust-navy-light text-xl">groups</span>
-      </div>
-      <span class="font-body-md text-sm text-on-surface-variant font-semibold">Expert Team of<br>Professionals</span>
-    </div>
-    <div class="h-10 w-px bg-border-neutral"></div>
-    <div class="flex items-center gap-4 group">
-      <div class="w-10 h-10 rounded-full bg-primary-container/5 flex items-center justify-center group-hover:bg-primary-container/10 transition-colors">
-        <span class="material-symbols-outlined text-trust-navy-light text-xl">schedule</span>
-      </div>
-      <span class="font-body-md text-sm text-on-surface-variant font-semibold">Timely Filing<br>&amp; Accuracy</span>
-    </div>
-    <div class="h-10 w-px bg-border-neutral"></div>
-    <div class="flex items-center gap-4 group">
-      <div class="w-10 h-10 rounded-full bg-primary-container/5 flex items-center justify-center group-hover:bg-primary-container/10 transition-colors">
-        <span class="material-symbols-outlined text-trust-navy-light text-xl">workspace_premium</span>
-      </div>
-      <span class="font-body-md text-sm text-on-surface-variant font-semibold">Your Growth is<br>Our Priority</span>
-    </div>
-  </div>
+<body>
+<div class="math-bg" aria-hidden="true">
+<span style="--x:8%;--y:72%;--size:24px;--duration:13s;--drift:-22px;--delay:-2s;--c:var(--green)">+</span>
+<span style="--x:18%;--y:95%;--size:30px;--duration:16s;--drift:18px;--delay:-8s;--c:var(--green)">−</span>
+<span style="--x:29%;--y:60%;--size:20px;--duration:12s;--drift:-14px;--delay:-5s;--c:var(--green)">×</span>
+<span style="--x:41%;--y:88%;--size:28px;--duration:15s;--drift:24px;--delay:-10s;--c:var(--green)">÷</span>
+<span style="--x:53%;--y:74%;--size:18px;--duration:11s;--drift:-18px;--delay:-3s;--c:var(--green)">1</span>
+<span style="--x:66%;--y:92%;--size:26px;--duration:17s;--drift:15px;--delay:-12s;--c:var(--green)">2</span>
+<span style="--x:78%;--y:67%;--size:21px;--duration:14s;--drift:-20px;--delay:-6s;--c:var(--green)">3</span>
+<span style="--x:91%;--y:86%;--size:30px;--duration:18s;--drift:20px;--delay:-15s;--c:var(--green)">4</span>
+<span style="--x:12%;--y:45%;--size:17px;--duration:10s;--drift:16px;--delay:-7s;--c:var(--green)">5</span>
+<span style="--x:23%;--y:82%;--size:25px;--duration:16s;--drift:-17px;--delay:-4s;--c:var(--green)">6</span>
+<span style="--x:36%;--y:52%;--size:19px;--duration:13s;--drift:19px;--delay:-11s;--c:var(--green)">7</span>
+<span style="--x:48%;--y:96%;--size:27px;--duration:19s;--drift:-25px;--delay:-9s;--c:var(--green)">8</span>
+<span style="--x:61%;--y:55%;--size:18px;--duration:12s;--drift:17px;--delay:-1s;--c:var(--green)">9</span>
+<span style="--x:73%;--y:90%;--size:24px;--duration:15s;--drift:-19px;--delay:-13s;--c:var(--green)">0</span>
+<span style="--x:84%;--y:48%;--size:22px;--duration:14s;--drift:23px;--delay:-6s;--c:var(--green)">+</span>
+<span style="--x:96%;--y:75%;--size:19px;--duration:11s;--drift:-15px;--delay:-2s;--c:var(--green)">÷</span>
+<span style="--x:4%;--y:90%;--size:27px;--duration:17s;--drift:21px;--delay:-14s;--c:var(--green)">×</span>
+<span style="--x:58%;--y:98%;--size:20px;--duration:13s;--drift:-16px;--delay:-7s;--c:var(--green)">−</span>
 </div>
+<div class="page">
 
-<!-- Footer -->
-<footer class="bg-surface-container-lowest border-t border-border-neutral py-6 w-full relative z-20">
-  <div class="max-w-container-max mx-auto px-margin-mobile md:px-margin-desktop text-center">
-    <p class="font-body-md text-sm text-on-surface-variant">© 2026 Lexicon Tax Solutions. All rights reserved.</p>
+  <header class="topbar">
+    <a class="brand" href="#">
+      <img src="assets/img/lexicon-logo.png" alt="Lexicon Tax Solutions">
+      <div>
+        <strong>Lexicon Tax Solutions</strong>
+        <small>GST • Tax • Compliance • Advisory</small>
+      </div>
+    </a>
+    <div class="top-status">
+      <div class="header-contact">
+        <a href="mailto:lexiconts@gmail.com">
+          <span class="material-symbols-outlined">mail</span>lexiconts@gmail.com
+        </a>
+        <a href="tel:+919444158157">
+          <span class="material-symbols-outlined">phone</span>9444158157
+        </a>
+        <div class="social-icons" aria-label="Social media">
+          <a href="#" aria-label="Instagram"><i class="fa-brands fa-instagram"></i></a>
+          <a href="#" aria-label="Facebook"><i class="fa-brands fa-facebook-f"></i></a>
+          <a href="#" aria-label="LinkedIn"><i class="fa-brands fa-linkedin-in"></i></a>
+          <a href="#" aria-label="WhatsApp"><i class="fa-brands fa-whatsapp"></i></a>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main class="hero">
+    <section class="intro">
+
+      <section class="services-section">
+        <div class="section-heading">
+          <div>
+            <h2>Our Services</h2>
+          <div class="services-subtitle">Professional accounting, taxation, GST and compliance solutions for your business.</div>
+          </div>
+        </div>
+
+        <div class="services-grid">
+          <article class="service-card">
+            <div class="service-number">01</div>
+            <div class="service-icon"><span class="material-symbols-outlined">apartment</span></div>
+            <h3>Company &amp; Business Registration</h3>
+            <ul>
+              <li>Company &amp; LLP Registration</li>
+              <li>Partnership &amp; MSME Registration</li>
+              <li>PAN, TAN &amp; DSC Services</li>
+            </ul>
+          </article>
+
+          <article class="service-card">
+            <div class="service-number">02</div>
+            <div class="service-icon"><span class="material-symbols-outlined">gavel</span></div>
+            <h3>ROC / MCA Compliance</h3>
+            <ul>
+              <li>ROC Annual Filing</li>
+              <li>MCA Compliance</li>
+              <li>Director KYC &amp; Company Changes</li>
+            </ul>
+          </article>
+
+          <article class="service-card">
+            <div class="service-number">03</div>
+            <div class="service-icon"><span class="material-symbols-outlined">account_balance</span></div>
+            <h3>Income Tax &amp; Taxation</h3>
+            <ul>
+              <li>ITR Filing &amp; Tax Planning</li>
+              <li>Tax Audit &amp; Assessments</li>
+              <li>Capital Gains &amp; NRI Taxation</li>
+            </ul>
+          </article>
+
+          <article class="service-card">
+            <div class="service-number">04</div>
+            <div class="service-icon"><span class="material-symbols-outlined">receipt_long</span></div>
+            <h3>GST Services</h3>
+            <ul>
+              <li>GST Registration &amp; Returns</li>
+              <li>GST Reconciliation &amp; Audit</li>
+              <li>GST Notice &amp; Compliance</li>
+            </ul>
+          </article>
+
+          <article class="service-card">
+            <div class="service-number">05</div>
+            <div class="service-icon"><span class="material-symbols-outlined">groups</span></div>
+            <h3>TDS &amp; Payroll</h3>
+            <ul>
+              <li>TDS Returns &amp; Compliance</li>
+              <li>TRACES &amp; TDS Notices</li>
+              <li>Payroll &amp; Form 16 / 16A</li>
+            </ul>
+          </article>
+
+          <article class="service-card">
+            <div class="service-number">06</div>
+            <div class="service-icon"><span class="material-symbols-outlined">calculate</span></div>
+            <h3>Accounting &amp; Bookkeeping</h3>
+            <ul>
+              <li>Accounting &amp; Bookkeeping</li>
+              <li>Financial Statements</li>
+              <li>MIS &amp; Bank Reconciliation</li>
+            </ul>
+          </article>
+        </div>
+      </section>
+
+    </section>
+
+    <section class="login-wrap">
+      <div class="login-glow"></div>
+      <div class="login-card">
+        <div class="login-head">
+          <div class="login-icon"><span class="material-symbols-outlined fill">account_circle</span></div>
+          <div>
+            <h2>Welcome back</h2>
+            <p id="activeRoleLabel">Admin Login</p>
+          </div>
+        </div>
+
+        <form id="loginForm" novalidate>
+          <div class="roles">
+            <button class="role-card active" type="button" data-role="admin">ADMIN</button>
+            <button class="role-card" type="button" data-role="staff">STAFF</button>
+            <button class="role-card" type="button" data-role="customer">CLIENT</button>
+          </div>
+
+          <div class="field">
+            <span class="material-symbols-outlined">person</span>
+            <label for="loginUsername" id="usernameLabel" style="display:none">Admin Username</label>
+            <input type="text" id="loginUsername" placeholder="Username" autocomplete="username" required>
+          </div>
+
+          <div class="field">
+            <span class="material-symbols-outlined">lock</span>
+            <label for="loginPassword" style="display:none">Password</label>
+            <input type="password" id="loginPassword" placeholder="Password" autocomplete="current-password" required>
+            <button class="toggle" type="button" id="togglePasswordBtn" aria-label="Show password">
+              <span class="material-symbols-outlined">visibility</span>
+            </button>
+          </div>
+
+          <div class="options">
+            <label class="remember"><input type="checkbox" id="rememberMe"> Remember me</label>
+            <a class="forgot" href="#" id="forgotPasswordLink">Forgot password?</a>
+          </div>
+
+          <button type="submit" id="loginSubmitBtn">LOGIN TO PORTAL</button>
+        </form>
+
+        <div class="new-customer">
+          <span>New customer?</span>
+          <button type="button" class="whatsapp js-whatsapp-cta">
+            <i class="fa-brands fa-whatsapp"></i> Register on WhatsApp
+          </button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <div class="bottom-trust">
+    <div class="bottom-trust-item">
+      <span class="material-symbols-outlined">lock</span>
+      <div><strong>Confidential &amp; Secure</strong><small>Your information stays protected</small></div>
+    </div>
+    <div class="bottom-trust-item">
+      <span class="material-symbols-outlined">schedule</span>
+      <div><strong>Timely Compliance</strong><small>Deadlines handled with care</small></div>
+    </div>
+    <div class="bottom-trust-item">
+      <span class="material-symbols-outlined">support_agent</span>
+      <div><strong>Dedicated Support</strong><small>Reliable assistance when you need it</small></div>
+    </div>
   </div>
-</footer>
+
+  <footer class="bottom">
+    <div>© 2026 Lexicon Tax Solutions. All rights reserved.</div>
+  </footer>
+</div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script type="module" src="assets/js/login.js"></script>
 
 <script>
-  // Password show/hide toggle (decorative UX touch, doesn't affect auth logic)
-  (function () {
-    const btn = document.getElementById('togglePasswordBtn');
-    const input = document.getElementById('loginPassword');
-    if (!btn || !input) return;
-    btn.addEventListener('click', () => {
+(function(){
+  const btn = document.getElementById('togglePasswordBtn');
+  const input = document.getElementById('loginPassword');
+  if(btn && input){
+    btn.addEventListener('click',()=>{
       const show = input.type === 'password';
       input.type = show ? 'text' : 'password';
-      btn.querySelector('.material-symbols-outlined').textContent = show ? 'visibility_off' : 'visibility';
+      btn.querySelector('.material-symbols-outlined').textContent =
+        show ? 'visibility_off' : 'visibility';
       btn.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
     });
-  })();
-</script>
+  }
+})();
 
-<script>
-  // New customer request → opens WhatsApp with a pre-filled message.
-  // TODO: replace with your office's WhatsApp number (country code + number, no + or spaces/dashes).
-  (function () {
-    const WHATSAPP_NUMBER = "919999999999";
-    const btns = document.querySelectorAll('.js-whatsapp-cta');
-    if (!btns.length) return;
-    btns.forEach((btn) => {
-      btn.addEventListener('click', () => {
-        const message = "Hi GST Master team, I'd like to register as a new customer. " +
-          "Name: \nBusiness Name: \nGSTIN (if any): ";
-        const url = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`;
-        window.open(url, '_blank', 'noopener');
-      });
+(function(){
+  const WHATSAPP_NUMBER = "919999999999";
+  document.querySelectorAll('.js-whatsapp-cta').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      const message =
+        "Hi GST Master team, I'd like to register as a new customer.\n" +
+        "Name: \nBusiness Name: \nGSTIN (if any): ";
+      window.open(
+        `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`,
+        '_blank','noopener'
+      );
     });
-  })();
-</script>
-
-<script>
-(function() {
-  const container = document.getElementById('math-animation-container') || document.body;
-  container.innerHTML = '';
-
-  const numbers = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '+', '-', '×', '÷', '+', '-', '×', '÷'];
-  const colors = [
-    'rgba(17, 45, 85, 0.10)',   // navy
-    'rgba(30, 125, 52, 0.10)',  // growth green
-    'rgba(214, 40, 40, 0.10)',  // red
-    'rgba(242, 153, 0, 0.10)',  // amber
-    'rgba(111, 66, 193, 0.10)', // purple
-    'rgba(0, 150, 199, 0.10)'   // teal/blue
-  ];
-  const particleCount = 30;
-  const particles = [];
-
-  function createParticle() {
-    const el = document.createElement('div');
-    const num = numbers[Math.floor(Math.random() * numbers.length)];
-    el.innerText = num;
-    el.style.position = 'absolute';
-    el.style.color = colors[Math.floor(Math.random() * colors.length)];
-    el.style.fontSize = Math.random() * 30 + 20 + 'px';
-    el.style.fontWeight = 'bold';
-    el.style.userSelect = 'none';
-    el.style.pointerEvents = 'none';
-    el.style.zIndex = '0';
-    el.style.transition = 'transform 0.1s linear';
-
-    const particle = {
-      el: el,
-      x: Math.random() * window.innerWidth,
-      y: Math.random() * window.innerHeight,
-      vx: (Math.random() - 0.5) * 0.8,
-      vy: (Math.random() - 0.5) * 0.8,
-      rotation: Math.random() * 360,
-      vRotation: (Math.random() - 0.5) * 2
-    };
-
-    container.appendChild(el);
-    return particle;
-  }
-
-  for (let i = 0; i < particleCount; i++) {
-    particles.push(createParticle());
-  }
-
-  function animate() {
-    particles.forEach(p => {
-      p.x += p.vx;
-      p.y += p.vy;
-      p.rotation += p.vRotation;
-
-      if (p.x < -100) p.x = window.innerWidth + 100;
-      if (p.x > window.innerWidth + 100) p.x = -100;
-      if (p.y < -100) p.y = window.innerHeight + 100;
-      if (p.y > window.innerHeight + 100) p.y = -100;
-
-      p.el.style.transform = `translate(${p.x}px, ${p.y}px) rotate(${p.rotation}deg)`;
-    });
-    requestAnimationFrame(animate);
-  }
-
-  animate();
+  });
 })();
 </script>
 
