@@ -57,6 +57,12 @@
     .brand strong{font-family:Manrope,sans-serif;font-size:18px;letter-spacing:-.02em}
     .brand small{display:block;color:rgba(255,255,255,.75);font-size:11px;margin-top:1px}
     .top-status{display:flex;align-items:center;gap:16px;color:#fff;font-size:13px}
+    .main-nav{display:flex;align-items:center;gap:30px}
+    .main-nav a{color:#fff;text-decoration:none;font-size:13px;font-weight:700;letter-spacing:.01em;opacity:.9;transition:.2s;position:relative;padding:4px 0}
+    .main-nav a::after{content:"";position:absolute;left:0;bottom:-4px;width:0;height:2px;background:#fff;transition:.2s}
+    .main-nav a:hover{opacity:1}
+    .main-nav a:hover::after{width:100%}
+    @media(max-width:1100px){.main-nav{display:none}}
     .header-contact{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
     .header-contact a{display:inline-flex;align-items:center;gap:6px;color:#fff;text-decoration:none;white-space:nowrap;font-size:12px;font-weight:800}
     .header-contact a:hover{color:#CFE4FA}
@@ -353,6 +359,45 @@
     }
     .whatsapp:hover{transform:translateY(-2px);box-shadow:0 12px 22px rgba(37,211,102,.35)}
 
+    .about-section{
+      width:100%;
+      margin:clamp(40px,6vw,72px) 0 0;
+      padding:clamp(28px,4vw,56px) 0;
+      background:var(--soft);
+      border-top:1px solid var(--line);
+      border-bottom:1px solid var(--line);
+    }
+    .about-inner{
+      width:min(1440px,94vw);
+      margin:0 auto;
+      display:grid;
+      grid-template-columns:minmax(0,1.1fr) minmax(0,.9fr);
+      gap:clamp(24px,4vw,50px);
+      align-items:center;
+    }
+    .about-section h2{margin:8px 0 14px;font-family:Manrope,sans-serif;color:var(--navy);font-size:clamp(24px,3vw,34px);letter-spacing:-.04em}
+    .about-lead{color:#657985;font-size:clamp(13px,1.1vw,15px);line-height:1.75;margin:0 0 22px;max-width:60ch}
+    .about-stats{display:flex;gap:clamp(18px,3vw,34px);flex-wrap:wrap}
+    .about-stats div{min-width:100px}
+    .about-stats strong{display:block;font-family:Manrope,sans-serif;font-size:clamp(22px,2.4vw,30px);color:var(--navy);letter-spacing:-.03em}
+    .about-stats span{display:block;color:var(--muted);font-size:12px;margin-top:3px}
+    .about-points{display:grid;gap:14px;background:#fff;border:1px solid var(--line);border-radius:16px;padding:clamp(16px,2vw,24px);margin:0}
+    .about-points li{display:flex;align-items:flex-start;gap:10px;list-style:none;color:#4a5c68;font-size:13px;line-height:1.5}
+    .about-points .material-symbols-outlined{color:var(--green);font-size:20px;flex:0 0 20px}
+    @media(max-width:900px){
+      .about-inner{grid-template-columns:1fr}
+    }
+
+    .contact-section{width:100%;padding:clamp(28px,4vw,56px) 0}
+    .contact-inner{width:min(1440px,94vw);margin:0 auto}
+    .contact-title{margin:8px 0 0;font-family:Manrope,sans-serif;color:var(--navy);font-size:clamp(24px,3vw,34px);letter-spacing:-.04em}
+    .contact-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:clamp(12px,1.6vw,18px);margin-top:22px}
+    .contact-item{display:flex;align-items:center;gap:13px;padding:clamp(16px,1.6vw,20px);background:#fff;border:1px solid var(--line);border-radius:16px;text-decoration:none;color:inherit;transition:.2s;box-shadow:0 8px 22px rgba(18,48,74,.04)}
+    .contact-item:hover{border-color:#A9CDEF;transform:translateY(-3px);box-shadow:0 14px 30px rgba(21,101,192,.14)}
+    .contact-item .material-symbols-outlined{width:42px;height:42px;flex:0 0 42px;border-radius:12px;background:#E7F1FC;color:var(--green);display:grid;place-items:center;font-size:21px}
+    .contact-item strong{display:block;color:var(--navy);font-size:13px}
+    .contact-item small{display:block;color:var(--muted);font-size:12.5px;margin-top:3px}
+
     .bottom-trust{
       width:min(1100px,92vw);
       margin:28px auto 0;
@@ -570,6 +615,11 @@
         <small>GST • Tax • Compliance • Advisory</small>
       </div>
     </a>
+    <nav class="main-nav" aria-label="Primary">
+      <a href="#services">Services</a>
+      <a href="#about">About</a>
+      <a href="#contact">Contact</a>
+    </nav>
     <div class="top-status">
       <div class="header-contact">
         <a href="mailto:lexiconts@gmail.com">
@@ -591,7 +641,7 @@
   <main class="hero">
     <section class="intro">
 
-      <section class="services-section">
+      <section class="services-section" id="services">
         <div class="section-heading">
           <div>
             <h2>Our Services</h2>
@@ -720,6 +770,48 @@
       </div>
     </section>
   </main>
+
+  <section class="about-section" id="about">
+    <div class="about-inner">
+      <div>
+        <span class="section-kicker">Who We Are</span>
+        <h2>About Lexicon Tax Solutions</h2>
+        <p class="about-lead">Lexicon Tax Solutions is a GST and taxation consulting office helping businesses and individuals stay compliant with registrations, filings and audits. Our team combines hands-on experience with a client-first approach, so you always know where your compliance stands.</p>
+        <div class="about-stats">
+          <div><strong>10+</strong><span>Years of Experience</span></div>
+          <div><strong>500+</strong><span>Clients Served</span></div>
+          <div><strong>100%</strong><span>Filing Accuracy</span></div>
+        </div>
+      </div>
+      <ul class="about-points">
+        <li><span class="material-symbols-outlined">verified</span>Registered GST practitioners with in-depth ROC/MCA expertise</li>
+        <li><span class="material-symbols-outlined">schedule</span>Proactive deadline tracking so you never miss a return</li>
+        <li><span class="material-symbols-outlined">support_agent</span>Dedicated support for queries, notices and assessments</li>
+        <li><span class="material-symbols-outlined">lock</span>Confidential handling of your financial data</li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="contact-section" id="contact">
+    <div class="contact-inner">
+      <span class="section-kicker">Get In Touch</span>
+      <h2 class="contact-title">Contact Us</h2>
+      <div class="contact-grid">
+        <a class="contact-item" href="mailto:lexiconts@gmail.com">
+          <span class="material-symbols-outlined">mail</span>
+          <div><strong>Email</strong><small>lexiconts@gmail.com</small></div>
+        </a>
+        <a class="contact-item" href="tel:+919444158157">
+          <span class="material-symbols-outlined">phone</span>
+          <div><strong>Phone</strong><small>+91 94441 58157</small></div>
+        </a>
+        <div class="contact-item">
+          <span class="material-symbols-outlined">location_on</span>
+          <div><strong>Office</strong><small>Chennai, Tamil Nadu</small></div>
+        </div>
+      </div>
+    </div>
+  </section>
 
   <div class="bottom-trust">
     <div class="bottom-trust-item">
