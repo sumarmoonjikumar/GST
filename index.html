@@ -360,32 +360,97 @@
     .whatsapp:hover{transform:translateY(-2px);box-shadow:0 10px 20px rgba(30,142,82,.28)}
 
     .about-section{
+      --due-return:#1565C0;
+      --due-payroll:#D98E2B;
+      --due-audit:#0D3B66;
+      position:relative;
       width:100%;
       margin:clamp(40px,6vw,72px) 0 0;
-      padding:clamp(28px,4vw,56px) 0;
+      padding:clamp(36px,5vw,64px) 0;
       background:var(--soft);
       border-top:1px solid var(--line);
       border-bottom:1px solid var(--line);
     }
     .about-inner{
-      width:min(1440px,94vw);
+      width:min(1320px,94vw);
       margin:0 auto;
       display:grid;
-      grid-template-columns:minmax(0,1.1fr) minmax(0,.9fr);
-      gap:clamp(24px,4vw,50px);
-      align-items:center;
+      grid-template-columns:minmax(0,1fr) minmax(300px,380px);
+      gap:clamp(30px,4vw,60px);
+      align-items:start;
     }
-    .about-section h2{margin:8px 0 14px;font-family:Manrope,sans-serif;color:var(--navy);font-size:clamp(24px,3vw,34px);letter-spacing:-.04em}
-    .about-lead{color:#657985;font-size:clamp(13px,1.1vw,15px);line-height:1.75;margin:0 0 22px;max-width:60ch}
-    .about-stats{display:flex;gap:clamp(18px,3vw,34px);flex-wrap:wrap}
-    .about-stats div{min-width:100px}
-    .about-stats strong{display:block;font-family:Manrope,sans-serif;font-size:clamp(22px,2.4vw,30px);color:var(--navy);letter-spacing:-.03em}
-    .about-stats span{display:block;color:var(--muted);font-size:12px;margin-top:3px}
-    .about-points{display:grid;gap:14px;background:#fff;border:1px solid var(--line);border-radius:16px;padding:clamp(16px,2vw,24px);margin:0}
-    .about-points li{display:flex;align-items:flex-start;gap:10px;list-style:none;color:#4a5c68;font-size:13px;line-height:1.5}
-    .about-points .material-symbols-outlined{color:var(--green);font-size:20px;flex:0 0 20px}
+    .about-folio{
+      display:flex;
+      align-items:baseline;
+      gap:10px;
+      margin-bottom:10px;
+      color:var(--muted);
+      font-family:Manrope,sans-serif;
+      font-size:11px;
+      font-weight:700;
+      letter-spacing:.14em;
+      text-transform:uppercase;
+    }
+    .about-folio::before{content:"";width:26px;height:1px;background:var(--line)}
+    .about-section h2{margin:6px 0 16px;font-family:Manrope,sans-serif;color:var(--navy);font-size:clamp(26px,3vw,38px);letter-spacing:-.045em;line-height:1.08;max-width:17ch}
+    .about-lead{color:#54697a;font-size:clamp(13.5px,1.1vw,15.5px);line-height:1.8;margin:0 0 26px;max-width:78ch}
+    .about-chips{display:flex;flex-wrap:wrap;gap:10px;margin:0 0 32px}
+    .about-chip{
+      display:inline-flex;align-items:center;gap:7px;
+      padding:8px 14px 8px 10px;
+      border:1px solid var(--line);
+      background:#fff;
+      border-radius:999px;
+      color:#3d4f5c;
+      font-size:12.5px;
+      font-weight:600;
+    }
+    .about-chip .material-symbols-outlined{font-size:16px;color:var(--green)}
+    .about-stats{display:flex;gap:clamp(20px,3vw,40px);flex-wrap:wrap;padding-top:22px;border-top:1px solid var(--line)}
+    .about-stats div{min-width:90px}
+    .about-stats strong{display:block;font-family:Manrope,sans-serif;font-size:clamp(22px,2.4vw,28px);color:var(--navy);letter-spacing:-.03em}
+    .about-stats span{display:block;color:var(--muted);font-size:11.5px;margin-top:2px}
+
+    .filing-calendar{
+      background:#fff;
+      border:1px solid var(--line);
+      border-radius:18px;
+      padding:20px 20px 18px;
+      box-shadow:0 18px 40px rgba(18,48,74,.06);
+    }
+    .filing-calendar-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+    .filing-calendar-head span{font-family:Manrope,sans-serif;font-weight:800;color:var(--navy);font-size:13px;letter-spacing:.04em}
+    .filing-calendar-head small{color:var(--muted);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase}
+    .filing-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:14px}
+    .filing-grid .dow{text-align:center;font-size:9.5px;color:var(--muted);font-weight:700;letter-spacing:.04em;padding-bottom:4px}
+    .filing-cell{
+      position:relative;
+      aspect-ratio:1;
+      display:grid;place-items:center;
+      border-radius:8px;
+      font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+      font-size:11px;
+      color:#8fa0ac;
+    }
+    .filing-cell.blank{visibility:hidden}
+    .filing-cell.due{color:#fff;font-weight:700}
+    .filing-cell.due::after{content:"";position:absolute;bottom:3px;width:3px;height:3px;border-radius:50%;background:currentColor}
+    .filing-cell.due-return{background:var(--due-return)}
+    .filing-cell.due-payroll{background:var(--due-payroll)}
+    .filing-cell.due-audit{background:var(--due-audit)}
+    .filing-legend{display:grid;gap:8px;padding-top:14px;border-top:1px dashed var(--line)}
+    .filing-legend-row{display:flex;align-items:center;gap:9px;font-size:12px;color:#3d4f5c}
+    .filing-legend-row .dot{width:8px;height:8px;border-radius:50%;flex:0 0 8px}
+    .filing-legend-row .dot.due-return{background:var(--due-return)}
+    .filing-legend-row .dot.due-payroll{background:var(--due-payroll)}
+    .filing-legend-row .dot.due-audit{background:var(--due-audit)}
+    .filing-legend-row b{color:var(--navy);font-weight:700}
+    .filing-legend-row span.note{margin-left:auto;color:var(--muted);font-size:11px}
+    .filing-caption{margin:14px 0 0;color:var(--muted);font-size:11.5px;line-height:1.6}
+
     @media(max-width:900px){
       .about-inner{grid-template-columns:1fr}
+      .filing-calendar{max-width:380px}
     }
 
     .contact-section{width:100%;padding:clamp(28px,4vw,56px) 0}
@@ -393,6 +458,28 @@
     .contact-title{margin:8px 0 0;font-family:Manrope,sans-serif;color:var(--navy);font-size:clamp(24px,3vw,34px);letter-spacing:-.04em}
     .contact-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:clamp(12px,1.6vw,18px);margin-top:22px}
     .contact-item{display:flex;align-items:center;gap:13px;padding:clamp(16px,1.6vw,20px);background:#fff;border:1px solid var(--line);border-radius:16px;text-decoration:none;color:inherit;transition:.2s;box-shadow:0 8px 22px rgba(18,48,74,.04)}
+    .contact-form-wrap{margin-top:clamp(20px,2.4vw,30px);background:#fff;border:1px solid var(--line);border-radius:18px;padding:clamp(20px,2.6vw,32px);box-shadow:0 8px 22px rgba(18,48,74,.04)}
+    .contact-form-wrap h3{margin:0 0 4px;font-family:Manrope,sans-serif;color:var(--navy);font-size:clamp(17px,1.6vw,20px);letter-spacing:-.02em}
+    .contact-form-wrap p{margin:0 0 20px;color:var(--muted);font-size:12.5px}
+    .contact-form{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+    .contact-form .cf-field{display:flex;flex-direction:column;gap:6px}
+    .contact-form .cf-field.cf-full{grid-column:1 / -1}
+    .contact-form label{font-size:11.5px;font-weight:700;color:var(--navy);letter-spacing:.02em}
+    .contact-form input,.contact-form textarea{
+      font-family:inherit;font-size:13.5px;color:var(--ink);
+      border:1px solid var(--line);border-radius:10px;padding:11px 13px;
+      background:var(--soft);outline:none;transition:.2s;resize:vertical
+    }
+    .contact-form input:focus,.contact-form textarea:focus{border-color:var(--green);background:#fff;box-shadow:0 0 0 3px rgba(21,101,192,.12)}
+    .contact-form textarea{min-height:96px}
+    .contact-form-submit{
+      grid-column:1 / -1;justify-self:start;margin-top:4px;
+      display:inline-flex;align-items:center;gap:8px;
+      background:var(--green);color:#fff;border:none;border-radius:10px;
+      padding:12px 24px;font-size:13.5px;font-weight:700;cursor:pointer;transition:.2s
+    }
+    .contact-form-submit:hover{background:var(--navy2)}
+    @media(max-width:640px){.contact-form{grid-template-columns:1fr}}
     .contact-item:hover{border-color:#A9CDEF;transform:translateY(-3px);box-shadow:0 14px 30px rgba(21,101,192,.14)}
     .contact-item .material-symbols-outlined{width:42px;height:42px;flex:0 0 42px;border-radius:12px;background:#E7F1FC;color:var(--green);display:grid;place-items:center;font-size:21px}
     .contact-item strong{display:block;color:var(--navy);font-size:13px}
@@ -414,6 +501,7 @@
       min-width:0;
       display:flex;
       align-items:center;
+      justify-content:center;
       gap:11px;
       padding:7px 14px;
       border-right:1px solid var(--line);
@@ -474,18 +562,22 @@
     @media(max-width:560px){
       .math-bg{display:none}
       .bottom-trust{
-        width:90vw;
-        grid-template-columns:1fr;
+        width:94vw;
+        grid-template-columns:repeat(3,1fr);
         gap:0;
-        padding:8px 12px;
+        padding:8px 4px;
         margin-top:20px;
       }
       .bottom-trust-item{
-        padding:10px 6px;
-        border-right:0;
-        border-bottom:1px solid var(--line);
+        padding:8px 4px;
+        border-right:1px solid var(--line);
+        border-bottom:0;
+        flex-direction:column;
+        text-align:center;
+        gap:4px;
       }
-      .bottom-trust-item:last-child{border-bottom:0}
+      .bottom-trust-item small{display:none}
+      .bottom-trust-item:last-child{border-right:0}
       .topbar{height:64px;padding:0 4vw}
       .brand{gap:8px}
       .brand strong{font-size:15px}
@@ -774,21 +866,52 @@
   <section class="about-section" id="about">
     <div class="about-inner">
       <div>
-        <span class="section-kicker">Who We Are</span>
-        <h2>About Lexicon Tax Solutions</h2>
-        <p class="about-lead">Lexicon Tax Solutions is a GST and taxation consulting office helping businesses and individuals stay compliant with registrations, filings and audits. Our team combines hands-on experience with a client-first approach, so you always know where your compliance stands.</p>
+        <span class="about-folio" style="font-weight:800">About</span>
+        <h2 style="max-width:none;white-space:nowrap">Lexicon Tax Solutions</h2>
+        <p class="about-lead" style="font-weight:600;color:var(--navy);margin-bottom:14px">Your Trusted Partner for Tax, Accounting &amp; Compliance</p>
+        <p class="about-lead">At <strong>Lexicon Tax Solutions</strong>, we help individuals and businesses manage their accounting, taxation and statutory compliance with confidence. From <strong>GST and Income Tax to Accounting, Payroll and Business Registration</strong>, we provide reliable and practical solutions designed to keep your business compliant and financially organised.</p>
+        <p class="about-lead">Our approach is built on <strong>accuracy, transparency and personalised service</strong>. We understand that every business has different requirements, so we work closely with our clients to provide solutions that are simple, efficient and focused on long-term growth.</p>
+
+        <div class="about-chips">
+          <span class="about-chip"><span class="material-symbols-outlined">verified</span>Professional &amp; Reliable Service</span>
+          <span class="about-chip"><span class="material-symbols-outlined">event_available</span>Timely Tax &amp; GST Compliance</span>
+          <span class="about-chip"><span class="material-symbols-outlined">visibility</span>Transparent &amp; Practical Solutions</span>
+          <span class="about-chip"><span class="material-symbols-outlined">support_agent</span>Personalised Business Support</span>
+          <span class="about-chip"><span class="material-symbols-outlined">calculate</span>Complete Accounting &amp; Taxation Assistance</span>
+          <span class="about-chip"><span class="material-symbols-outlined">handshake</span>Long-Term Client Relationships</span>
+        </div>
+
         <div class="about-stats">
-          <div><strong>10+</strong><span>Years of Experience</span></div>
-          <div><strong>500+</strong><span>Clients Served</span></div>
-          <div><strong>100%</strong><span>Filing Accuracy</span></div>
+          <div><strong>Stay Compliant.</strong><span>Timely filings, always on track</span></div>
+          <div><strong>Plan Better.</strong><span>Clear, practical guidance</span></div>
+          <div><strong>Grow with Confidence.</strong><span>A partner for the long term</span></div>
         </div>
       </div>
-      <ul class="about-points">
-        <li><span class="material-symbols-outlined">verified</span>Registered GST practitioners with in-depth ROC/MCA expertise</li>
-        <li><span class="material-symbols-outlined">schedule</span>Proactive deadline tracking so you never miss a return</li>
-        <li><span class="material-symbols-outlined">support_agent</span>Dedicated support for queries, notices and assessments</li>
-        <li><span class="material-symbols-outlined">lock</span>Confidential handling of your financial data</li>
-      </ul>
+
+      <div class="filing-calendar">
+        <div class="filing-calendar-head">
+          <span>A month on our calendar</span>
+          <small>Sample</small>
+        </div>
+        <div class="filing-grid">
+          <div class="dow">S</div><div class="dow">M</div><div class="dow">T</div><div class="dow">W</div><div class="dow">T</div><div class="dow">F</div><div class="dow">S</div>
+          <div class="filing-cell blank"></div><div class="filing-cell blank"></div>
+          <div class="filing-cell">1</div><div class="filing-cell">2</div><div class="filing-cell">3</div><div class="filing-cell">4</div><div class="filing-cell">5</div>
+          <div class="filing-cell">6</div><div class="filing-cell due due-payroll">7</div><div class="filing-cell">8</div><div class="filing-cell">9</div><div class="filing-cell">10</div>
+          <div class="filing-cell due due-return">11</div><div class="filing-cell">12</div><div class="filing-cell">13</div><div class="filing-cell">14</div><div class="filing-cell">15</div>
+          <div class="filing-cell">16</div><div class="filing-cell">17</div><div class="filing-cell">18</div><div class="filing-cell">19</div>
+          <div class="filing-cell due due-return">20</div><div class="filing-cell">21</div><div class="filing-cell">22</div><div class="filing-cell">23</div>
+          <div class="filing-cell">24</div><div class="filing-cell">25</div><div class="filing-cell">26</div>
+          <div class="filing-cell">27</div><div class="filing-cell">28</div><div class="filing-cell">29</div>
+          <div class="filing-cell due due-audit">30</div><div class="filing-cell">31</div>
+        </div>
+        <div class="filing-legend">
+          <div class="filing-legend-row"><span class="dot due-return"></span><b>GSTR-1 / 3B</b> due 11th &amp; 20th<span class="note">Monthly</span></div>
+          <div class="filing-legend-row"><span class="dot due-payroll"></span><b>TDS return</b> due 7th<span class="note">Monthly</span></div>
+          <div class="filing-legend-row"><span class="dot due-audit"></span><b>Reconciliation</b> due 30th<span class="note">Monthly</span></div>
+        </div>
+        <p class="filing-caption">This is what "proactive deadline tracking" looks like on our end — every client's calendar, watched year-round.</p>
+      </div>
     </div>
   </section>
 
@@ -809,6 +932,29 @@
           <span class="material-symbols-outlined">location_on</span>
           <div><strong>Office</strong><small>Chennai, Tamil Nadu</small></div>
         </div>
+      </div>
+
+      <div class="contact-form-wrap">
+        <h3>Send Us a Message</h3>
+        <p>Fill in your details and our team will get back to you shortly.</p>
+        <form class="contact-form" id="contactForm">
+          <div class="cf-field">
+            <label for="cfName">Name</label>
+            <input type="text" id="cfName" name="name" placeholder="Your name" required>
+          </div>
+          <div class="cf-field">
+            <label for="cfMobile">Mobile</label>
+            <input type="tel" id="cfMobile" name="mobile" placeholder="Your mobile number" required>
+          </div>
+          <div class="cf-field cf-full">
+            <label for="cfMessage">Message</label>
+            <textarea id="cfMessage" name="message" placeholder="How can we help you?" required></textarea>
+          </div>
+          <button type="submit" class="contact-form-submit">
+            <span class="material-symbols-outlined" style="font-size:18px">send</span>
+            Send Message
+          </button>
+        </form>
       </div>
     </div>
   </section>
@@ -863,6 +1009,29 @@
       btn.querySelector('.material-symbols-outlined').textContent =
         show ? 'visibility_off' : 'visibility';
       btn.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
+    });
+  }
+})();
+
+(function(){
+  const WHATSAPP_NUMBER = "919444158157";
+  const form = document.getElementById('contactForm');
+  if(form){
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const name = document.getElementById('cfName').value.trim();
+      const mobile = document.getElementById('cfMobile').value.trim();
+      const msg = document.getElementById('cfMessage').value.trim();
+      const message =
+        `Hi Lexicon Tax Solutions team,\n` +
+        `Name: ${name}\n` +
+        `Mobile: ${mobile}\n` +
+        `Message: ${msg}`;
+      window.open(
+        `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`,
+        '_blank','noopener'
+      );
+      form.reset();
     });
   }
 })();
