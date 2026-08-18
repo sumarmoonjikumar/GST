@@ -1,0 +1,1080 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lexicon Tax Solutions — Client Portal</title>
+  <meta name="description" content="Lexicon Tax Solutions — GST Consulting Office Management System">
+  <meta name="theme-color" content="#001839">
+  <link rel="icon" href="assets/icons/logo-icon.svg" type="image/svg+xml">
+  <link rel="manifest" href="manifest.json">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+  <!-- Bootstrap CSS/JS — required by login.js's toast() calls (bootstrap.Toast) -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+
+  <style>
+    :root{
+      --navy:#0D3B66;
+      --navy2:#14508C;
+      --green:#1565C0;
+      --green2:#4FA3E0;
+      --teal:#0D47A1;
+      --teal2:#4FA3E0;
+      --ink:#173042;
+      --muted:#687B89;
+      --line:#DDE7EA;
+      --soft:#F3F8F8;
+      --white:#fff;
+      --shadow:0 24px 70px rgba(18,48,74,.12);
+    }
+    *{box-sizing:border-box}
+    html{scroll-behavior:smooth}
+    body{
+      margin:0;
+      min-height:100vh;
+      font-family:"DM Sans",sans-serif;
+      color:var(--ink);
+      background:#fff;
+    }
+    button,input{font:inherit}
+    button{cursor:pointer}
+    .page{min-height:100vh;display:flex;flex-direction:column}
+    .topbar{
+      height:76px;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      padding:0 5vw;
+      background:linear-gradient(135deg,var(--green),#0D4E9C);
+      border-bottom:1px solid rgba(255,255,255,.12);
+      position:relative;
+      z-index:5;
+    }
+    .brand{display:flex;align-items:center;gap:12px;text-decoration:none;color:#fff}
+    .brand img{width:46px;height:46px;object-fit:contain}
+    .brand strong{font-family:Manrope,sans-serif;font-size:18px;letter-spacing:-.02em}
+    .brand small{display:block;color:rgba(255,255,255,.75);font-size:11px;margin-top:1px}
+    .top-status{display:flex;align-items:center;gap:16px;color:#fff;font-size:13px}
+    .main-nav{display:flex;align-items:center;gap:30px}
+    .main-nav a{color:#fff;text-decoration:none;font-size:13px;font-weight:700;letter-spacing:.01em;opacity:.9;transition:.2s;position:relative;padding:4px 0}
+    .main-nav a::after{content:"";position:absolute;left:0;bottom:-4px;width:0;height:2px;background:#fff;transition:.2s}
+    .main-nav a:hover{opacity:1}
+    .main-nav a:hover::after{width:100%}
+    @media(max-width:1100px){.main-nav{display:none}}
+    .header-contact{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+    .header-contact a{display:inline-flex;align-items:center;gap:6px;color:#fff;text-decoration:none;white-space:nowrap;font-size:12px;font-weight:800}
+    .header-contact a:hover{color:#CFE4FA}
+    .header-contact .material-symbols-outlined{font-size:17px;color:#fff}
+    .social-icons{display:flex;align-items:center;gap:8px}
+    .social-icons a{width:30px;height:30px;border-radius:8px;background:rgba(255,255,255,.15);color:#fff;display:grid;place-items:center;font-size:14px}
+    .social-icons a:hover{background:rgba(255,255,255,.28)}
+    .dot{width:8px;height:8px;border-radius:50%;background:#fff;box-shadow:0 0 0 5px rgba(255,255,255,.18)}
+
+    .hero{
+      width:min(1440px,94vw);
+      margin:28px auto 0;
+      display:grid;
+      grid-template-columns:minmax(0,1fr) 350px;
+      gap:34px;
+      align-items:center;
+      flex:1;
+    }
+    .eyebrow{
+      display:inline-flex;align-items:center;gap:8px;
+      padding:8px 12px;border-radius:999px;
+      background:#E7F1FC;color:#0B5FA5;font-size:12px;font-weight:700;
+      letter-spacing:.06em;text-transform:uppercase;
+    }
+    .eyebrow .material-symbols-outlined{font-size:17px}
+    h1{
+      font-family:Manrope,sans-serif;
+      font-size:clamp(42px,5vw,70px);
+      line-height:1.03;
+      letter-spacing:-.055em;
+      margin:20px 0 18px;
+      color:var(--navy);
+      max-width:700px;
+    }
+    h1 span{color:var(--green)}
+    .lead{
+      max-width:640px;
+      font-size:18px;
+      line-height:1.7;
+      color:#657985;
+      margin:0 0 28px;
+    }
+
+    .services-section{
+      margin-top:0;
+      padding-top:0;
+      border-top:0;
+    }
+    .section-heading{
+      display:flex;
+      align-items:flex-end;
+      justify-content:space-between;
+      gap:30px;
+      margin-bottom:24px;
+    }
+    .services-heading{
+      position:relative;
+      padding:0 0 16px;
+      margin-bottom:18px;
+      border-bottom:0;
+    }
+    .services-title-wrap{
+      position:relative;
+      padding-left:18px;
+    }
+    .services-title-wrap::before{
+      content:"";
+      position:absolute;
+      left:0;
+      top:5px;
+      width:3px;
+      height:52px;
+      border-radius:999px;
+      background:linear-gradient(180deg,var(--green),var(--navy));
+    }
+    .services-label{
+      display:block;
+      color:var(--green);
+      font-size:10px;
+      font-weight:800;
+      letter-spacing:.16em;
+      text-transform:uppercase;
+      margin-bottom:5px;
+    }
+    .services-heading h2{
+      margin:0;
+      font-size:34px;
+      line-height:1.1;
+      letter-spacing:-.045em;
+    }
+    .services-heading p{
+      position:relative;
+      max-width:500px;
+      margin:0 0 2px;
+      padding-left:18px;
+      color:#667487;
+      font-size:13px;
+      line-height:1.7;
+      text-align:left;
+    }
+    .services-heading p::before{
+      content:"";
+      position:absolute;
+      left:0;
+      top:3px;
+      bottom:3px;
+      width:1px;
+      background:var(--line);
+    }
+    .section-kicker{
+      color:var(--green);
+      font-size:11px;
+      font-weight:800;
+      text-transform:uppercase;
+      letter-spacing:.13em;
+    }
+    .services-subtitle{margin-top:8px;color:var(--muted);font-size:13px;line-height:1.5;max-width:520px}
+    .section-heading h2{
+      margin:6px 0 0;
+      font-family:Manrope,sans-serif;
+      color:var(--navy);
+      font-size:34px;
+      letter-spacing:-.04em;
+    }
+    .section-heading p{
+      max-width:430px;
+      margin:0;
+      color:var(--muted);
+      font-size:14px;
+      line-height:1.65;
+      text-align:right;
+    }
+    .services-grid{
+      display:grid;
+      grid-template-columns:repeat(3,minmax(0,1fr));
+      gap:14px;
+      margin-top:0;
+    }
+    .service-card{
+      position:relative;
+      overflow:hidden;
+      padding:22px;
+      height:190px;
+      min-height:190px;
+      background:rgba(255,255,255,.86);
+      border:1px solid var(--line);
+      border-radius:18px;
+      box-shadow:0 8px 26px rgba(18,48,74,.045);
+      transition:.25s ease;
+    }
+    .service-card::after{
+      content:"";
+      position:absolute;
+      width:100px;height:100px;
+      right:-48px;bottom:-48px;
+      border-radius:50%;
+      background:rgba(21,101,192,.07);
+    }
+    .service-card:hover{
+      transform:translateY(-4px);
+      border-color:#A9CDEF;
+      box-shadow:0 16px 38px rgba(21,101,192,.14);
+    }
+    .service-number{
+      position:absolute;
+      top:17px;right:20px;
+      color:#AEBFC8;
+      font-family:Manrope,sans-serif;
+      font-size:12px;
+      font-weight:800;
+      letter-spacing:.08em;
+    }
+    .service-icon{
+      width:42px;height:42px;
+      display:grid;place-items:center;
+      border-radius:12px;
+      background:#E7F1FC;
+      color:var(--green);
+      margin-bottom:14px;
+    }
+    .service-icon .material-symbols-outlined{font-size:21px}
+    .service-card h3{
+      margin:0 35px 12px 0;
+      color:var(--navy);
+      font-family:Manrope,sans-serif;
+      font-size:16px;
+      line-height:1.35;
+    }
+    .service-card ul{
+      list-style:none;
+      padding:0;margin:0;
+      display:grid;gap:7px;
+    }
+    .service-card li{
+      position:relative;
+      padding-left:18px;
+      color:#697789;
+      font-size:12.5px;
+      line-height:1.45;
+    }
+    .service-card li::before{
+      content:"";
+      position:absolute;
+      left:0;top:.58em;
+      width:6px;height:6px;
+      border-radius:50%;
+      background:var(--green);
+    }
+
+    .login-wrap{position:relative;transform:translate(0,18px)}
+    .login-glow{
+      position:absolute;inset:-35px;
+      background:radial-gradient(circle at 50% 45%,rgba(21,101,192,.18),transparent 65%);
+      filter:blur(8px);pointer-events:none;
+    }
+    .login-card{
+      position:relative;
+      background:rgba(255,255,255,.98);
+      border:1px solid rgba(229,234,240,.9);
+      border-radius:24px;
+      padding:24px;
+      box-shadow:0 22px 55px rgba(18,48,74,.14),0 3px 12px rgba(18,48,74,.05);
+      z-index:1;
+    }
+    .login-head{display:flex;align-items:center;gap:13px;margin-bottom:18px;padding-bottom:17px;border-bottom:1px solid var(--line)}
+    .login-icon{
+      width:50px;height:50px;border-radius:15px;
+      background:linear-gradient(145deg,var(--green),var(--teal));
+      color:#fff;display:grid;place-items:center;
+      box-shadow:0 12px 24px rgba(21,101,192,.25);
+    }
+    .login-icon .material-symbols-outlined{font-size:25px}
+    .login-head h2{font-family:Manrope;margin:0;font-size:22px;color:var(--navy)}
+    .login-head p{margin:4px 0 0;color:var(--muted);font-size:13px}
+    .roles{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;background:#EFF5F6;padding:4px;border-radius:12px;margin-bottom:18px}
+    .role-card{
+      border:0!important;background:transparent;color:#657985;
+      padding:10px 6px;border-radius:8px;font-size:11px;font-weight:800;
+      transition:.2s;
+    }
+    .role-card.active{background:var(--green)!important;color:#fff!important;box-shadow:0 5px 14px rgba(21,101,192,.28)}
+    .field{position:relative;margin-bottom:14px}
+    .field > .material-symbols-outlined{
+      position:absolute;left:15px;top:50%;transform:translateY(-50%);
+      color:#7A8E9B;font-size:21px;pointer-events:none;
+    }
+    .field .toggle .material-symbols-outlined{
+      position:static;
+      transform:none;
+      color:inherit;
+      font-size:20px;
+      pointer-events:none;
+    }
+    .field input{
+      width:100%;height:52px;border:1px solid var(--line);border-radius:11px;
+      outline:none;background:#f9fbfc;color:var(--ink);padding:0 44px;
+      transition:.2s;
+    }
+    #loginPassword{padding-right:52px}
+    .field input:focus{border-color:#8FBEE8;box-shadow:0 0 0 4px rgba(21,101,192,.08);background:#fff}
+    .field input::placeholder{color:#96A7B2}
+    .toggle{
+      position:absolute;right:8px;top:50%;transform:translateY(-50%);
+      width:38px;height:38px;
+      display:grid;place-items:center;
+      border:0;border-radius:8px;
+      background:transparent;color:#7A8E9B;
+      padding:0;z-index:2;
+    }
+    .toggle:hover{background:#E7F1FC;color:var(--teal)}
+    .toggle:focus-visible{outline:2px solid rgba(21,101,192,.35);outline-offset:1px}
+    .options{display:flex;justify-content:space-between;align-items:center;margin:3px 0 17px;font-size:11px}
+    .remember{display:flex;align-items:center;gap:7px;color:#667487}
+    .remember input{accent-color:var(--green)}
+    .forgot{color:#0B5FA5;text-decoration:none;font-weight:700}
+    #loginSubmitBtn{
+      width:100%;height:52px;border:0;border-radius:11px;
+      color:#fff;background:linear-gradient(135deg,var(--green),#0D4E9C);
+      font-weight:800;letter-spacing:.03em;
+      box-shadow:0 12px 25px rgba(21,101,192,.25);
+      transition:.2s;
+    }
+    #loginSubmitBtn:hover{transform:translateY(-2px);background:linear-gradient(135deg,var(--teal),var(--teal2));box-shadow:0 16px 30px rgba(13,71,161,.22)}
+    .new-customer{
+      margin-top:16px;padding-top:16px;border-top:0;
+      display:flex;align-items:center;justify-content:space-between;gap:12px;
+    }
+    .new-customer span{font-size:12px;color:#758792}
+    .whatsapp{
+      border:0;background:linear-gradient(135deg,#2FAE68,#1E8E52);color:#fff;border-radius:10px;
+      padding:10px 13px;font-weight:800;font-size:12px;display:flex;align-items:center;gap:7px;
+      box-shadow:0 8px 16px rgba(30,142,82,.22);
+      transition:.2s;
+    }
+    .whatsapp:hover{transform:translateY(-2px);box-shadow:0 10px 20px rgba(30,142,82,.28)}
+
+    .about-section{
+      --due-return:#1565C0;
+      --due-payroll:#D98E2B;
+      --due-audit:#0D3B66;
+      position:relative;
+      width:100%;
+      margin:clamp(40px,6vw,72px) 0 0;
+      padding:clamp(36px,5vw,64px) 0;
+      background:var(--soft);
+      border-top:1px solid var(--line);
+      border-bottom:1px solid var(--line);
+    }
+    .about-inner{
+      width:min(1320px,94vw);
+      margin:0 auto;
+      display:grid;
+      grid-template-columns:minmax(0,1fr) minmax(300px,380px);
+      gap:clamp(30px,4vw,60px);
+      align-items:start;
+    }
+    .about-folio{
+      display:flex;
+      align-items:baseline;
+      gap:10px;
+      margin-bottom:10px;
+      color:var(--muted);
+      font-family:Manrope,sans-serif;
+      font-size:11px;
+      font-weight:700;
+      letter-spacing:.14em;
+      text-transform:uppercase;
+    }
+    .about-folio::before{content:"";width:26px;height:1px;background:var(--line)}
+    .about-section h2{margin:6px 0 16px;font-family:Manrope,sans-serif;color:var(--navy);font-size:clamp(26px,3vw,38px);letter-spacing:-.045em;line-height:1.08;max-width:17ch}
+    .about-lead{color:#54697a;font-size:clamp(13.5px,1.1vw,15.5px);line-height:1.8;margin:0 0 26px;max-width:78ch}
+    .about-chips{display:flex;flex-wrap:wrap;gap:10px;margin:0 0 32px}
+    .about-chip{
+      display:inline-flex;align-items:center;gap:7px;
+      padding:8px 14px 8px 10px;
+      border:1px solid var(--line);
+      background:#fff;
+      border-radius:999px;
+      color:#3d4f5c;
+      font-size:12.5px;
+      font-weight:600;
+    }
+    .about-chip .material-symbols-outlined{font-size:16px;color:var(--green)}
+    .about-stats{display:flex;gap:clamp(20px,3vw,40px);flex-wrap:wrap;padding-top:22px;border-top:1px solid var(--line)}
+    .about-stats div{min-width:90px}
+    .about-stats strong{display:block;font-family:Manrope,sans-serif;font-size:clamp(22px,2.4vw,28px);color:var(--navy);letter-spacing:-.03em}
+    .about-stats span{display:block;color:var(--muted);font-size:11.5px;margin-top:2px}
+
+    .filing-calendar{
+      background:#fff;
+      border:1px solid var(--line);
+      border-radius:18px;
+      padding:20px 20px 18px;
+      box-shadow:0 18px 40px rgba(18,48,74,.06);
+    }
+    .filing-calendar-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+    .filing-calendar-head span{font-family:Manrope,sans-serif;font-weight:800;color:var(--navy);font-size:13px;letter-spacing:.04em}
+    .filing-calendar-head small{color:var(--muted);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase}
+    .filing-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:14px}
+    .filing-grid .dow{text-align:center;font-size:9.5px;color:var(--muted);font-weight:700;letter-spacing:.04em;padding-bottom:4px}
+    .filing-cell{
+      position:relative;
+      aspect-ratio:1;
+      display:grid;place-items:center;
+      border-radius:8px;
+      font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+      font-size:11px;
+      color:#8fa0ac;
+    }
+    .filing-cell.blank{visibility:hidden}
+    .filing-cell.due{color:#fff;font-weight:700}
+    .filing-cell.due::after{content:"";position:absolute;bottom:3px;width:3px;height:3px;border-radius:50%;background:currentColor}
+    .filing-cell.due-return{background:var(--due-return)}
+    .filing-cell.due-payroll{background:var(--due-payroll)}
+    .filing-cell.due-audit{background:var(--due-audit)}
+    .filing-legend{display:grid;gap:8px;padding-top:14px;border-top:1px dashed var(--line)}
+    .filing-legend-row{display:flex;align-items:center;gap:9px;font-size:12px;color:#3d4f5c}
+    .filing-legend-row .dot{width:8px;height:8px;border-radius:50%;flex:0 0 8px}
+    .filing-legend-row .dot.due-return{background:var(--due-return)}
+    .filing-legend-row .dot.due-payroll{background:var(--due-payroll)}
+    .filing-legend-row .dot.due-audit{background:var(--due-audit)}
+    .filing-legend-row b{color:var(--navy);font-weight:700}
+    .filing-legend-row span.note{margin-left:auto;color:var(--muted);font-size:11px}
+    .filing-caption{margin:14px 0 0;color:var(--muted);font-size:11.5px;line-height:1.6}
+
+    @media(max-width:900px){
+      .about-inner{grid-template-columns:1fr}
+      .filing-calendar{max-width:380px}
+    }
+
+    .contact-section{width:100%;padding:clamp(28px,4vw,56px) 0}
+    .contact-inner{width:min(1440px,94vw);margin:0 auto}
+    .contact-title{margin:8px 0 0;font-family:Manrope,sans-serif;color:var(--navy);font-size:clamp(24px,3vw,34px);letter-spacing:-.04em}
+    .contact-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:clamp(12px,1.6vw,18px);margin-top:22px}
+    .contact-item{display:flex;align-items:center;gap:13px;padding:clamp(16px,1.6vw,20px);background:#fff;border:1px solid var(--line);border-radius:16px;text-decoration:none;color:inherit;transition:.2s;box-shadow:0 8px 22px rgba(18,48,74,.04)}
+    .contact-form-wrap{margin-top:clamp(20px,2.4vw,30px);background:#fff;border:1px solid var(--line);border-radius:18px;padding:clamp(20px,2.6vw,32px);box-shadow:0 8px 22px rgba(18,48,74,.04)}
+    .contact-form-wrap h3{margin:0 0 4px;font-family:Manrope,sans-serif;color:var(--navy);font-size:clamp(17px,1.6vw,20px);letter-spacing:-.02em}
+    .contact-form-wrap p{margin:0 0 20px;color:var(--muted);font-size:12.5px}
+    .contact-form{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+    .contact-form .cf-field{display:flex;flex-direction:column;gap:6px}
+    .contact-form .cf-field.cf-full{grid-column:1 / -1}
+    .contact-form label{font-size:11.5px;font-weight:700;color:var(--navy);letter-spacing:.02em}
+    .contact-form input,.contact-form textarea{
+      font-family:inherit;font-size:13.5px;color:var(--ink);
+      border:1px solid var(--line);border-radius:10px;padding:11px 13px;
+      background:var(--soft);outline:none;transition:.2s;resize:vertical
+    }
+    .contact-form input:focus,.contact-form textarea:focus{border-color:var(--green);background:#fff;box-shadow:0 0 0 3px rgba(21,101,192,.12)}
+    .contact-form textarea{min-height:96px}
+    .contact-form-submit{
+      grid-column:1 / -1;justify-self:start;margin-top:4px;
+      display:inline-flex;align-items:center;gap:8px;
+      background:var(--green);color:#fff;border:none;border-radius:10px;
+      padding:12px 24px;font-size:13.5px;font-weight:700;cursor:pointer;transition:.2s
+    }
+    .contact-form-submit:hover{background:var(--navy2)}
+    @media(max-width:640px){.contact-form{grid-template-columns:1fr}}
+    .contact-item:hover{border-color:#A9CDEF;transform:translateY(-3px);box-shadow:0 14px 30px rgba(21,101,192,.14)}
+    .contact-item .material-symbols-outlined{width:42px;height:42px;flex:0 0 42px;border-radius:12px;background:#E7F1FC;color:var(--green);display:grid;place-items:center;font-size:21px}
+    .contact-item strong{display:block;color:var(--navy);font-size:13px}
+    .contact-item small{display:block;color:var(--muted);font-size:12.5px;margin-top:3px}
+
+    .bottom-trust{
+      width:min(1100px,92vw);
+      margin:28px auto 0;
+      padding:14px 18px;
+      display:grid;
+      grid-template-columns:repeat(3,1fr);
+      gap:10px;
+      background:rgba(255,255,255,.78);
+      border:1px solid var(--line);
+      border-radius:16px;
+      box-shadow:0 8px 24px rgba(7,26,51,.04);
+    }
+    .bottom-trust-item{
+      min-width:0;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      gap:11px;
+      padding:7px 14px;
+      border-right:1px solid var(--line);
+    }
+    .bottom-trust-item:last-child{border-right:0}
+    .bottom-trust-item > .material-symbols-outlined{
+      width:34px;
+      height:34px;
+      flex:0 0 34px;
+      display:grid;
+      place-items:center;
+      border-radius:10px;
+      background:#E7F1FC;
+      color:var(--green);
+      font-size:18px;
+    }
+    .bottom-trust-item strong{
+      display:block;
+      color:var(--navy);
+      font-size:12px;
+      font-weight:800;
+      line-height:1.25;
+    }
+    .bottom-trust-item small{
+      display:block;
+      margin-top:3px;
+      color:#7a8797;
+      font-size:10px;
+      line-height:1.3;
+    }
+    .bottom{
+      width:min(1440px,94vw);margin:38px auto 24px;
+      display:flex;justify-content:center;align-items:center;gap:28px;
+      color:#71848F;font-size:12px;text-align:center;
+    }
+    @media(max-width:900px){
+      .services-heading{
+        align-items:flex-start;
+        gap:14px;
+      }
+      .services-heading p{
+        max-width:100%;
+      }
+      .topbar{padding:0 4vw}
+      .top-status{display:flex}
+      .header-contact{gap:8px}
+      .header-contact a{font-size:11px}
+      .header-contact a:first-child{display:none}
+      .social-icons{display:none}
+      .hero{grid-template-columns:1fr;gap:38px;margin-top:32px}
+      .intro{text-align:center}
+      h1{margin-left:auto;margin-right:auto}
+      .lead{margin-left:auto;margin-right:auto}
+      .section-heading{align-items:flex-start;flex-direction:column}
+      .services-grid{grid-template-columns:1fr}
+      .login-wrap{max-width:520px;width:100%;margin:auto;transform:none}
+    }
+    @media(max-width:560px){
+      .math-bg{display:none}
+      .bottom-trust{
+        width:94vw;
+        grid-template-columns:repeat(3,1fr);
+        gap:0;
+        padding:8px 4px;
+        margin-top:20px;
+      }
+      .bottom-trust-item{
+        padding:8px 4px;
+        border-right:1px solid var(--line);
+        border-bottom:0;
+        flex-direction:column;
+        text-align:center;
+        gap:4px;
+      }
+      .bottom-trust-item small{display:none}
+      .bottom-trust-item:last-child{border-right:0}
+      .topbar{height:64px;padding:0 4vw}
+      .brand{gap:8px}
+      .brand strong{font-size:15px}
+      .brand small{font-size:9px}
+      .brand img{width:40px;height:40px}
+      .hero{width:90vw}
+      h1{font-size:40px}
+      .lead{font-size:16px}
+      .login-card{padding:20px;border-radius:22px}
+      .services-section{margin-top:20px;padding-top:20px}
+      .services-subtitle{margin-top:8px;color:var(--muted);font-size:13px;line-height:1.5;max-width:520px}
+    .section-heading h2{font-size:25px}
+      .service-card{padding:19px;height:auto;min-height:190px}
+      .bottom{margin-top:30px;justify-content:center;text-align:center}
+    }
+    @media(max-width:380px){
+      .topbar{height:auto;min-height:64px;padding:10px 4vw;flex-wrap:wrap;row-gap:6px}
+      .header-contact{width:100%;justify-content:flex-start}
+    }
+
+    .wa-float{position:fixed;right:22px;bottom:22px;z-index:60;display:flex;flex-direction:column;align-items:flex-end;gap:12px}
+    .wa-fab{
+      width:58px;height:58px;border-radius:50%;border:0;
+      background:linear-gradient(135deg,#25D366,#1DA851);
+      color:#fff;display:grid;place-items:center;font-size:26px;
+      box-shadow:0 14px 30px rgba(37,211,102,.4);
+      transition:.2s;
+    }
+    .wa-fab:hover{transform:translateY(-3px) scale(1.04)}
+    .wa-popup{
+      width:270px;
+      background:#fff;
+      border:1px solid var(--line);
+      border-radius:16px;
+      box-shadow:0 20px 50px rgba(18,48,74,.18);
+      padding:16px;
+      transform:translateY(12px) scale(.96);
+      opacity:0;
+      pointer-events:none;
+      transition:.2s ease;
+      transform-origin:bottom right;
+    }
+    .wa-popup.open{transform:translateY(0) scale(1);opacity:1;pointer-events:auto}
+    .wa-popup-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+    .wa-popup-head span{font-family:Manrope,sans-serif;font-weight:700;color:var(--navy);font-size:14px}
+    .wa-popup-close{border:0;background:transparent;font-size:18px;color:#8A99A5;line-height:1;padding:2px 4px;border-radius:6px}
+    .wa-popup-close:hover{background:#F1F5F8;color:var(--navy)}
+    .wa-popup p{margin:0 0 12px;color:var(--muted);font-size:12.5px;line-height:1.55}
+    .wa-popup-cta{
+      width:100%;border:0;border-radius:10px;padding:10px;
+      background:linear-gradient(135deg,#25D366,#1DA851);color:#fff;
+      font-weight:800;font-size:12.5px;display:flex;align-items:center;justify-content:center;gap:7px;
+    }
+    @media(max-width:480px){
+      .wa-float{right:14px;bottom:14px}
+      .wa-popup{width:78vw}
+    }
+
+    .math-bg{
+      position:fixed;
+      inset:0;
+      overflow:hidden;
+      pointer-events:none;
+      z-index:0;
+      opacity:.16;
+      font-family:"DM Sans",sans-serif;
+    }
+    .math-bg span{
+      position:absolute;
+      left:var(--x);
+      top:var(--y);
+      font-size:var(--size);
+      font-weight:700;
+      color:var(--c);
+      animation:mathFloat var(--duration) linear infinite;
+      animation-delay:var(--delay);
+      user-select:none;
+      white-space:nowrap;
+    }
+    @keyframes mathFloat{
+      0%{
+        transform:translate3d(0,24px,0) rotate(0deg);
+        opacity:0;
+      }
+      12%{opacity:1}
+      50%{
+        transform:translate3d(var(--drift),-12px,0) rotate(90deg);
+      }
+      88%{opacity:1}
+      100%{
+        transform:translate3d(calc(var(--drift) * -1),-24px,0) rotate(180deg);
+        opacity:0;
+      }
+    }
+    .page{position:relative;z-index:1}
+  </style>
+</head>
+
+<body>
+<div class="math-bg" aria-hidden="true">
+<span style="--x:8%;--y:72%;--size:24px;--duration:13s;--drift:-22px;--delay:-2s;--c:var(--green)">+</span>
+<span style="--x:18%;--y:95%;--size:30px;--duration:16s;--drift:18px;--delay:-8s;--c:var(--green)">−</span>
+<span style="--x:29%;--y:60%;--size:20px;--duration:12s;--drift:-14px;--delay:-5s;--c:var(--green)">×</span>
+<span style="--x:41%;--y:88%;--size:28px;--duration:15s;--drift:24px;--delay:-10s;--c:var(--green)">÷</span>
+<span style="--x:53%;--y:74%;--size:18px;--duration:11s;--drift:-18px;--delay:-3s;--c:var(--green)">1</span>
+<span style="--x:66%;--y:92%;--size:26px;--duration:17s;--drift:15px;--delay:-12s;--c:var(--green)">2</span>
+<span style="--x:78%;--y:67%;--size:21px;--duration:14s;--drift:-20px;--delay:-6s;--c:var(--green)">3</span>
+<span style="--x:91%;--y:86%;--size:30px;--duration:18s;--drift:20px;--delay:-15s;--c:var(--green)">4</span>
+<span style="--x:12%;--y:45%;--size:17px;--duration:10s;--drift:16px;--delay:-7s;--c:var(--green)">5</span>
+<span style="--x:23%;--y:82%;--size:25px;--duration:16s;--drift:-17px;--delay:-4s;--c:var(--green)">6</span>
+<span style="--x:36%;--y:52%;--size:19px;--duration:13s;--drift:19px;--delay:-11s;--c:var(--green)">7</span>
+<span style="--x:48%;--y:96%;--size:27px;--duration:19s;--drift:-25px;--delay:-9s;--c:var(--green)">8</span>
+<span style="--x:61%;--y:55%;--size:18px;--duration:12s;--drift:17px;--delay:-1s;--c:var(--green)">9</span>
+<span style="--x:73%;--y:90%;--size:24px;--duration:15s;--drift:-19px;--delay:-13s;--c:var(--green)">0</span>
+<span style="--x:84%;--y:48%;--size:22px;--duration:14s;--drift:23px;--delay:-6s;--c:var(--green)">+</span>
+<span style="--x:96%;--y:75%;--size:19px;--duration:11s;--drift:-15px;--delay:-2s;--c:var(--green)">÷</span>
+<span style="--x:4%;--y:90%;--size:27px;--duration:17s;--drift:21px;--delay:-14s;--c:var(--green)">×</span>
+<span style="--x:58%;--y:98%;--size:20px;--duration:13s;--drift:-16px;--delay:-7s;--c:var(--green)">−</span>
+</div>
+<div class="page">
+
+  <header class="topbar">
+    <a class="brand" href="#">
+      <img src="assets/img/lexicon-logo.png" alt="Lexicon Tax Solutions">
+      <div>
+        <strong>Lexicon Tax Solutions</strong>
+        <small>GST • Tax • Compliance • Advisory</small>
+      </div>
+    </a>
+    <nav class="main-nav" aria-label="Primary">
+      <a href="#services">Services</a>
+      <a href="#about">About</a>
+      <a href="#contact">Contact</a>
+    </nav>
+    <div class="top-status">
+      <div class="header-contact">
+        <a href="mailto:lexiconts@gmail.com">
+          <span class="material-symbols-outlined">mail</span>lexiconts@gmail.com
+        </a>
+        <a href="tel:+919444158157">
+          <span class="material-symbols-outlined">phone</span>9444158157
+        </a>
+        <div class="social-icons" aria-label="Social media">
+          <a href="#" aria-label="Instagram"><i class="fa-brands fa-instagram"></i></a>
+          <a href="#" aria-label="Facebook"><i class="fa-brands fa-facebook-f"></i></a>
+          <a href="#" aria-label="LinkedIn"><i class="fa-brands fa-linkedin-in"></i></a>
+          <a href="#" aria-label="WhatsApp"><i class="fa-brands fa-whatsapp"></i></a>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main class="hero">
+    <section class="intro">
+
+      <section class="services-section" id="services">
+        <div class="section-heading">
+          <div>
+            <h2>Our Services</h2>
+          <div class="services-subtitle">Professional accounting, taxation, GST and compliance solutions for your business.</div>
+          </div>
+        </div>
+
+        <div class="services-grid">
+          <article class="service-card">
+            <div class="service-number">01</div>
+            <div class="service-icon"><span class="material-symbols-outlined">apartment</span></div>
+            <h3>Company &amp; Business Registration</h3>
+            <ul>
+              <li>Company &amp; LLP Registration</li>
+              <li>Partnership &amp; MSME Registration</li>
+              <li>PAN, TAN &amp; DSC Services</li>
+            </ul>
+          </article>
+
+          <article class="service-card">
+            <div class="service-number">02</div>
+            <div class="service-icon"><span class="material-symbols-outlined">gavel</span></div>
+            <h3>ROC / MCA Compliance</h3>
+            <ul>
+              <li>ROC Annual Filing</li>
+              <li>MCA Compliance</li>
+              <li>Director KYC &amp; Company Changes</li>
+            </ul>
+          </article>
+
+          <article class="service-card">
+            <div class="service-number">03</div>
+            <div class="service-icon"><span class="material-symbols-outlined">account_balance</span></div>
+            <h3>Income Tax &amp; Taxation</h3>
+            <ul>
+              <li>ITR Filing &amp; Tax Planning</li>
+              <li>Tax Audit &amp; Assessments</li>
+              <li>Capital Gains &amp; NRI Taxation</li>
+            </ul>
+          </article>
+
+          <article class="service-card">
+            <div class="service-number">04</div>
+            <div class="service-icon"><span class="material-symbols-outlined">receipt_long</span></div>
+            <h3>GST Services</h3>
+            <ul>
+              <li>GST Registration &amp; Returns</li>
+              <li>GST Reconciliation &amp; Audit</li>
+              <li>GST Notice &amp; Compliance</li>
+            </ul>
+          </article>
+
+          <article class="service-card">
+            <div class="service-number">05</div>
+            <div class="service-icon"><span class="material-symbols-outlined">groups</span></div>
+            <h3>TDS &amp; Payroll</h3>
+            <ul>
+              <li>TDS Returns &amp; Compliance</li>
+              <li>TRACES &amp; TDS Notices</li>
+              <li>Payroll &amp; Form 16 / 16A</li>
+            </ul>
+          </article>
+
+          <article class="service-card">
+            <div class="service-number">06</div>
+            <div class="service-icon"><span class="material-symbols-outlined">calculate</span></div>
+            <h3>Accounting &amp; Bookkeeping</h3>
+            <ul>
+              <li>Accounting &amp; Bookkeeping</li>
+              <li>Financial Statements</li>
+              <li>MIS &amp; Bank Reconciliation</li>
+            </ul>
+          </article>
+        </div>
+      </section>
+
+    </section>
+
+    <section class="login-wrap">
+      <div class="login-glow"></div>
+      <div class="login-card">
+        <div class="login-head">
+          <div class="login-icon"><span class="material-symbols-outlined fill">account_circle</span></div>
+          <div>
+            <h2>Welcome back</h2>
+            <p id="activeRoleLabel">Admin Login</p>
+          </div>
+        </div>
+
+        <form id="loginForm" novalidate>
+          <div class="roles">
+            <button class="role-card active" type="button" data-role="admin">ADMIN</button>
+            <button class="role-card" type="button" data-role="staff">STAFF</button>
+            <button class="role-card" type="button" data-role="customer">CLIENT</button>
+          </div>
+
+          <div class="field">
+            <span class="material-symbols-outlined">person</span>
+            <label for="loginUsername" id="usernameLabel" style="display:none">Admin Username</label>
+            <input type="text" id="loginUsername" placeholder="Username" autocomplete="username" required>
+          </div>
+
+          <div class="field">
+            <span class="material-symbols-outlined">lock</span>
+            <label for="loginPassword" style="display:none">Password</label>
+            <input type="password" id="loginPassword" placeholder="Password" autocomplete="current-password" required>
+            <button class="toggle" type="button" id="togglePasswordBtn" aria-label="Show password">
+              <span class="material-symbols-outlined">visibility</span>
+            </button>
+          </div>
+
+          <div class="options">
+            <label class="remember"><input type="checkbox" id="rememberMe"> Remember me</label>
+            <a class="forgot" href="#" id="forgotPasswordLink">Forgot password?</a>
+          </div>
+
+          <button type="submit" id="loginSubmitBtn">LOGIN TO PORTAL</button>
+        </form>
+
+        <div class="new-customer">
+          <span>New customer?</span>
+          <button type="button" class="whatsapp js-whatsapp-cta">
+            <i class="fa-brands fa-whatsapp"></i> Register on WhatsApp
+          </button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <section class="about-section" id="about">
+    <div class="about-inner">
+      <div>
+        <span class="about-folio" style="font-weight:800">About</span>
+        <h2 style="max-width:none;white-space:nowrap">Lexicon Tax Solutions</h2>
+        <p class="about-lead" style="font-weight:600;color:var(--navy);margin-bottom:14px">Your Trusted Partner for Tax, Accounting &amp; Compliance</p>
+        <p class="about-lead">At <strong>Lexicon Tax Solutions</strong>, we help individuals and businesses manage their accounting, taxation and statutory compliance with confidence. From <strong>GST and Income Tax to Accounting, Payroll and Business Registration</strong>, we provide reliable and practical solutions designed to keep your business compliant and financially organised.</p>
+        <p class="about-lead">Our approach is built on <strong>accuracy, transparency and personalised service</strong>. We understand that every business has different requirements, so we work closely with our clients to provide solutions that are simple, efficient and focused on long-term growth.</p>
+
+        <div class="about-chips">
+          <span class="about-chip"><span class="material-symbols-outlined">verified</span>Professional &amp; Reliable Service</span>
+          <span class="about-chip"><span class="material-symbols-outlined">event_available</span>Timely Tax &amp; GST Compliance</span>
+          <span class="about-chip"><span class="material-symbols-outlined">visibility</span>Transparent &amp; Practical Solutions</span>
+          <span class="about-chip"><span class="material-symbols-outlined">support_agent</span>Personalised Business Support</span>
+          <span class="about-chip"><span class="material-symbols-outlined">calculate</span>Complete Accounting &amp; Taxation Assistance</span>
+          <span class="about-chip"><span class="material-symbols-outlined">handshake</span>Long-Term Client Relationships</span>
+        </div>
+
+        <div class="about-stats">
+          <div><strong>Stay Compliant.</strong><span>Timely filings, always on track</span></div>
+          <div><strong>Plan Better.</strong><span>Clear, practical guidance</span></div>
+          <div><strong>Grow with Confidence.</strong><span>A partner for the long term</span></div>
+        </div>
+      </div>
+
+      <div class="filing-calendar">
+        <div class="filing-calendar-head">
+          <span>A month on our calendar</span>
+          <small>Sample</small>
+        </div>
+        <div class="filing-grid">
+          <div class="dow">S</div><div class="dow">M</div><div class="dow">T</div><div class="dow">W</div><div class="dow">T</div><div class="dow">F</div><div class="dow">S</div>
+          <div class="filing-cell blank"></div><div class="filing-cell blank"></div>
+          <div class="filing-cell">1</div><div class="filing-cell">2</div><div class="filing-cell">3</div><div class="filing-cell">4</div><div class="filing-cell">5</div>
+          <div class="filing-cell">6</div><div class="filing-cell due due-payroll">7</div><div class="filing-cell">8</div><div class="filing-cell">9</div><div class="filing-cell">10</div>
+          <div class="filing-cell due due-return">11</div><div class="filing-cell">12</div><div class="filing-cell">13</div><div class="filing-cell">14</div><div class="filing-cell">15</div>
+          <div class="filing-cell">16</div><div class="filing-cell">17</div><div class="filing-cell">18</div><div class="filing-cell">19</div>
+          <div class="filing-cell due due-return">20</div><div class="filing-cell">21</div><div class="filing-cell">22</div><div class="filing-cell">23</div>
+          <div class="filing-cell">24</div><div class="filing-cell">25</div><div class="filing-cell">26</div>
+          <div class="filing-cell">27</div><div class="filing-cell">28</div><div class="filing-cell">29</div>
+          <div class="filing-cell due due-audit">30</div><div class="filing-cell">31</div>
+        </div>
+        <div class="filing-legend">
+          <div class="filing-legend-row"><span class="dot due-return"></span><b>GSTR-1 / 3B</b> due 11th &amp; 20th<span class="note">Monthly</span></div>
+          <div class="filing-legend-row"><span class="dot due-payroll"></span><b>TDS return</b> due 7th<span class="note">Monthly</span></div>
+          <div class="filing-legend-row"><span class="dot due-audit"></span><b>Reconciliation</b> due 30th<span class="note">Monthly</span></div>
+        </div>
+        <p class="filing-caption">This is what "proactive deadline tracking" looks like on our end — every client's calendar, watched year-round.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="contact-section" id="contact">
+    <div class="contact-inner">
+      <span class="section-kicker">Get In Touch</span>
+      <h2 class="contact-title">Contact Us</h2>
+      <div class="contact-grid">
+        <a class="contact-item" href="mailto:lexiconts@gmail.com">
+          <span class="material-symbols-outlined">mail</span>
+          <div><strong>Email</strong><small>lexiconts@gmail.com</small></div>
+        </a>
+        <a class="contact-item" href="tel:+919444158157">
+          <span class="material-symbols-outlined">phone</span>
+          <div><strong>Phone</strong><small>+91 94441 58157</small></div>
+        </a>
+        <div class="contact-item">
+          <span class="material-symbols-outlined">location_on</span>
+          <div><strong>Office</strong><small>Chennai, Tamil Nadu</small></div>
+        </div>
+      </div>
+
+      <div class="contact-form-wrap">
+        <h3>Send Us a Message</h3>
+        <p>Fill in your details and our team will get back to you shortly.</p>
+        <form class="contact-form" id="contactForm">
+          <div class="cf-field">
+            <label for="cfName">Name</label>
+            <input type="text" id="cfName" name="name" placeholder="Your name" required>
+          </div>
+          <div class="cf-field">
+            <label for="cfMobile">Mobile</label>
+            <input type="tel" id="cfMobile" name="mobile" placeholder="Your mobile number" required>
+          </div>
+          <div class="cf-field cf-full">
+            <label for="cfMessage">Message</label>
+            <textarea id="cfMessage" name="message" placeholder="How can we help you?" required></textarea>
+          </div>
+          <button type="submit" class="contact-form-submit">
+            <span class="material-symbols-outlined" style="font-size:18px">send</span>
+            Send Message
+          </button>
+        </form>
+      </div>
+    </div>
+  </section>
+
+  <div class="bottom-trust">
+    <div class="bottom-trust-item">
+      <span class="material-symbols-outlined">lock</span>
+      <div><strong>Confidential &amp; Secure</strong><small>Your information stays protected</small></div>
+    </div>
+    <div class="bottom-trust-item">
+      <span class="material-symbols-outlined">schedule</span>
+      <div><strong>Timely Compliance</strong><small>Deadlines handled with care</small></div>
+    </div>
+    <div class="bottom-trust-item">
+      <span class="material-symbols-outlined">support_agent</span>
+      <div><strong>Dedicated Support</strong><small>Reliable assistance when you need it</small></div>
+    </div>
+  </div>
+
+  <footer class="bottom">
+    <div>© 2026 Lexicon Tax Solutions. All rights reserved.</div>
+  </footer>
+
+  <div class="wa-float">
+    <div class="wa-popup" id="waPopup">
+      <div class="wa-popup-head">
+        <span>Chat with us</span>
+        <button type="button" class="wa-popup-close" id="waPopupClose" aria-label="Close">&times;</button>
+      </div>
+      <p>Questions on GST, tax filing, or registration? Message our team directly on WhatsApp.</p>
+      <button type="button" class="wa-popup-cta js-whatsapp-cta">
+        <i class="fa-brands fa-whatsapp"></i> Start Chat
+      </button>
+    </div>
+    <button type="button" class="wa-fab" id="waFabBtn" aria-label="Open WhatsApp chat">
+      <i class="fa-brands fa-whatsapp"></i>
+    </button>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script type="module" src="assets/js/login.js"></script>
+
+<script>
+(function(){
+  const btn = document.getElementById('togglePasswordBtn');
+  const input = document.getElementById('loginPassword');
+  if(btn && input){
+    btn.addEventListener('click',()=>{
+      const show = input.type === 'password';
+      input.type = show ? 'text' : 'password';
+      btn.querySelector('.material-symbols-outlined').textContent =
+        show ? 'visibility_off' : 'visibility';
+      btn.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
+    });
+  }
+})();
+
+(function(){
+  const WHATSAPP_NUMBER = "919444158157";
+  const form = document.getElementById('contactForm');
+  if(form){
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const name = document.getElementById('cfName').value.trim();
+      const mobile = document.getElementById('cfMobile').value.trim();
+      const msg = document.getElementById('cfMessage').value.trim();
+      const message =
+        `Hi Lexicon Tax Solutions team,\n` +
+        `Name: ${name}\n` +
+        `Mobile: ${mobile}\n` +
+        `Message: ${msg}`;
+      window.open(
+        `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`,
+        '_blank','noopener'
+      );
+      form.reset();
+    });
+  }
+})();
+
+(function(){
+  const WHATSAPP_NUMBER = "919444158157";
+  document.querySelectorAll('.js-whatsapp-cta').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      const message =
+        "Hi GST Master team, I'd like to register as a new customer.\n" +
+        "Name: \nBusiness Name: \nGSTIN (if any): ";
+      window.open(
+        `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`,
+        '_blank','noopener'
+      );
+    });
+  });
+})();
+
+(function(){
+  const fab = document.getElementById('waFabBtn');
+  const popup = document.getElementById('waPopup');
+  const closeBtn = document.getElementById('waPopupClose');
+  if(!fab || !popup) return;
+  fab.addEventListener('click', () => popup.classList.toggle('open'));
+  closeBtn && closeBtn.addEventListener('click', () => popup.classList.remove('open'));
+  document.addEventListener('click', (e) => {
+    if(!popup.classList.contains('open')) return;
+    if(!popup.contains(e.target) && !fab.contains(e.target)){
+      popup.classList.remove('open');
+    }
+  });
+})();
+</script>
+
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', function () {
+      navigator.serviceWorker.register('./service-worker.js').catch(function (err) {
+        console.warn('Service worker registration failed:', err);
+      });
+    });
+  }
+</script>
+</body>
+</html>
