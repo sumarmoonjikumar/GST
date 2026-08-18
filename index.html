@@ -16,16 +16,18 @@
 
   <style>
     :root{
-      --navy:#12304A;
-      --navy2:#174B68;
-      --green:#0E8B8B;
-      --green2:#35B8A6;
-      --ink:#173042;
-      --muted:#687B89;
-      --line:#DDE7EA;
-      --soft:#F3F8F8;
+      --navy:#071A2B;
+      --navy2:#0F2A42;
+      --blue:#1769E0;
+      --blue2:#0F52B0;
+      --green:#19B89A;
+      --green2:#22D3B6;
+      --ink:#EAF2F6;
+      --muted:#9FB4C2;
+      --line:rgba(255,255,255,.14);
+      --soft:#0C2338;
       --white:#fff;
-      --shadow:0 24px 70px rgba(18,48,74,.12);
+      --shadow:0 24px 70px rgba(0,0,0,.35);
     }
     *{box-sizing:border-box}
     html{scroll-behavior:smooth}
@@ -35,9 +37,9 @@
       font-family:"DM Sans",sans-serif;
       color:var(--ink);
       background:
-        radial-gradient(circle at 8% 8%,rgba(14,139,139,.10),transparent 25%),
-        radial-gradient(circle at 92% 12%,rgba(13,43,80,.11),transparent 30%),
-        #F5F9FA;
+        radial-gradient(circle at 8% 8%,rgba(25,184,154,.22),transparent 25%),
+        radial-gradient(circle at 92% 12%,rgba(23,105,224,.24),transparent 30%),
+        var(--navy);
     }
     button,input{font:inherit}
     button{cursor:pointer}
@@ -56,11 +58,11 @@
     }
     .brand{display:flex;align-items:center;gap:12px;text-decoration:none;color:var(--navy)}
     .brand img{width:46px;height:46px;object-fit:contain}
-    .brand strong{font-family:Manrope,sans-serif;font-size:18px;letter-spacing:-.02em}
-    .brand small{display:block;color:var(--muted);font-size:11px;margin-top:1px}
+    .brand strong{font-family:Manrope,sans-serif;font-size:19px;font-weight:800;letter-spacing:-.02em}
+    .brand small{display:block;color:var(--muted);font-size:11px;font-weight:600;margin-top:1px}
     .top-status{display:flex;align-items:center;gap:16px;color:#536B79;font-size:13px}
     .header-contact{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
-    .header-contact a{display:inline-flex;align-items:center;gap:6px;color:#536B79;text-decoration:none;white-space:nowrap;font-size:12px;font-weight:600}
+    .header-contact a{display:inline-flex;align-items:center;gap:6px;color:#536B79;text-decoration:none;white-space:nowrap;font-size:12px;font-weight:700}
     .header-contact a:hover{color:var(--green)}
     .header-contact .material-symbols-outlined{font-size:17px;color:var(--green)}
     .social-icons{display:flex;align-items:center;gap:8px}
@@ -70,11 +72,11 @@
 
     .hero{
       width:min(1440px,94vw);
-      margin:28px auto 0;
+      margin:14px auto 0;
       display:grid;
       grid-template-columns:minmax(0,1fr) 350px;
       gap:34px;
-      align-items:center;
+      align-items:start;
       flex:1;
     }
     .eyebrow{
@@ -102,11 +104,50 @@
       margin:0 0 28px;
     }
 
+    .about-company{
+      margin:4px 0 26px;
+      padding:16px 0;
+      text-align:center;
+    }
+    .about-company p{
+      max-width:620px;
+      margin:0 auto;
+      color:rgba(234,242,246,.72);
+      font-size:14px;
+      line-height:1.7;
+    }
+
     .services-section{
       margin-top:0;
       padding-top:0;
       border-top:0;
     }
+    .services-heading--center{
+      text-align:center;
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      padding-left:0;
+    }
+    .services-heading--center::before{content:none}
+    .services-heading--center .services-label{margin-bottom:6px}
+    .services-heading--center h2{margin:0}
+    .services-divider{
+      display:block;
+      width:120px;
+      height:4px;
+      border-radius:999px;
+      margin:14px 0 14px;
+      background:var(--green);
+    }
+    .services-heading--center p{
+      padding-left:0;
+      max-width:none;
+      text-align:center;
+      white-space:nowrap;
+      margin:0;
+    }
+    .services-heading--center p::before{content:none}
     .section-heading{
       display:flex;
       align-items:flex-end;
@@ -144,7 +185,10 @@
       margin-bottom:5px;
     }
     .services-heading h2{
-      margin:0;
+      margin:0 0 10px;
+      font-family:Manrope,sans-serif;
+      color:var(--white);
+      font-weight:800;
       font-size:34px;
       line-height:1.1;
       letter-spacing:-.045em;
@@ -154,7 +198,7 @@
       max-width:500px;
       margin:0 0 2px;
       padding-left:18px;
-      color:#667487;
+      color:rgba(234,242,246,.65);
       font-size:13px;
       line-height:1.7;
       text-align:left;
@@ -336,12 +380,12 @@
     .forgot{color:#0B7070;text-decoration:none;font-weight:700}
     #loginSubmitBtn{
       width:100%;height:52px;border:0;border-radius:11px;
-      color:#fff;background:linear-gradient(135deg,var(--navy),#17416d);
+      color:#fff;background:linear-gradient(135deg,var(--blue),var(--blue2));
       font-weight:800;letter-spacing:.03em;
-      box-shadow:0 12px 25px rgba(18,48,74,.18);
+      box-shadow:0 12px 25px rgba(23,105,224,.28);
       transition:.2s;
     }
-    #loginSubmitBtn:hover{transform:translateY(-2px);box-shadow:0 16px 30px rgba(18,48,74,.23)}
+    #loginSubmitBtn:hover{transform:translateY(-2px);box-shadow:0 16px 30px rgba(23,105,224,.34)}
     .new-customer{
       margin-top:16px;padding-top:16px;border-top:0;
       display:flex;align-items:center;justify-content:space-between;gap:12px;
@@ -401,7 +445,7 @@
     .bottom{
       width:min(1440px,94vw);margin:38px auto 24px;
       display:flex;justify-content:center;align-items:center;gap:28px;
-      color:#71848F;font-size:12px;text-align:center;
+      color:rgba(234,242,246,.55);font-size:12px;text-align:center;
     }
     @media(max-width:900px){
       .services-heading{
@@ -454,6 +498,51 @@
     .section-heading h2{font-size:25px}
       .service-card{padding:19px;height:auto;min-height:190px}
       .bottom{margin-top:30px;justify-content:center;text-align:center}
+    }
+
+    .whatsapp-float{
+      position:fixed;
+      right:24px;
+      bottom:24px;
+      width:58px;height:58px;
+      border-radius:50%;
+      border:0;
+      background:linear-gradient(145deg,var(--green),var(--green2));
+      color:#fff;
+      display:grid;place-items:center;
+      font-size:26px;
+      box-shadow:0 14px 32px rgba(25,184,154,.4);
+      z-index:50;
+      transition:.2s;
+      animation:whatsappPop .4s ease .6s both;
+    }
+    .whatsapp-float:hover{transform:translateY(-3px) scale(1.05);box-shadow:0 18px 38px rgba(25,184,154,.5)}
+    .whatsapp-float::after{
+      content:"Chat with us";
+      position:absolute;
+      right:70px;
+      top:50%;
+      transform:translateY(-50%);
+      background:var(--navy2);
+      color:#fff;
+      padding:7px 12px;
+      border-radius:8px;
+      font-size:12px;
+      font-weight:700;
+      white-space:nowrap;
+      opacity:0;
+      pointer-events:none;
+      transition:.2s;
+    }
+    .whatsapp-float:hover::after{opacity:1}
+    @keyframes whatsappPop{
+      0%{transform:scale(0);opacity:0}
+      70%{transform:scale(1.12);opacity:1}
+      100%{transform:scale(1);opacity:1}
+    }
+    @media(max-width:560px){
+      .whatsapp-float{right:16px;bottom:16px;width:52px;height:52px;font-size:23px}
+      .whatsapp-float::after{display:none}
     }
 
     .math-bg{
@@ -548,12 +637,16 @@
   <main class="hero">
     <section class="intro">
 
+      <section class="about-company">
+        <p>Lexicon Tax Solutions is a trusted GST consulting and compliance office, helping businesses stay accurate, on time, and stress-free with their taxation and regulatory needs.</p>
+      </section>
+
       <section class="services-section">
-        <div class="section-heading">
-          <div>
-            <h2>Our Services</h2>
-          <div class="services-subtitle">Professional accounting, taxation, GST and compliance solutions for your business.</div>
-          </div>
+        <div class="services-heading services-heading--center">
+          <span class="services-label">What We Offer</span>
+          <h2>Our Services</h2>
+          <span class="services-divider"></span>
+          <p>Professional accounting, taxation, GST and compliance solutions for your business.</p>
         </div>
 
         <div class="services-grid">
@@ -696,6 +789,10 @@
   <footer class="bottom">
     <div>© 2026 Lexicon Tax Solutions. All rights reserved.</div>
   </footer>
+
+  <button type="button" class="whatsapp-float js-whatsapp-cta" aria-label="Chat with us on WhatsApp">
+    <i class="fa-brands fa-whatsapp"></i>
+  </button>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
