@@ -31,7 +31,7 @@ button{cursor:pointer}
 /* Header */
 .topbar{min-height:76px;padding:0 clamp(18px,4vw,64px);display:flex;align-items:center;gap:25px;background:var(--navy);border-bottom:1px solid rgba(211,183,111,.35);position:sticky;top:0;z-index:100;box-shadow:0 8px 25px rgba(11,31,58,.15)}
 .brand{display:flex;align-items:center;gap:11px;text-decoration:none;min-width:max-content;color:#fff}
-.brand img{width:44px;height:44px;object-fit:contain}
+.brand img{width:44px;height:44px;object-fit:contain;border-radius:50%}
 .brand strong{display:block;font-family:Manrope,Arial,sans-serif;font-size:16px;letter-spacing:-.02em}
 .brand small{display:block;color:#B8C7D4;font-size:9px;margin-top:2px;letter-spacing:.04em}
 .main-nav{display:flex;align-items:center;gap:25px;margin-left:auto}
@@ -267,7 +267,7 @@ h1 span{color:var(--gold)}
 }
 
 /* Keep actual website content above the animated background */
-.topbar,.hero,.about-section,.contact-section,.bottom-trust,.bottom,.wa-float{
+.topbar,.hero,.about-section,.contact-section,.bottom-trust,.bottom{
   position:relative;
   z-index:1;
 }
