@@ -332,6 +332,24 @@ function toggleFiledDateVisibility() {
 
 async function onSaveStatus(e) {
   e.preventDefault();
+
+  // Guard against double submission: if the connection is slow and the
+  // user taps/clicks Save twice, the second submit event used to fire
+  // before the first had finished, creating two filing/payment records
+  // for the same client+month+return. Locking the button for the
+  // duration of the save makes the second click a no-op.
+  const submitBtn = e.target.querySelector('button[type="submit"]');
+  if (submitBtn?.disabled) return;
+  if (submitBtn) submitBtn.disabled = true;
+
+  try {
+    await saveStatus();
+  } finally {
+    if (submitBtn) submitBtn.disabled = false;
+  }
+}
+
+async function saveStatus() {
   const clientId = document.getElementById("fClientId").value;
   const monthKey = document.getElementById("fMonthKey").value;
   const type = document.getElementById("fType").value;
@@ -391,6 +409,12 @@ function billingPeriodLabel(monthKey) {
   return monthKey.replace("-", " ");
 }
 
+/** Deterministic doc id for a client's auto-created GSTR-3B payment/invoice, one per client+period — re-running this for the same client/month always upserts the same document instead of minting a new one (see ensurePendingPayment). */
+function autoPaymentRecordId(clientId, period) {
+  const safePeriod = period.replace(/[^a-zA-Z0-9]/g, "");
+  return `pay_${clientId}_${safePeriod}`;
+}
+
 /** Creates a Pending payment record for this client/month if one doesn't already exist, and always returns that specific record's own invoice number (minting one if it's missing) so the caller can open exactly this month's invoice — never the party's whole outstanding list. */
 async function ensurePendingPayment(clientId, monthKey, client) {
   const period = billingPeriodLabel(monthKey);
@@ -401,7 +425,13 @@ async function ensurePendingPayment(clientId, monthKey, client) {
     const now = new Date().toISOString();
     const fixedFee = client?.monthlyFee != null && client.monthlyFee !== "" ? Number(client.monthlyFee) : 0;
     record = {
-      id: DB.uid("pay"),
+      // Deterministic, not DB.uid("pay") — a random id meant two
+      // concurrent "double-clicked" saves (or a slow save that got
+      // retried) each thought no payment existed yet and both created
+      // one, showing up as two payments/invoices for one 3B. A fixed
+      // id keyed on client+period means the second write just upserts
+      // the same document instead of creating a duplicate.
+      id: autoPaymentRecordId(clientId, period),
       clientId,
       billingPeriod: period,
       amount: fixedFee,

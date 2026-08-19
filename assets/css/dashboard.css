@@ -168,6 +168,15 @@
   color: var(--text-primary);
 }
 
+/* Dashboard's topbar only ever holds the mobile menu burger — no
+   filters like the other pages have. On desktop (>1024px) the sidebar
+   is always visible and the burger is hidden, which left this bar
+   rendering as an empty gold strip. Hide the whole bar there; it still
+   shows on mobile/tablet (<=1024px) so the burger stays reachable. */
+@media (min-width: 1025px) {
+  .app-topbar--empty { display: none; }
+}
+
 /* ---------- Main content ---------- */
 .app-main {
   flex: 1;
