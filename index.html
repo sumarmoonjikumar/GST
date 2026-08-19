@@ -203,6 +203,84 @@ h1 span{color:var(--gold)}
   .intro{display:block}
   .hero-copy,.services-section,.login-wrap{grid-column:auto;grid-row:auto}
 }
+
+
+/* Animated floating math symbols — full website background */
+:root{
+  --math-blue:#3B82F6;
+  --math-purple:#8B5CF6;
+  --math-pink:#EC4899;
+  --math-orange:#F59E0B;
+  --math-green:#10B981;
+  --math-cyan:#06B6D4;
+}
+
+.math-bg{
+  position:fixed;
+  inset:0;
+  z-index:0;
+  overflow:hidden;
+  pointer-events:none;
+}
+
+.math-bg span{
+  --symbol-color: var(--math-blue);
+  position:absolute;
+  left:var(--x);
+  top:var(--y);
+  font-family:Manrope,Arial,sans-serif;
+  font-size:var(--size);
+  font-weight:800;
+  line-height:1;
+  color:var(--symbol-color);
+  opacity:.22;
+  text-shadow:0 0 18px currentColor;
+  animation:mathFloat var(--duration) ease-in-out infinite alternate;
+  animation-delay:var(--delay);
+  will-change:transform,opacity;
+}
+
+.math-bg span:nth-child(6n+1){--symbol-color:var(--math-blue)}
+.math-bg span:nth-child(6n+2){--symbol-color:var(--math-purple)}
+.math-bg span:nth-child(6n+3){--symbol-color:var(--math-pink)}
+.math-bg span:nth-child(6n+4){--symbol-color:var(--math-orange)}
+.math-bg span:nth-child(6n+5){--symbol-color:var(--math-green)}
+.math-bg span:nth-child(6n+6){--symbol-color:var(--math-cyan)}
+
+@keyframes mathFloat{
+  0%{
+    transform:translate3d(0,0,0) rotate(-10deg) scale(.85);
+    opacity:.08;
+  }
+  30%{
+    transform:translate3d(calc(var(--drift) * .45),-45px,0) rotate(8deg) scale(1);
+    opacity:.28;
+  }
+  65%{
+    transform:translate3d(var(--drift),-95px,0) rotate(-6deg) scale(1.12);
+    opacity:.18;
+  }
+  100%{
+    transform:translate3d(calc(var(--drift) * -0.35),-150px,0) rotate(12deg) scale(.92);
+    opacity:.10;
+  }
+}
+
+/* Keep actual website content above the animated background */
+.topbar,.hero,.about-section,.contact-section,.bottom-trust,.bottom,.wa-float{
+  position:relative;
+  z-index:1;
+}
+.topbar{
+  position:sticky;
+  top:0;
+  z-index:100;
+}
+
+@media (prefers-reduced-motion:reduce){
+  .math-bg span{animation:none}
+}
+
 </style>
 
 
