@@ -198,6 +198,39 @@ clearing site data / browser storage will reset the app.
 
 ## Roadmap (waiting on your next prompt, per the spec)
 
-- Customer login management / customer-facing dashboard view
 - Settings + Backup/Restore UI (the export/import functions already
   exist in `db.js`, just need a page wired to them)
+
+## Customer Login, OTP & Invoice Master (added this update)
+
+**Customer Login is now mobile-number based.** In Client Master, the
+Customer Login username is auto-derived (read-only) from the client's
+Phone field — no separate username to manage. Click the 🎲 button next
+to Customer Login Password to generate a strong random password. Saving
+the client (or the Credentials panel) automatically creates/updates a
+matching login in the `users` collection.
+
+**Forgot Password (OTP) — one-time setup required in Firebase Console:**
+1. Authentication → Sign-in method → enable **Phone**.
+2. Your project must be on the **Blaze** (pay-as-you-go) plan — Phone
+   Auth is not available on the free Spark plan (Blaze still includes a
+   free monthly SMS quota).
+3. Authentication → Settings → Authorized domains → add the domain this
+   app is hosted on (e.g. your GitHub Pages domain).
+
+Until all three are done, tapping "Send OTP" on the Customer Login tab
+will show a clear in-app error instead of silently failing.
+
+**Customer Dashboard** (`customer-dashboard.html`) — what a client sees
+after logging in: their own GST filing status (GSTR-1 / GSTR-3B, period
+by period) and their payments (pending amount + list, plus recent paid
+history), with a link into their invoice/statement. Customers are
+blocked from every admin/staff page and redirected here automatically.
+
+**Invoice Master** (`invoice-master.html`, admin/staff only) — pick a
+party, add line items (description, HSN/SAC, qty, rate), and generate a
+proper multi-item sale invoice — separate from the auto-generated GST
+filing fee invoices. Invoices get their own `SI/FY/###` numbering, can
+be marked Paid/Unpaid, and print using the same Tally-style layout as
+the rest of the app (`invoice.html?sales=<id>`).
+

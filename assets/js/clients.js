@@ -3,6 +3,7 @@ import { requireSession } from "./auth.js";
 import { applyStoredTheme, toast, initials, whatsappLink, confirmAdminDelete } from "./utils.js";
 import { initAppChrome } from "./chrome.js";
 import { cloudinaryConfig } from "./cloudinary-config.js";
+import { normalizeMobile, generatePassword, syncCustomerLogin } from "./customer-account.js";
 
 applyStoredTheme();
 const session = requireSession(["admin", "staff"]); // customers never reach this page
@@ -202,6 +203,7 @@ function wireEvents() {
     document.getElementById("clientOffcanvasTitle").textContent = "Add Client";
     document.getElementById("docsUploadWrap").classList.add("d-none");
     document.getElementById("docsNewClientNote").classList.remove("d-none");
+    updateCustomerUsernamePreview();
     clientOffcanvas.show();
   });
 
@@ -220,6 +222,24 @@ function wireEvents() {
   document.getElementById("itDocInput")?.addEventListener("change", (e) => handleDocUpload("it", e.target.files[0]));
   document.getElementById("kycDocRemoveBtn")?.addEventListener("click", () => handleDocRemove("kyc"));
   document.getElementById("itDocRemoveBtn")?.addEventListener("click", () => handleDocRemove("it"));
+
+  // Customer Login username is always the mobile number in the Phone field
+  // above it — keep the (read-only) preview in sync as the admin types.
+  document.getElementById("contactPhone")?.addEventListener("input", updateCustomerUsernamePreview);
+  document.getElementById("genCustomerPasswordBtn")?.addEventListener("click", () => {
+    document.getElementById("customerPassword").value = generatePassword();
+  });
+  document.getElementById("credsGenCustomerPasswordBtn")?.addEventListener("click", () => {
+    document.getElementById("credsCustomerPassword").value = generatePassword();
+  });
+}
+
+function updateCustomerUsernamePreview() {
+  const field = document.getElementById("customerUsername");
+  if (!field) return;
+  const mobile = normalizeMobile(document.getElementById("contactPhone").value);
+  field.value = mobile;
+  field.placeholder = mobile ? "" : "Enter a 10-digit phone number above first";
 }
 
 const DOC_LABELS = { kyc: "KYC document", it: "IT document" };
@@ -422,8 +442,8 @@ function openEditClient(id) {
   document.getElementById("gstFrequency").value = c.gstFrequency === "Quarterly" ? "Quarterly" : "Monthly";
   document.getElementById("gstPortalUsername").value = c.gstPortalUsername || "";
   document.getElementById("gstPortalPassword").value = c.gstPortalPassword || "";
-  document.getElementById("customerUsername").value = c.customerUsername || "";
   document.getElementById("customerPassword").value = c.customerPassword || "";
+  updateCustomerUsernamePreview();
   document.getElementById("monthlyFee").value = c.monthlyFee ?? "";
   document.getElementById("ewayUsername").value = c.ewayUsername || "";
   document.getElementById("ewayPassword").value = c.ewayPassword || "";
@@ -472,7 +492,8 @@ async function onSaveClient(e) {
     gstFrequency: document.getElementById("gstFrequency").value === "Quarterly" ? "Quarterly" : "Monthly",
     gstPortalUsername: document.getElementById("gstPortalUsername").value.trim(),
     gstPortalPassword: document.getElementById("gstPortalPassword").value,
-    customerUsername: document.getElementById("customerUsername").value.trim(),
+    // Customer Login username is always derived from the Phone field, never typed separately.
+    customerUsername: normalizeMobile(document.getElementById("contactPhone").value.trim()),
     customerPassword: document.getElementById("customerPassword").value,
     monthlyFee: document.getElementById("monthlyFee").value ? Number(document.getElementById("monthlyFee").value) : null,
     ewayUsername: document.getElementById("ewayUsername").value.trim(),
@@ -491,7 +512,12 @@ async function onSaveClient(e) {
     "success"
   );
 
-  toast(`Client ${editingId ? "updated" : "added"} successfully.`, "success");
+  const loginSync = await syncCustomerLogin(record);
+  if (loginSync.ok) {
+    toast(`Client ${editingId ? "updated" : "added"} successfully. Customer login is ready (mobile ${loginSync.mobile}).`, "success");
+  } else {
+    toast(`Client ${editingId ? "updated" : "added"} successfully.`, "success");
+  }
   clientOffcanvas.hide();
   await loadData();
   render();
@@ -532,13 +558,19 @@ async function onSaveCreds(e) {
   c.gstPortalUsername = document.getElementById("credsGstUsername").value.trim();
   c.gstPortalPassword = document.getElementById("credsGstPassword").value;
   c.customerPassword = document.getElementById("credsCustomerPassword").value;
+  c.customerUsername = normalizeMobile(c.contactPhone);
   c.ewayUsername = document.getElementById("credsEwayUsername").value.trim();
   c.ewayPassword = document.getElementById("credsEwayPassword").value;
   c.updatedAt = new Date().toISOString();
 
   await DB.put(DB.STORES.clients, c);
   await DB.logActivity(`Updated portal/login credentials for "${c.businessName}"`, "fa-key", "info");
-  toast("Credentials updated.", "success");
+
+  const loginSync = await syncCustomerLogin(c);
+  toast(
+    loginSync.ok ? `Credentials updated. Customer login is ready (mobile ${loginSync.mobile}).` : "Credentials updated.",
+    "success"
+  );
   credsOffcanvas.hide();
   await loadData();
   render();

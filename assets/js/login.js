@@ -1,13 +1,20 @@
 import { seedIfEmpty } from "./db.js";
 import { login } from "./auth.js";
 import { applyStoredTheme, toggleTheme, toast, currentSession } from "./utils.js";
+import { openForgotPasswordFlow } from "./customer-otp.js";
 
 applyStoredTheme();
 
 const roleMeta = {
   admin: { label: "Admin Login", idLabel: "Admin Username" },
   staff: { label: "Staff Login", idLabel: "Staff Username" },
-  customer: { label: "Customer Login", idLabel: "Client / GSTIN Username" },
+  customer: { label: "Customer Login", idLabel: "Registered Mobile Number" },
+};
+
+const DASHBOARD_BY_ROLE = {
+  admin: "dashboard.html",
+  staff: "dashboard.html",
+  customer: "customer-dashboard.html",
 };
 
 let activeRole = "admin";
@@ -15,10 +22,10 @@ let activeRole = "admin";
 function init() {
   seedIfEmpty();
 
-  // If already logged in, skip straight to the dashboard.
+  // If already logged in, skip straight to the right dashboard for the role.
   const session = currentSession();
   if (session) {
-    window.location.href = "dashboard.html";
+    window.location.href = DASHBOARD_BY_ROLE[session.role] || "dashboard.html";
     return;
   }
 
@@ -42,6 +49,10 @@ function init() {
 
   document.getElementById("forgotPasswordLink")?.addEventListener("click", (e) => {
     e.preventDefault();
+    if (activeRole === "customer") {
+      openForgotPasswordFlow();
+      return;
+    }
     toast(
       activeRole === "admin"
         ? "Admin password reset must be done via Settings → Backup on another admin device, or by restoring a backup."
@@ -63,7 +74,10 @@ function selectRole(role) {
   const meta = roleMeta[role];
   document.getElementById("activeRoleLabel").textContent = meta.label;
   document.getElementById("usernameLabel").textContent = meta.idLabel;
-  document.getElementById("loginUsername").focus({ preventScroll: true });
+  const usernameInput = document.getElementById("loginUsername");
+  usernameInput.placeholder = role === "customer" ? "10-digit mobile number" : "Username";
+  usernameInput.setAttribute("inputmode", role === "customer" ? "numeric" : "text");
+  usernameInput.focus({ preventScroll: true });
 }
 
 async function onSubmit(e) {
@@ -91,7 +105,8 @@ async function onSubmit(e) {
   }
 
   toast(`Welcome back, ${result.session.name}.`, "success");
-  setTimeout(() => (window.location.href = "dashboard.html"), 400);
+  const dest = DASHBOARD_BY_ROLE[result.session.role] || "dashboard.html";
+  setTimeout(() => (window.location.href = dest), 400);
 }
 
 function updateThemeIcon(theme) {

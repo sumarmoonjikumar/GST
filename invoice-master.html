@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-<title>Staff — GST Master</title>
+<title>Invoice Master — GST Master</title>
 <meta name="theme-color" content="#001839" />
 <link rel="icon" href="assets/icons/logo-icon.svg" type="image/svg+xml" />
 <link rel="manifest" href="manifest.json" />
@@ -15,6 +15,12 @@
 
 <link rel="stylesheet" href="assets/css/theme.css">
 <link rel="stylesheet" href="assets/css/dashboard.css">
+<style>
+  .item-row-grid { display:grid; grid-template-columns: minmax(0,1fr) 90px 70px 90px 90px 32px; gap:8px; align-items:start; }
+  .item-row-grid + .item-row-grid { margin-top:8px; }
+  .item-row-grid input { font-size: 12px; }
+  @media (max-width: 560px){ .item-row-grid{ grid-template-columns: 1fr 1fr; } }
+</style>
 </head>
 <body>
 
@@ -46,7 +52,7 @@
       <a href="gst-filing.html" class="nav-link" data-staff-plus><i class="fa-solid fa-file-invoice"></i> GST Filing</a>
       <a href="gstr1-json.html" class="nav-link" data-staff-plus><i class="fa-solid fa-file-code"></i> GSTR1 Excel</a>
       <a href="payments.html" class="nav-link" data-staff-plus><i class="fa-solid fa-indian-rupee-sign"></i> Payments</a>
-      <a href="invoice-master.html" class="nav-link" data-staff-plus><i class="fa-solid fa-file-invoice-dollar"></i> Invoice Master</a>
+      <a href="invoice-master.html" class="nav-link active" data-staff-plus><i class="fa-solid fa-file-invoice-dollar"></i> Invoice Master</a>
 
       <div class="nav-section-label" data-admin-only>Team</div>
       <a href="staff.html" class="nav-link" data-admin-only><i class="fa-solid fa-user-tie"></i> Staff</a>
@@ -78,106 +84,137 @@
         <button id="sidebarBurger" class="sidebar-burger" aria-label="Open menu"><i class="fa-solid fa-bars"></i></button>
       </div>
       <div class="app-topbar-filters">
-        <input type="search" class="form-control form-control-sm" id="staffSearch" placeholder="Search name, username or email…">
-        <select class="form-select form-select-sm" id="staffStatusFilter">
+        <input type="search" class="form-control form-control-sm" id="invoiceSearch" placeholder="Search party or invoice no…">
+        <select class="form-select form-select-sm" id="invoiceStatusFilter">
           <option value="">All Status</option>
-          <option value="Active">Active</option>
-          <option value="Inactive">Inactive</option>
+          <option value="Paid">Paid</option>
+          <option value="Unpaid">Unpaid</option>
         </select>
-        <span class="small text-muted-soft topbar-count-label" id="staffCountLabel">0 staff</span>
+        <span class="small text-muted-soft topbar-count-label" id="invoiceCountLabel">0 invoices</span>
       </div>
     </header>
 
     <!-- Main content -->
     <main class="app-main">
-      <button class="btn btn-navy fab-btn" id="addStaffBtn">
-        <i class="fa-solid fa-plus"></i>Add Staff
+      <button class="btn btn-navy fab-btn" id="addInvoiceBtn">
+        <i class="fa-solid fa-plus"></i>New Invoice
       </button>
+
+      <div class="row g-3 mb-3">
+        <div class="col-6 col-md-3">
+          <div class="ledger-card stat-card">
+            <div class="stat-icon badge-soft-info"><i class="fa-solid fa-file-invoice-dollar"></i></div>
+            <div class="stat-value" id="statInvoiceCount">0</div>
+            <div class="stat-label">Total Invoices</div>
+          </div>
+        </div>
+        <div class="col-6 col-md-3">
+          <div class="ledger-card stat-card">
+            <div class="stat-icon badge-soft-success"><i class="fa-solid fa-circle-check"></i></div>
+            <div class="stat-value" id="statInvoicePaid">₹0</div>
+            <div class="stat-label">Paid (total)</div>
+          </div>
+        </div>
+        <div class="col-6 col-md-3">
+          <div class="ledger-card stat-card">
+            <div class="stat-icon badge-soft-warning"><i class="fa-solid fa-hourglass-half"></i></div>
+            <div class="stat-value" id="statInvoiceUnpaid">₹0</div>
+            <div class="stat-label">Unpaid (total)</div>
+          </div>
+        </div>
+      </div>
 
       <div class="ledger-card data-table-card">
         <div class="table-responsive">
           <table class="table">
             <thead>
               <tr>
-                <th>Staff</th>
-                <th>Login Username</th>
-                <th>Contact</th>
-                <th>Assigned Clients</th>
+                <th>Invoice No</th>
+                <th>Date</th>
+                <th>Party</th>
+                <th class="text-end">Amount</th>
                 <th>Status</th>
                 <th class="text-end">Actions</th>
               </tr>
             </thead>
-            <tbody id="staffTableBody"></tbody>
+            <tbody id="invoiceTableBody"></tbody>
           </table>
         </div>
-        <div id="staffEmptyState" class="empty-state d-none">
-          <i class="fa-solid fa-user-tie"></i>
-          <h6>No staff yet</h6>
-          <p class="small mb-0">Add your first staff member to start assigning clients.</p>
+        <div id="invoiceEmptyState" class="empty-state d-none">
+          <i class="fa-solid fa-file-invoice-dollar"></i>
+          <h6>No sale invoices yet</h6>
+          <p class="small mb-0">Create your first invoice for a party to get started.</p>
         </div>
       </div>
     </main>
   </div>
 </div>
 
-<!-- Add / Edit Staff offcanvas -->
-<div class="offcanvas offcanvas-end offcanvas-form" tabindex="-1" id="staffOffcanvas" style="width: 400px; max-width: 100vw;">
+<!-- Add / Edit Invoice offcanvas -->
+<div class="offcanvas offcanvas-end offcanvas-form" tabindex="-1" id="invoiceOffcanvas" style="width: 480px; max-width: 100vw;">
   <div class="offcanvas-header">
-    <h5 class="offcanvas-title font-display" id="staffOffcanvasTitle">Add Staff</h5>
+    <h5 class="offcanvas-title font-display" id="invoiceOffcanvasTitle">New Invoice</h5>
     <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
   </div>
   <div class="offcanvas-body">
-    <form id="staffForm" novalidate>
-      <input type="hidden" id="staffId">
-      <input type="hidden" id="staffUserId">
+    <form id="invoiceForm" novalidate>
+      <input type="hidden" id="invoiceId">
 
-      <div class="section-divider">Personal Details</div>
       <div class="mb-3">
-        <label class="form-label" for="staffName">Full Name *</label>
-        <input type="text" class="form-control" id="staffName" required>
+        <label class="form-label" for="invoicePartyId">Party (Client) *</label>
+        <select class="form-select" id="invoicePartyId" required>
+          <option value="">Select party…</option>
+        </select>
       </div>
       <div class="row">
         <div class="col-6 mb-3">
-          <label class="form-label" for="staffPhone">Phone</label>
-          <input type="tel" class="form-control" id="staffPhone">
+          <label class="form-label" for="invoiceDate">Invoice Date *</label>
+          <input type="date" class="form-control" id="invoiceDate" required>
         </div>
         <div class="col-6 mb-3">
-          <label class="form-label" for="staffEmail">Email</label>
-          <input type="email" class="form-control" id="staffEmail">
-        </div>
-      </div>
-      <div class="row">
-        <div class="col-6 mb-3">
-          <label class="form-label" for="staffJoiningDate">Joining Date</label>
-          <input type="date" class="form-control" id="staffJoiningDate">
-        </div>
-        <div class="col-6 mb-3">
-          <label class="form-label" for="staffStatus">Status</label>
-          <select class="form-select" id="staffStatus">
-            <option value="Active">Active</option>
-            <option value="Inactive">Inactive</option>
+          <label class="form-label" for="invoiceStatus">Status</label>
+          <select class="form-select" id="invoiceStatus">
+            <option value="Unpaid">Unpaid</option>
+            <option value="Paid">Paid</option>
           </select>
         </div>
       </div>
 
-      <div class="section-divider">Login Credentials</div>
-      <div class="mb-3">
-        <label class="form-label" for="staffUsername">Login Username *</label>
-        <input type="text" class="form-control font-mono" id="staffUsername" required>
-        <div class="form-text">Used for Staff Login on the sign-in page.</div>
-      </div>
-      <div class="mb-3">
-        <label class="form-label" for="staffPassword">Login Password <span id="staffPasswordOptionalHint" class="text-muted-soft small d-none">(leave blank to keep unchanged)</span></label>
-        <input type="text" class="form-control font-mono" id="staffPassword">
+      <div class="section-divider">Items</div>
+      <div id="itemRows"></div>
+      <button type="button" class="btn btn-outline-secondary btn-sm mt-2" id="addItemRowBtn">
+        <i class="fa-solid fa-plus me-1"></i>Add Item
+      </button>
+
+      <div class="d-flex justify-content-between align-items-center mt-3 pt-2 border-top">
+        <span class="small text-muted-soft">Total</span>
+        <span class="fw-semibold" id="invoiceTotalPreview">₹0</span>
       </div>
 
-      <button type="submit" class="btn btn-navy w-100 mt-2">Save Staff</button>
+      <div class="mb-3 mt-3">
+        <label class="form-label" for="invoiceNotes">Notes</label>
+        <textarea class="form-control" id="invoiceNotes" rows="2"></textarea>
+      </div>
+
+      <button type="submit" class="btn btn-navy w-100 mt-2">Save Invoice</button>
     </form>
   </div>
 </div>
 
+<!-- One item row template (cloned by JS) -->
+<template id="itemRowTemplate">
+  <div class="item-row-grid">
+    <input type="text" class="form-control form-control-sm item-desc" placeholder="Description">
+    <input type="text" class="form-control form-control-sm item-hsn" placeholder="HSN/SAC">
+    <input type="number" min="0" step="1" class="form-control form-control-sm item-qty" placeholder="Qty" value="1">
+    <input type="number" min="0" step="0.01" class="form-control form-control-sm item-rate" placeholder="Rate">
+    <input type="text" class="form-control form-control-sm item-amount" placeholder="₹0" readonly tabindex="-1">
+    <button type="button" class="btn btn-sm btn-outline-danger item-remove-btn" title="Remove"><i class="fa-solid fa-xmark"></i></button>
+  </div>
+</template>
+
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-<script type="module" src="assets/js/staff.js"></script>
+<script type="module" src="assets/js/invoice-master.js"></script>
   <script>
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', function () {

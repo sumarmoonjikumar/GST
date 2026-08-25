@@ -46,9 +46,11 @@
       <a href="gst-filing.html" class="nav-link" data-staff-plus><i class="fa-solid fa-file-invoice"></i> GST Filing</a>
       <a href="gstr1-json.html" class="nav-link" data-staff-plus><i class="fa-solid fa-file-code"></i> GSTR1 Excel</a>
       <a href="payments.html" class="nav-link" data-staff-plus><i class="fa-solid fa-indian-rupee-sign"></i> Payments</a>
+      <a href="invoice-master.html" class="nav-link" data-staff-plus><i class="fa-solid fa-file-invoice-dollar"></i> Invoice Master</a>
 
       <div class="nav-section-label" data-admin-only>Team</div>
       <a href="staff.html" class="nav-link" data-admin-only><i class="fa-solid fa-user-tie"></i> Staff</a>
+      <a href="#" class="nav-link" data-admin-only><i class="fa-solid fa-building-user"></i> Customers</a>
 
       <div class="nav-section-label" data-admin-only>System</div>
       <a href="reports.html" class="nav-link" data-admin-only><i class="fa-solid fa-chart-column"></i> Reports</a>
@@ -208,11 +210,17 @@
       <div class="row">
         <div class="col-6 mb-3">
           <label class="form-label" for="customerUsername">Customer Login Username</label>
-          <input type="text" class="form-control font-mono" id="customerUsername">
+          <input type="text" class="form-control font-mono" id="customerUsername" readonly>
+          <div class="form-text">Always the client's mobile number (Phone field above).</div>
         </div>
         <div class="col-6 mb-3">
           <label class="form-label" for="customerPassword">Customer Login Password</label>
-          <input type="text" class="form-control font-mono" id="customerPassword">
+          <div class="input-group">
+            <input type="text" class="form-control font-mono" id="customerPassword">
+            <button type="button" class="btn btn-outline-secondary" id="genCustomerPasswordBtn" title="Generate a random password">
+              <i class="fa-solid fa-dice"></i>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -296,7 +304,13 @@
       </div>
       <div class="mb-3">
         <label class="form-label" for="credsCustomerPassword">Customer Login Password</label>
-        <input type="text" class="form-control font-mono" id="credsCustomerPassword">
+        <div class="input-group">
+          <input type="text" class="form-control font-mono" id="credsCustomerPassword">
+          <button type="button" class="btn btn-outline-secondary" id="credsGenCustomerPasswordBtn" title="Generate a random password">
+            <i class="fa-solid fa-dice"></i>
+          </button>
+        </div>
+        <div class="form-text">Login username is the client's mobile number — update it via Edit Client if the number changes.</div>
       </div>
       <div class="mb-3">
         <label class="form-label" for="credsEwayUsername">E-Way Bill User ID</label>

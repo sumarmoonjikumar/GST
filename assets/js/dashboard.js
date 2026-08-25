@@ -6,6 +6,9 @@ import { buildFilingMap, getFilingStatus, periodHasStarted } from "./gst-status.
 
 applyStoredTheme();
 const session = requireSession(); // any role may view; content narrows per role below
+if (session && session.role === "customer") {
+  window.location.href = "customer-dashboard.html";
+}
 
 let filingTally = { filed: 0, pending: 0, overdue: 0 };
 let cachedClients = [];
@@ -14,7 +17,7 @@ let cachedPayments = [];
 let filingChart, trendChart, targetAchievedChart;
 
 async function init() {
-  if (!session) return;
+  if (!session || session.role === "customer") return;
 
   initAppChrome(session);
   initCharts();

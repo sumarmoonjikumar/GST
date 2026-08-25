@@ -28,7 +28,7 @@ const TRASH_HOLD_DAYS = 30;
 // feed are excluded from the visible Trash list — see softDelete()/
 // getTrash() below. Staff logins ride along with their staff record
 // (see PURGE_STORES) but aren't shown as separate trash entries.
-const TRASH_STORES = ["clients", "staff", "payments", "gstRecords", "gstr1Sales"];
+const TRASH_STORES = ["clients", "staff", "payments", "gstRecords", "gstr1Sales", "salesInvoices"];
 const PURGE_STORES = [...TRASH_STORES, "users"];
 
 const STORES = {
@@ -38,6 +38,7 @@ const STORES = {
   gstRecords: "gstRecords", // GSTR-1 / GSTR-3B filing status per client/period
   gstr1Sales: "gstr1Sales", // GSTR-1 Excel Builder — saved monthly sales data per client/period
   payments: "payments",     // payment records per client
+  salesInvoices: "salesInvoices", // Invoice Master — manual sale invoices raised to a party
   activity: "activity",     // recent activity feed
   settings: "settings",     // app-level settings (company name, logo, etc.)
 };
@@ -219,6 +220,9 @@ const DB = {
       invoicePrefix: "INV",
       invoiceFY: currentFinancialYear(),
       invoiceSeq: 0, // last used sequence number; next invoice = invoiceSeq + 1
+      salesInvoicePrefix: "SI",
+      salesInvoiceFY: currentFinancialYear(),
+      salesInvoiceSeq: 0, // separate counter for Invoice Master sale invoices
       sacCode: "",
       gstEnabled: false,
       gstRate: 18,
@@ -259,6 +263,22 @@ const DB = {
     const fy = rolledOver ? liveFY : settings.invoiceFY || liveFY;
     const nextSeq = rolledOver ? 1 : (settings.invoiceSeq || 0) + 1;
     await this.saveSettings({ invoiceSeq: nextSeq, invoiceFY: fy });
+    return `${prefix}/${fy}/${String(nextSeq).padStart(3, "0")}`;
+  },
+
+  /**
+   * Next Invoice Master sale-invoice number — same auto-FY-rollover
+   * logic as getNextInvoiceNumber(), but on its own counter/prefix so
+   * Invoice Master numbering never collides with GST filing fee invoices.
+   */
+  async getNextSalesInvoiceNumber() {
+    const settings = await this.getSettings();
+    const prefix = settings.salesInvoicePrefix || "SI";
+    const liveFY = currentFinancialYear();
+    const rolledOver = settings.salesInvoiceFY && settings.salesInvoiceFY !== liveFY;
+    const fy = rolledOver ? liveFY : settings.salesInvoiceFY || liveFY;
+    const nextSeq = rolledOver ? 1 : (settings.salesInvoiceSeq || 0) + 1;
+    await this.saveSettings({ salesInvoiceSeq: nextSeq, salesInvoiceFY: fy });
     return `${prefix}/${fy}/${String(nextSeq).padStart(3, "0")}`;
   },
 
