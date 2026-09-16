@@ -16,10 +16,18 @@
 <link rel="stylesheet" href="assets/css/theme.css">
 <link rel="stylesheet" href="assets/css/dashboard.css">
 <style>
-  .item-row-grid { display:grid; grid-template-columns: minmax(0,1fr) 90px 70px 90px 90px 32px; gap:8px; align-items:start; }
-  .item-row-grid + .item-row-grid { margin-top:8px; }
+  .item-row-grid { display:grid; grid-template-columns: minmax(0,1fr) 90px 70px 90px 90px 64px; gap:8px; align-items:start; }
   .item-row-grid input { font-size: 12px; }
-  @media (max-width: 560px){ .item-row-grid{ grid-template-columns: 1fr 1fr; } }
+  .item-row-actions { display:flex; gap:4px; }
+  .item-block + .item-block { margin-top:8px; padding-top:8px; border-top:1px dashed var(--border-color, #e2e2e2); }
+  .item-hsn-extra:empty { display:none; }
+  .item-hsn-extra { margin-top:6px; padding-left:14px; border-left:2px solid var(--border-color, #e2e2e2); }
+  .hsn-extra-row { display:grid; grid-template-columns: minmax(0,1fr) 110px 70px 90px 32px; gap:8px; align-items:start; margin-bottom:6px; }
+  .hsn-extra-row input { font-size: 12px; }
+  @media (max-width: 560px){
+    .item-row-grid{ grid-template-columns: 1fr 1fr; }
+    .hsn-extra-row{ grid-template-columns: 1fr 1fr; }
+  }
 </style>
 </head>
 <body>
@@ -201,15 +209,32 @@
   </div>
 </div>
 
-<!-- One item row template (cloned by JS) -->
+<!-- One item block template (cloned by JS): main row + optional extra-HSN split rows -->
 <template id="itemRowTemplate">
-  <div class="item-row-grid">
-    <input type="text" class="form-control form-control-sm item-desc" placeholder="Description">
-    <input type="text" class="form-control form-control-sm item-hsn" placeholder="HSN/SAC">
-    <input type="number" min="0" step="1" class="form-control form-control-sm item-qty" placeholder="Qty" value="1">
-    <input type="number" min="0" step="0.01" class="form-control form-control-sm item-rate" placeholder="Rate">
-    <input type="text" class="form-control form-control-sm item-amount" placeholder="₹0" readonly tabindex="-1">
-    <button type="button" class="btn btn-sm btn-outline-danger item-remove-btn" title="Remove"><i class="fa-solid fa-xmark"></i></button>
+  <div class="item-block">
+    <div class="item-row-grid">
+      <input type="text" class="form-control form-control-sm item-desc" placeholder="Description">
+      <input type="text" class="form-control form-control-sm item-hsn" placeholder="HSN/SAC">
+      <input type="number" min="0" step="1" class="form-control form-control-sm item-qty" placeholder="Qty" value="1">
+      <input type="number" min="0" step="0.01" class="form-control form-control-sm item-rate" placeholder="Rate">
+      <input type="text" class="form-control form-control-sm item-amount" placeholder="₹0" readonly tabindex="-1">
+      <div class="item-row-actions">
+        <button type="button" class="btn btn-sm btn-outline-secondary item-addhsn-btn" title="This item has more than one HSN — add a split"><i class="fa-solid fa-plus"></i></button>
+        <button type="button" class="btn btn-sm btn-outline-danger item-remove-btn" title="Remove item"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+    </div>
+    <div class="item-hsn-extra"></div>
+  </div>
+</template>
+
+<!-- One extra-HSN split row (cloned by JS, appended inside .item-hsn-extra) -->
+<template id="hsnExtraRowTemplate">
+  <div class="hsn-extra-row">
+    <input type="text" class="form-control form-control-sm hsn-extra-code" placeholder="2nd HSN/SAC">
+    <input type="number" min="0" step="0.01" class="form-control form-control-sm hsn-extra-taxable" placeholder="Taxable Value">
+    <input type="number" min="0" step="0.01" class="form-control form-control-sm hsn-extra-rate" placeholder="Tax %">
+    <input type="text" class="form-control form-control-sm hsn-extra-taxamt" placeholder="₹0 Tax" readonly tabindex="-1">
+    <button type="button" class="btn btn-sm btn-outline-danger hsn-extra-remove-btn" title="Remove this HSN split"><i class="fa-solid fa-xmark"></i></button>
   </div>
 </template>
 

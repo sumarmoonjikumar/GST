@@ -121,7 +121,36 @@ function addItemRow(item = {}) {
     updateTotalPreview();
   });
 
+  // "+" corner button — this single item actually covers 2+ HSN codes,
+  // so add another HSN/Taxable-Value/Tax split row nested under it.
+  const extraContainer = node.querySelector(".item-hsn-extra");
+  node.querySelector(".item-addhsn-btn").addEventListener("click", () => addHsnExtraRow(extraContainer));
+
+  // Restore any previously saved HSN splits (edit mode).
+  (item.hsnBreakup || []).forEach((split) => addHsnExtraRow(extraContainer, split));
+
   document.getElementById("itemRows").appendChild(node);
+}
+
+/** Adds one nested "2nd/3rd HSN" row under an item, with its own taxable value + tax %. */
+function addHsnExtraRow(extraContainer, split = {}) {
+  const tpl = document.getElementById("hsnExtraRowTemplate");
+  const row = tpl.content.firstElementChild.cloneNode(true);
+  row.querySelector(".hsn-extra-code").value = split.hsn || "";
+  row.querySelector(".hsn-extra-taxable").value = split.taxableValue ?? "";
+  row.querySelector(".hsn-extra-rate").value = split.taxRate ?? "";
+  row.querySelector(".hsn-extra-taxamt").value = formatCurrency(split.taxAmount || 0);
+
+  const recalcTax = () => {
+    const taxable = Number(row.querySelector(".hsn-extra-taxable").value) || 0;
+    const rate = Number(row.querySelector(".hsn-extra-rate").value) || 0;
+    row.querySelector(".hsn-extra-taxamt").value = formatCurrency((taxable * rate) / 100);
+  };
+  row.querySelector(".hsn-extra-taxable").addEventListener("input", recalcTax);
+  row.querySelector(".hsn-extra-rate").addEventListener("input", recalcTax);
+  row.querySelector(".hsn-extra-remove-btn").addEventListener("click", () => row.remove());
+
+  extraContainer.appendChild(row);
 }
 
 function updateTotalPreview() {
@@ -130,13 +159,26 @@ function updateTotalPreview() {
 }
 
 function collectItems() {
-  return Array.from(document.querySelectorAll("#itemRows .item-row-grid"))
-    .map((row) => {
+  return Array.from(document.querySelectorAll("#itemRows .item-block"))
+    .map((block) => {
+      const row = block.querySelector(".item-row-grid");
       const description = row.querySelector(".item-desc").value.trim();
       const hsn = row.querySelector(".item-hsn").value.trim();
       const qty = Number(row.querySelector(".item-qty").value) || 0;
       const rate = Number(row.querySelector(".item-rate").value) || 0;
-      return { description, hsn, qty, rate, amount: qty * rate };
+
+      const hsnBreakup = Array.from(block.querySelectorAll(".hsn-extra-row"))
+        .map((extra) => {
+          const exHsn = extra.querySelector(".hsn-extra-code").value.trim();
+          const taxableValue = Number(extra.querySelector(".hsn-extra-taxable").value) || 0;
+          const taxRate = Number(extra.querySelector(".hsn-extra-rate").value) || 0;
+          return { hsn: exHsn, taxableValue, taxRate, taxAmount: (taxableValue * taxRate) / 100 };
+        })
+        .filter((s) => s.hsn || s.taxableValue > 0);
+
+      const it = { description, hsn, qty, rate, amount: qty * rate };
+      if (hsnBreakup.length) it.hsnBreakup = hsnBreakup;
+      return it;
     })
     .filter((it) => it.description || it.amount > 0);
 }
