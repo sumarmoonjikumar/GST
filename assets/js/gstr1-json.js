@@ -1219,6 +1219,10 @@ function hsnAutofillFromB2B() {
 
   const body = document.getElementById("hsnGridBody");
   body.querySelectorAll('tr[data-auto="1"]').forEach((tr) => tr.remove());
+  // Also drop the empty starter rows (the "998314 / e.g. Accounting services"
+  // placeholder rows this tab always begins with) so the grid shows only
+  // real entries — one row per HSN actually used, nothing to scroll past.
+  Array.from(body.children).forEach((tr) => { if (isGridRowBlank("hsn", tr)) tr.remove(); });
   grouped.forEach((g) => {
     const tr = createGridRow("hsn");
     tr.dataset.auto = "1";
@@ -1806,10 +1810,11 @@ function updateSummaryStrip() {
     ...parsedRows.b2b.map((r) => r.raw.txval),
     ...parsedRows.b2cs.map((r) => r.raw.txval),
   ].reduce((s, n) => s + n, 0);
-  const taxTotal = [
-    ...parsedRows.b2b.map((r) => r.raw.igst + r.raw.cgst + r.raw.sgst),
-    ...parsedRows.b2cs.map((r) => r.raw.igst + r.raw.cgst + r.raw.sgst),
-  ].reduce((s, n) => s + n, 0);
+  const allRows = [...parsedRows.b2b.map((r) => r.raw), ...parsedRows.b2cs.map((r) => r.raw)];
+  const igstTotal = allRows.reduce((s, r) => s + r.igst, 0);
+  const cgstTotal = allRows.reduce((s, r) => s + r.cgst, 0);
+  const sgstTotal = allRows.reduce((s, r) => s + r.sgst, 0);
+  const taxTotal = igstTotal + cgstTotal + sgstTotal;
   const b2bInvoiceCount = new Set(parsedRows.b2b.map((r) => `${r.raw.gstin}|${r.raw.inum}`)).size;
   const unregCount = lastUnregisteredB2B.length;
   const totalInvoices = b2bInvoiceCount + unregCount;
@@ -1822,7 +1827,10 @@ function updateSummaryStrip() {
     <div class="g1-summary-chip"><span class="n">${parsedRows.hsn.length}</span>HSN Rows</div>
     <div class="g1-summary-chip"><span class="n">${parsedRows.doc.length}</span>Doc Ranges</div>
     <div class="g1-summary-chip"><span class="n">₹${taxableTotal.toLocaleString("en-IN")}</span>Taxable Value</div>
-    <div class="g1-summary-chip"><span class="n">₹${taxTotal.toLocaleString("en-IN")}</span>Total Tax</div>
+    <div class="g1-summary-chip"><span class="n">₹${round2(igstTotal).toLocaleString("en-IN")}</span>IGST</div>
+    <div class="g1-summary-chip"><span class="n">₹${round2(cgstTotal).toLocaleString("en-IN")}</span>CGST</div>
+    <div class="g1-summary-chip"><span class="n">₹${round2(sgstTotal).toLocaleString("en-IN")}</span>SGST</div>
+    <div class="g1-summary-chip"><span class="n">₹${round2(taxTotal).toLocaleString("en-IN")}</span>Total Tax</div>
   `;
 }
 
