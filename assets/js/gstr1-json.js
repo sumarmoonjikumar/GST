@@ -34,6 +34,33 @@ const VALID_UQC = new Set([
   "ROL-ROLLS","SET-SETS","SQF-SQUARE FEET","SQM-SQUARE METERS","SQY-SQUARE YARDS","TBS-TABLETS","TGM-TEN GROSS",
   "THD-THOUSANDS","TON-TONNES","TUB-TUBES","UGS-US GALLONS","UNT-UNITS","YDS-YARDS","OTH-OTHERS","NA-NOT APPLICABLE",
 ]);
+
+/**
+ * Small starter lookup so common codes auto-fill their Description on the
+ * HSN Summary grid. This is NOT the full CBIC HSN/SAC master (that runs to
+ * 20,000+ codes) — it only covers codes this app already suggests as
+ * placeholders plus a handful of everyday professional-services SAC codes.
+ * Add more entries here ("code": "description") as your own frequently-used
+ * codes come up; anything not listed just stays blank for manual entry —
+ * always verify the code+description pair against the CBIC master before
+ * filing.
+ */
+const HSN_DESC_MAP = {
+  "998311": "Management consulting services",
+  "998313": "Information technology (IT) design and development services",
+  "998314": "Information technology (IT) consulting and support services",
+  "998221": "Accounting and bookkeeping services",
+  "998222": "Payroll services",
+  "998231": "Corporate tax consulting and preparation services",
+  "998232": "Individual tax preparation and planning services",
+  "998213": "Legal documentation and certification services concerning patents, copyrights and other IP rights",
+  "997156": "Financial consultancy services",
+  "998719": "Maintenance and repair services of other goods",
+};
+
+function lookupHsnDescription(code) {
+  return HSN_DESC_MAP[String(code || "").replace(/[,\s]/g, "")] || "";
+}
 const DOC_NATURE_MAP = [
   { key: 1, names: ["invoices for outward supply", "outward supply invoice", "invoice", "tax invoice"] },
   { key: 2, names: ["invoices for inward supply from unregistered person", "inward supply invoice", "purchase from urd"] },
@@ -986,6 +1013,19 @@ function createGridRow(defKey) {
   tr.innerHTML = `<td class="b2b-row-num"></td>${cellsHtml}<td><button type="button" class="b2b-row-del" data-del title="Remove row"><i class="fa-solid fa-xmark"></i></button></td>`;
   tr.querySelectorAll("input[data-col]").forEach((inp) => inp.addEventListener("paste", (e) => handleGenericGridPaste(e, defKey, tr, inp)));
   tr.querySelector("[data-del]").addEventListener("click", () => { tr.remove(); renumberGridRows(defKey); handleParseGrid(defKey, true); });
+
+  // HSN Summary grid only: known codes auto-fill Description (never
+  // overwrites text you've already typed there yourself).
+  if (defKey === "hsn") {
+    const hsnInput = tr.querySelector('[data-col="hsn"]');
+    const descInput = tr.querySelector('[data-col="desc"]');
+    hsnInput.addEventListener("blur", () => {
+      if (descInput && !descInput.value.trim()) {
+        const found = lookupHsnDescription(hsnInput.value);
+        if (found) descInput.value = found;
+      }
+    });
+  }
   return tr;
 }
 
@@ -1147,6 +1187,54 @@ function syncB2csFromUnregisteredB2B() {
   });
   renumberGridRows("b2cs");
   toast(`Pulled in ${grouped.size} consolidated row(s) from ${lastUnregisteredB2B.length} unregistered B2B invoice(s) this month.`, "success");
+}
+
+/** "Auto-fill from B2B" button on the HSN Summary tab — groups every valid
+ *  B2B row (registered, error-free) by HSN + Rate and sums their Taxable
+ *  Value / IGST / CGST / SGST into one HSN Summary row per combination, so
+ *  the HSN sheet total stays in sync with what's actually in the B2B sheet
+ *  instead of being retyped/miscounted by hand. Known codes also get their
+ *  Description auto-filled from the starter lookup above. Re-running this
+ *  only replaces the rows it added last time — any row you typed yourself
+ *  is left alone. */
+function hsnAutofillFromB2B() {
+  handleParseB2B(true); // make sure parsedRows.b2b reflects the current grid
+  const rows = (parsedRows.b2b || []).filter((r) => !r.errors.length && r.raw.hsn);
+  if (!rows.length) {
+    toast('No valid B2B rows with an HSN/SAC code yet — fill in HSN on the B2B tab and click "Validate rows" there first.', "warning");
+    return;
+  }
+
+  const grouped = new Map(); // key = hsn|rt
+  rows.forEach((r) => {
+    const { hsn, rt, txval, igst, cgst, sgst } = r.raw;
+    const key = `${hsn}|${rt}`;
+    if (!grouped.has(key)) grouped.set(key, { hsn, rt, txval: 0, igst: 0, cgst: 0, sgst: 0 });
+    const g = grouped.get(key);
+    g.txval = round2(g.txval + txval);
+    g.igst = round2(g.igst + igst);
+    g.cgst = round2(g.cgst + cgst);
+    g.sgst = round2(g.sgst + sgst);
+  });
+
+  const body = document.getElementById("hsnGridBody");
+  body.querySelectorAll('tr[data-auto="1"]').forEach((tr) => tr.remove());
+  grouped.forEach((g) => {
+    const tr = createGridRow("hsn");
+    tr.dataset.auto = "1";
+    tr.querySelector('[data-col="hsn"]').value = g.hsn;
+    const desc = lookupHsnDescription(g.hsn);
+    if (desc) tr.querySelector('[data-col="desc"]').value = desc;
+    tr.querySelector('[data-col="uqc"]').value = "NOS";
+    tr.querySelector('[data-col="txval"]').value = g.txval || "";
+    tr.querySelector('[data-col="igst"]').value = g.igst || "";
+    tr.querySelector('[data-col="cgst"]').value = g.cgst || "";
+    tr.querySelector('[data-col="sgst"]').value = g.sgst || "";
+    tr.querySelector('[data-col="val"]').value = round2(g.txval + g.igst + g.cgst + g.sgst) || "";
+    body.appendChild(tr);
+  });
+  renumberGridRows("hsn");
+  toast(`Pulled in ${grouped.size} HSN row(s) from ${rows.length} B2B invoice line(s).`, "success");
 }
 
 /* =========================================================
@@ -2113,6 +2201,7 @@ function wireEvents() {
   document.getElementById("b2bAddRows").addEventListener("click", () => addB2BRows(5));
   document.getElementById("b2csAddRows").addEventListener("click", () => addGridRows("b2cs", 5));
   document.getElementById("hsnAddRows").addEventListener("click", () => addGridRows("hsn", 5));
+  document.getElementById("hsnAutofillFromB2B").addEventListener("click", hsnAutofillFromB2B);
   document.getElementById("docAddRows").addEventListener("click", () => addGridRows("doc", 5));
   document.getElementById("b2csSyncBtn").addEventListener("click", syncB2csFromUnregisteredB2B);
 
