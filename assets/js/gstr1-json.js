@@ -557,7 +557,10 @@ function createB2BRow() {
     <td><select class="b2b-cell-select" data-col="rchrg"><option value="N">No</option><option value="Y">Yes</option></select></td>
     <td><input type="text" class="b2b-cell-input" data-col="hsn" placeholder="998314"></td>
     <td class="b2b-rate-cell" data-rate>—</td>
-    <td><button type="button" class="b2b-row-del" data-del title="Remove row"><i class="fa-solid fa-xmark"></i></button></td>
+    <td class="text-nowrap">
+      <button type="button" class="b2b-row-dup" data-dup title="Same invoice, next HSN/rate — copies GSTIN, Name, Date, POS, Reverse Charge into a new row below"><i class="fa-solid fa-copy"></i></button>
+      <button type="button" class="b2b-row-del" data-del title="Remove row"><i class="fa-solid fa-xmark"></i></button>
+    </td>
   `;
   const posSel = tr.querySelector('[data-col="pos"]');
   posSel.innerHTML = Object.entries(STATE_CODES).map(([code, name]) => `<option value="${code}">${code} — ${name}</option>`).join("");
@@ -573,7 +576,25 @@ function createB2BRow() {
   tr.querySelector('[data-col="gstin"]').addEventListener("blur", (e) => { e.target.value = e.target.value.toUpperCase(); });
   tr.querySelector('[data-col="idt"]').addEventListener("blur", (e) => { e.target.value = normalizeDate(e.target.value); });
   tr.querySelector("[data-del]").addEventListener("click", () => { tr.remove(); renumberB2BRows(); handleParseB2B(true); });
+  tr.querySelector("[data-dup]").addEventListener("click", () => duplicateB2BRowForNextHsn(tr));
   return tr;
+}
+
+/** "+" corner button on a B2B row — this invoice actually has 2+ HSN/rates,
+ *  so insert a fresh row right below it, carrying over only the fields that
+ *  stay the same for every line of one invoice (GSTIN, Name, Date, POS,
+ *  Reverse Charge, Invoice No). Taxable/Tax/HSN are left blank for the next
+ *  HSN's own figures, and Invoice Value is left for you to set to the full
+ *  invoice total on both rows (see the "Val" note in the app). */
+function duplicateB2BRowForNextHsn(sourceRow) {
+  const newRow = createB2BRow();
+  ["inum", "gstin", "cname", "idt", "pos", "rchrg"].forEach((col) => {
+    const val = sourceRow.querySelector(`[data-col="${col}"]`).value;
+    if (val) setB2BCell(newRow, col, val);
+  });
+  sourceRow.after(newRow);
+  renumberB2BRows();
+  newRow.querySelector('[data-col="txval"]').focus();
 }
 
 function renumberB2BRows() {

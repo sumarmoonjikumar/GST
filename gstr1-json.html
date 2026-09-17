@@ -95,6 +95,8 @@
   .b2b-row-num { text-align: center; font-size: 0.68rem; color: var(--text-muted); }
   .b2b-row-del { border: none; background: transparent; color: var(--text-muted); cursor: pointer; padding: 6px; }
   .b2b-row-del:hover { color: var(--danger); }
+  .b2b-row-dup { border: none; background: transparent; color: var(--text-muted); cursor: pointer; padding: 6px; }
+  .b2b-row-dup:hover { color: var(--bs-primary, #0d6efd); }
 
   .excel-import-bar {
     display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
@@ -331,7 +333,7 @@
                   <th style="min-width:100px;">Reverse Charge</th>
                   <th style="min-width:100px;">HSN/SAC Code</th>
                   <th style="min-width:70px;">Rate %</th>
-                  <th style="width:30px;"></th>
+                  <th style="width:56px;"></th>
                 </tr>
               </thead>
               <tbody id="b2bGridBody"></tbody>
