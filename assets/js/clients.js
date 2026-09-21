@@ -3,6 +3,7 @@ import { requireSession } from "./auth.js";
 import { applyStoredTheme, toast, initials, whatsappLink, confirmAdminDelete } from "./utils.js";
 import { initAppChrome } from "./chrome.js";
 import { cloudinaryConfig } from "./cloudinary-config.js";
+import { filingStartKeyFromInput, filingStartInputFromKey, defaultFilingStartInput } from "./gst-status.js";
 import { normalizeMobile, generatePassword, syncCustomerLogin } from "./customer-account.js";
 
 applyStoredTheme();
@@ -201,6 +202,7 @@ function wireEvents() {
     document.getElementById("clientForm").reset();
     document.getElementById("clientId").value = "";
     document.getElementById("clientOffcanvasTitle").textContent = "Add Client";
+    document.getElementById("filingStartMonth").value = defaultFilingStartInput();
     document.getElementById("docsUploadWrap").classList.add("d-none");
     document.getElementById("docsNewClientNote").classList.remove("d-none");
     updateCustomerUsernamePreview();
@@ -395,6 +397,7 @@ function openViewClient(id) {
   document.getElementById("vAssignedStaff").textContent = staffMember ? staffMember.name : "Unassigned";
   document.getElementById("vStatus").textContent = c.status || "Active";
   document.getElementById("vGstFrequency").textContent = c.gstFrequency === "Quarterly" ? "Quarterly (QRMP)" : "Monthly";
+  document.getElementById("vFilingStart").textContent = c.filingStartMonth ? c.filingStartMonth.replace("-", " ") : "All months (from April)";
   document.getElementById("vMonthlyFee").textContent = money(c.monthlyFee);
   document.getElementById("vKycDoc").innerHTML = c.kycDocUrl
     ? `<a href="${c.kycDocUrl}" target="_blank" rel="noopener"><i class="fa-solid fa-file-arrow-down me-1"></i>${escapeHtml(c.kycDocName || "View")}</a>`
@@ -440,6 +443,7 @@ function openEditClient(id) {
   document.getElementById("assignedStaffId").value = c.assignedStaffId || "";
   document.getElementById("clientStatus").value = c.status || "Active";
   document.getElementById("gstFrequency").value = c.gstFrequency === "Quarterly" ? "Quarterly" : "Monthly";
+  document.getElementById("filingStartMonth").value = filingStartInputFromKey(c.filingStartMonth);
   document.getElementById("gstPortalUsername").value = c.gstPortalUsername || "";
   document.getElementById("gstPortalPassword").value = c.gstPortalPassword || "";
   document.getElementById("customerPassword").value = c.customerPassword || "";
@@ -490,6 +494,8 @@ async function onSaveClient(e) {
     assignedStaffId: document.getElementById("assignedStaffId").value || null,
     status: document.getElementById("clientStatus").value,
     gstFrequency: document.getElementById("gstFrequency").value === "Quarterly" ? "Quarterly" : "Monthly",
+    // Filing obligations (pending filings/payments) begin from this month. Empty = legacy behaviour (all months of the FY).
+    filingStartMonth: filingStartKeyFromInput(document.getElementById("filingStartMonth").value),
     gstPortalUsername: document.getElementById("gstPortalUsername").value.trim(),
     gstPortalPassword: document.getElementById("gstPortalPassword").value,
     // Customer Login username is always derived from the Phone field, never typed separately.

@@ -2,7 +2,7 @@ import DB from "./db.js";
 import { requireSession } from "./auth.js";
 import { applyStoredTheme, currentFY, fyMonths, formatCurrency, formatDate } from "./utils.js";
 import { initAppChrome } from "./chrome.js";
-import { buildFilingMap, getFilingStatus, periodHasStarted } from "./gst-status.js";
+import { buildFilingMap, getFilingStatus, periodHasStarted, inFilingScope } from "./gst-status.js";
 
 applyStoredTheme();
 const session = requireSession(["customer"]);
@@ -46,7 +46,7 @@ function renderFiling(client, gstRecords) {
   document.getElementById("cdFyLabel").textContent = fy;
 
   const filingMap = buildFilingMap(gstRecords);
-  const months = fyMonths(fy).filter((m) => periodHasStarted(m.month, m.year));
+  const months = fyMonths(fy).filter((m) => periodHasStarted(m.month, m.year) && inFilingScope(client, m.key));
   const freq = client.gstFrequency === "Quarterly" ? "Quarterly" : "Monthly";
 
   let gstr1Pending = 0;

@@ -2,7 +2,7 @@ import DB from "./db.js";
 import { requireSession } from "./auth.js";
 import { applyStoredTheme, toast, currentFY, fyList, fyMonths, initials, whatsappLink } from "./utils.js";
 import { initAppChrome } from "./chrome.js";
-import { buildFilingMap, getFilingStatus, filingRecordId, periodHasStarted, isQuarterEndMonth } from "./gst-status.js";
+import { buildFilingMap, getFilingStatus, filingRecordId, periodHasStarted, isQuarterEndMonth, inFilingScope } from "./gst-status.js";
 
 applyStoredTheme();
 const session = requireSession(["admin", "staff"]);
@@ -112,6 +112,7 @@ function renderSummary() {
     const freq = clientFrequency(c);
     applicablePeriods(c, months).forEach((m) => {
       if (!periodHasStarted(m.month, m.year)) return;
+      if (!inFilingScope(c, m.key)) return;
       types.forEach((type) => {
         total++;
         const rec = getFilingStatus(filingMap, c.id, m.key, type, freq);
@@ -208,6 +209,10 @@ function renderMatrix() {
         for (let i = 0; i < 12; i += 3) {
           const qEnd = months[i + 2];
           const qDivider = i > 0 ? " q-divider" : "";
+          if (!inFilingScope(c, qEnd.key)) {
+            cells += `<td colspan="3" class="month-cell not-due-qtr${qDivider}"><span class="small text-muted-soft">—</span></td>`;
+            continue;
+          }
           if (!periodHasStarted(qEnd.month, qEnd.year)) {
             cells += `<td colspan="3" class="month-cell not-due-qtr${qDivider}"><span class="not-due-cell">Not due yet</span></td>`;
             continue;
@@ -222,7 +227,7 @@ function renderMatrix() {
             if (freq === "Quarterly" && !isQuarterEndMonth(m.month)) {
               return `<td class="month-cell${qDivider}"><span class="not-due-cell">Quarterly</span></td>`;
             }
-            if (!periodHasStarted(m.month, m.year)) {
+            if (!inFilingScope(c, m.key) || !periodHasStarted(m.month, m.year)) {
               return `<td class="month-cell${qDivider}"><span class="small text-muted-soft">—</span></td>`;
             }
             const label = freq === "Quarterly" ? quarterlyPeriodLabel(m) : m.label;
@@ -330,8 +335,16 @@ function toggleFiledDateVisibility() {
   document.getElementById("fFiledDateWrap").classList.toggle("d-none", !isFiled);
 }
 
+let savingStatus = false; // blocks double-click / double-submit while a save is in flight
+
 async function onSaveStatus(e) {
   e.preventDefault();
+  if (savingStatus) return;
+  savingStatus = true;
+  const submitBtn = e.submitter || document.querySelector("#filingStatusForm [type=submit]");
+  if (submitBtn) submitBtn.disabled = true;
+  let redirecting = false;
+  try {
   const clientId = document.getElementById("fClientId").value;
   const monthKey = document.getElementById("fMonthKey").value;
   const type = document.getElementById("fType").value;
@@ -382,7 +395,15 @@ async function onSaveStatus(e) {
     // installed PWA doesn't reliably share this app's session storage,
     // which was bouncing users to the login page.
     const url = `invoice.html?client=${encodeURIComponent(invoiceInfo.clientId)}&invoice=${encodeURIComponent(invoiceInfo.invoiceNo)}`;
+    redirecting = true;
     window.location.href = url;
+  }
+  } finally {
+    // Keep the button locked while navigating away to the invoice.
+    if (!redirecting) {
+      savingStatus = false;
+      if (submitBtn) submitBtn.disabled = false;
+    }
   }
 }
 
@@ -401,7 +422,8 @@ async function ensurePendingPayment(clientId, monthKey, client) {
     const now = new Date().toISOString();
     const fixedFee = client?.monthlyFee != null && client.monthlyFee !== "" ? Number(client.monthlyFee) : 0;
     record = {
-      id: DB.uid("pay"),
+      // Deterministic id: even if two saves race, they upsert ONE payment record instead of creating duplicates.
+      id: `pay_${clientId}_${period.replace(/[^a-zA-Z0-9]/g, "")}`,
       clientId,
       billingPeriod: period,
       amount: fixedFee,

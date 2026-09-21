@@ -55,6 +55,45 @@ export function periodHasStarted(month, year) {
   return nextMonthStart <= new Date();
 }
 
+/** "Aug-2026" -> sortable month number, or null if unparseable. */
+function monthKeyOrdinal(key) {
+  const [name, yearStr] = String(key || "").split("-");
+  const idx = CAL_MONTHS.indexOf(name);
+  const year = parseInt(yearStr, 10);
+  return idx === -1 || Number.isNaN(year) ? null : year * 12 + idx;
+}
+
+/** <input type="month"> value ("2026-08") -> app month key ("Aug-2026"). Empty/invalid -> null. */
+export function filingStartKeyFromInput(value) {
+  const m = /^(\d{4})-(\d{2})$/.exec(value || "");
+  if (!m) return null;
+  const name = CAL_MONTHS[parseInt(m[2], 10) - 1];
+  return name ? `${name}-${m[1]}` : null;
+}
+
+/** App month key ("Aug-2026") -> <input type="month"> value ("2026-08"). */
+export function filingStartInputFromKey(key) {
+  const ord = monthKeyOrdinal(key);
+  if (ord == null) return "";
+  return `${Math.floor(ord / 12)}-${String((ord % 12) + 1).padStart(2, "0")}`;
+}
+
+/** Last fully-ended calendar month as an <input type="month"> value — sensible default start for a new party. */
+export function defaultFilingStartInput() {
+  const d = new Date();
+  d.setDate(1);
+  d.setMonth(d.getMonth() - 1);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+}
+
+/** True if this filing period belongs to the client's filing scope. A client with a `filingStartMonth` has no obligations (pending filings/payments) for periods before it; clients without one (older records) keep all periods. For quarterly clients pass the quarter-end month key — a quarter counts if it ends on/after the start month. */
+export function inFilingScope(client, monthKey) {
+  const start = monthKeyOrdinal(client?.filingStartMonth);
+  const cur = monthKeyOrdinal(monthKey);
+  if (start == null || cur == null) return true;
+  return cur >= start;
+}
+
 export function daysBetween(dateA, dateB) {
   const MS = 24 * 60 * 60 * 1000;
   return Math.round((new Date(dateA).setHours(0, 0, 0, 0) - new Date(dateB).setHours(0, 0, 0, 0)) / MS);

@@ -189,6 +189,12 @@
         <div class="form-text">Quarterly clients file GSTR-1 &amp; GSTR-3B once per quarter (Jun/Sep/Dec/Mar) instead of every month.</div>
       </div>
 
+      <div class="mb-3">
+        <label class="form-label" for="filingStartMonth">Filing Starts From</label>
+        <input type="month" class="form-control" id="filingStartMonth">
+        <div class="form-text">Pending filings and payments are counted only from this month onward. Earlier months (e.g. from April) will not show as pending.</div>
+      </div>
+
       <div class="section-divider">Monthly Fixed Payment</div>
       <div class="mb-3">
         <label class="form-label" for="monthlyFee">Monthly Fixed Fee (₹)</label>
@@ -349,6 +355,7 @@
           <div class="col-md-6" data-admin-only><span class="small text-muted-soft">Assigned Staff</span><div id="vAssignedStaff">—</div></div>
           <div class="col-md-6"><span class="small text-muted-soft">Status</span><div id="vStatus">—</div></div>
           <div class="col-md-6"><span class="small text-muted-soft">GST Filing Frequency</span><div id="vGstFrequency">—</div></div>
+          <div class="col-md-6"><span class="small text-muted-soft">Filing Starts From</span><div id="vFilingStart">—</div></div>
         </div>
 
         <div class="section-divider">Monthly Fixed Payment</div>

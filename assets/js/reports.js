@@ -2,7 +2,7 @@ import DB from "./db.js";
 import { requireSession } from "./auth.js";
 import { applyStoredTheme, toast, formatCurrency, currentFY, fyList, fyMonths } from "./utils.js";
 import { initAppChrome } from "./chrome.js";
-import { buildFilingMap, getFilingStatus, periodHasStarted } from "./gst-status.js";
+import { buildFilingMap, getFilingStatus, periodHasStarted, inFilingScope } from "./gst-status.js";
 
 applyStoredTheme();
 const session = requireSession(["admin"]); // consolidated cross-client report — admin only
@@ -58,7 +58,7 @@ function filteredClients() {
 
 function buildRow(client) {
   const fy = document.getElementById("fyFilter").value;
-  const months = fyMonths(fy).filter((m) => periodHasStarted(m.month, m.year));
+  const months = fyMonths(fy).filter((m) => periodHasStarted(m.month, m.year) && inFilingScope(client, m.key));
   const staffMember = allStaff.find((s) => s.id === client.assignedStaffId);
 
   let g1Filed = 0, g1Pending = 0, g3bFiled = 0, g3bPending = 0;

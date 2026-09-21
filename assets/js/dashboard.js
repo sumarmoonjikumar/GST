@@ -2,7 +2,7 @@ import DB from "./db.js";
 import { requireSession } from "./auth.js";
 import { applyStoredTheme, currentFY, fyMonths, formatCurrency } from "./utils.js";
 import { initAppChrome } from "./chrome.js";
-import { buildFilingMap, getFilingStatus, periodHasStarted } from "./gst-status.js";
+import { buildFilingMap, getFilingStatus, periodHasStarted, inFilingScope } from "./gst-status.js";
 
 applyStoredTheme();
 const session = requireSession(); // any role may view; content narrows per role below
@@ -50,6 +50,7 @@ async function renderStats() {
   scopedClients.forEach((c) => {
     months.forEach((m) => {
       if (!periodHasStarted(m.month, m.year)) return;
+      if (!inFilingScope(c, m.key)) return;
       ["GSTR-1", "GSTR-3B"].forEach((type) => {
         const rec = getFilingStatus(filingMap, c.id, m.key, type);
         if (rec.status === "Filed") {
