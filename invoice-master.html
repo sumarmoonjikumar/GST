@@ -16,16 +16,19 @@
 <link rel="stylesheet" href="assets/css/theme.css">
 <link rel="stylesheet" href="assets/css/dashboard.css">
 <style>
-  .item-row-grid { display:grid; grid-template-columns: minmax(0,1fr) 90px 70px 90px 90px 64px; gap:8px; align-items:start; }
-  .item-row-grid input { font-size: 12px; }
+  .item-row-grid { display:grid; grid-template-columns: minmax(0,1fr) 80px 60px 80px 64px 90px 64px; gap:8px; align-items:start; }
+  .item-row-grid input, .item-row-grid select { font-size: 12px; }
   .item-row-actions { display:flex; gap:4px; }
   .item-block + .item-block { margin-top:8px; padding-top:8px; border-top:1px dashed var(--border-color, #e2e2e2); }
   .item-hsn-extra:empty { display:none; }
   .item-hsn-extra { margin-top:6px; padding-left:14px; border-left:2px solid var(--border-color, #e2e2e2); }
   .hsn-extra-row { display:grid; grid-template-columns: minmax(0,1fr) 110px 70px 90px 32px; gap:8px; align-items:start; margin-bottom:6px; }
   .hsn-extra-row input { font-size: 12px; }
+  .invoice-totals-box { margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--border-color, #e2e2e2); }
+  .invoice-totals-box .t-row { display:flex; justify-content:space-between; padding:3px 0; font-size: 13px; }
+  .invoice-totals-box .t-row.grand { border-top: 2px solid var(--navy, #001839); margin-top: 6px; padding-top: 8px; font-size: 16px; font-weight: 700; }
   @media (max-width: 560px){
-    .item-row-grid{ grid-template-columns: 1fr 1fr; }
+    .item-row-grid{ grid-template-columns: 1fr 1fr 1fr; }
     .hsn-extra-row{ grid-template-columns: 1fr 1fr; }
   }
 </style>
@@ -187,16 +190,37 @@
           </select>
         </div>
       </div>
+      <div class="row">
+        <div class="col-6 mb-3">
+          <label class="form-label" for="invoicePaymentMode">Payment Mode</label>
+          <select class="form-select" id="invoicePaymentMode">
+            <option value="Cash">Cash</option>
+            <option value="Credit">Credit</option>
+            <option value="Bank">Bank</option>
+            <option value="UPI">UPI</option>
+          </select>
+        </div>
+        <div class="col-6 mb-3">
+          <label class="form-label" for="invoiceDiscount">Discount (₹)</label>
+          <input type="number" min="0" step="0.01" class="form-control" id="invoiceDiscount" value="0">
+        </div>
+      </div>
 
       <div class="section-divider">Items</div>
+      <div class="item-row-grid small text-muted-soft mb-1 d-none d-md-grid">
+        <span>Description</span><span>HSN/SAC</span><span>Qty</span><span>Rate</span><span>GST %</span><span>Amount</span><span></span>
+      </div>
       <div id="itemRows"></div>
       <button type="button" class="btn btn-outline-secondary btn-sm mt-2" id="addItemRowBtn">
         <i class="fa-solid fa-plus me-1"></i>Add Item
       </button>
 
-      <div class="d-flex justify-content-between align-items-center mt-3 pt-2 border-top">
-        <span class="small text-muted-soft">Total</span>
-        <span class="fw-semibold" id="invoiceTotalPreview">₹0</span>
+      <div class="invoice-totals-box" id="invoiceTotalsBox">
+        <div class="t-row"><span>Sub Total</span><b id="tSubTotal">₹0</b></div>
+        <div class="t-row"><span id="tCgstLabel">CGST</span><b id="tCgst">₹0</b></div>
+        <div class="t-row"><span id="tSgstLabel">SGST</span><b id="tSgst">₹0</b></div>
+        <div class="t-row"><span>Discount</span><b id="tDiscount">₹0</b></div>
+        <div class="t-row grand"><span>Grand Total</span><b id="invoiceTotalPreview">₹0</b></div>
       </div>
 
       <div class="mb-3 mt-3">
@@ -217,6 +241,13 @@
       <input type="text" class="form-control form-control-sm item-hsn" placeholder="HSN/SAC">
       <input type="number" min="0" step="1" class="form-control form-control-sm item-qty" placeholder="Qty" value="1">
       <input type="number" min="0" step="0.01" class="form-control form-control-sm item-rate" placeholder="Rate">
+      <select class="form-select form-select-sm item-gst" title="GST %">
+        <option value="0">0%</option>
+        <option value="5">5%</option>
+        <option value="12">12%</option>
+        <option value="18" selected>18%</option>
+        <option value="28">28%</option>
+      </select>
       <input type="text" class="form-control form-control-sm item-amount" placeholder="₹0" readonly tabindex="-1">
       <div class="item-row-actions">
         <button type="button" class="btn btn-sm btn-outline-secondary item-addhsn-btn" title="This item has more than one HSN — add a split"><i class="fa-solid fa-plus"></i></button>

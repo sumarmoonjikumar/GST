@@ -9,6 +9,7 @@ const session = requireSession(["admin", "staff"]);
 let clients = [];
 let invoices = [];
 let offcanvas;
+let isIgst = false; // whether GST splits as IGST (inter-state) or CGST+SGST, per Settings
 
 async function init() {
   if (!session) return;
@@ -16,10 +17,16 @@ async function init() {
 
   offcanvas = new bootstrap.Offcanvas(document.getElementById("invoiceOffcanvas"));
 
-  const [allClients, allInvoices] = await Promise.all([
+  const [allClients, allInvoices, settings] = await Promise.all([
     DB.getAll(DB.STORES.clients),
     DB.getAll(DB.STORES.salesInvoices),
+    DB.getSettings(),
   ]);
+
+  isIgst = settings.gstType === "IGST";
+  document.getElementById("tCgstLabel").textContent = isIgst ? "IGST" : "CGST";
+  document.getElementById("tSgstLabel").textContent = isIgst ? "" : "SGST";
+  document.getElementById("tSgst").closest(".t-row").classList.toggle("d-none", isIgst);
 
   // Staff only bill parties assigned to them; admin sees everyone.
   clients = session.role === "staff" ? allClients.filter((c) => c.assignedStaffId === session.id) : allClients;
@@ -45,8 +52,38 @@ function clientName(id) {
   return clients.find((c) => c.id === id)?.businessName || "Unknown Party";
 }
 
+/** Taxable sub-total + GST for a single item, including any extra HSN splits. */
+function itemTax(it) {
+  const taxable = Number(it.amount) || 0;
+  const rate = Number(it.gstRate) || 0;
+  let tax = (taxable * rate) / 100;
+  let splitTaxable = 0;
+  (it.hsnBreakup || []).forEach((s) => {
+    splitTaxable += Number(s.taxableValue) || 0;
+    tax += Number(s.taxAmount) || 0;
+  });
+  return { taxable: taxable + splitTaxable, tax };
+}
+
+/** Full totals (sub total, cgst/sgst or igst, discount, grand total) for an invoice record. */
+function computeTotals(invoice) {
+  let sub = 0,
+    tax = 0;
+  (invoice.items || []).forEach((it) => {
+    const t = itemTax(it);
+    sub += t.taxable;
+    tax += t.tax;
+  });
+  const discount = Number(invoice.discount) || 0;
+  const cgst = isIgst ? 0 : tax / 2;
+  const sgst = isIgst ? 0 : tax / 2;
+  const igst = isIgst ? tax : 0;
+  const grand = sub + tax - discount;
+  return { sub, cgst, sgst, igst, tax, discount, grand };
+}
+
 function computeTotal(invoice) {
-  return (invoice.items || []).reduce((sum, it) => sum + (Number(it.amount) || 0), 0);
+  return computeTotals(invoice).grand;
 }
 
 function renderTable() {
@@ -106,6 +143,7 @@ function addItemRow(item = {}) {
   node.querySelector(".item-hsn").value = item.hsn || "";
   node.querySelector(".item-qty").value = item.qty ?? 1;
   node.querySelector(".item-rate").value = item.rate ?? "";
+  node.querySelector(".item-gst").value = item.gstRate ?? 18;
   node.querySelector(".item-amount").value = formatCurrency(item.amount || 0);
 
   const recalc = () => {
@@ -116,6 +154,7 @@ function addItemRow(item = {}) {
   };
   node.querySelector(".item-qty").addEventListener("input", recalc);
   node.querySelector(".item-rate").addEventListener("input", recalc);
+  node.querySelector(".item-gst").addEventListener("change", updateTotalPreview);
   node.querySelector(".item-remove-btn").addEventListener("click", () => {
     node.remove();
     updateTotalPreview();
@@ -145,17 +184,26 @@ function addHsnExtraRow(extraContainer, split = {}) {
     const taxable = Number(row.querySelector(".hsn-extra-taxable").value) || 0;
     const rate = Number(row.querySelector(".hsn-extra-rate").value) || 0;
     row.querySelector(".hsn-extra-taxamt").value = formatCurrency((taxable * rate) / 100);
+    updateTotalPreview();
   };
   row.querySelector(".hsn-extra-taxable").addEventListener("input", recalcTax);
   row.querySelector(".hsn-extra-rate").addEventListener("input", recalcTax);
-  row.querySelector(".hsn-extra-remove-btn").addEventListener("click", () => row.remove());
+  row.querySelector(".hsn-extra-remove-btn").addEventListener("click", () => {
+    row.remove();
+    updateTotalPreview();
+  });
 
   extraContainer.appendChild(row);
 }
 
 function updateTotalPreview() {
-  const total = collectItems().reduce((sum, it) => sum + it.amount, 0);
-  document.getElementById("invoiceTotalPreview").textContent = formatCurrency(total);
+  const discount = Number(document.getElementById("invoiceDiscount").value) || 0;
+  const totals = computeTotals({ items: collectItems(), discount });
+  document.getElementById("tSubTotal").textContent = formatCurrency(totals.sub);
+  document.getElementById("tCgst").textContent = formatCurrency(isIgst ? totals.igst : totals.cgst);
+  document.getElementById("tSgst").textContent = formatCurrency(totals.sgst);
+  document.getElementById("tDiscount").textContent = formatCurrency(totals.discount);
+  document.getElementById("invoiceTotalPreview").textContent = formatCurrency(totals.grand);
 }
 
 function collectItems() {
@@ -166,6 +214,7 @@ function collectItems() {
       const hsn = row.querySelector(".item-hsn").value.trim();
       const qty = Number(row.querySelector(".item-qty").value) || 0;
       const rate = Number(row.querySelector(".item-rate").value) || 0;
+      const gstRate = Number(row.querySelector(".item-gst").value) || 0;
 
       const hsnBreakup = Array.from(block.querySelectorAll(".hsn-extra-row"))
         .map((extra) => {
@@ -176,7 +225,7 @@ function collectItems() {
         })
         .filter((s) => s.hsn || s.taxableValue > 0);
 
-      const it = { description, hsn, qty, rate, amount: qty * rate };
+      const it = { description, hsn, qty, rate, gstRate, amount: qty * rate };
       if (hsnBreakup.length) it.hsnBreakup = hsnBreakup;
       return it;
     })
@@ -189,6 +238,8 @@ function openNew() {
   document.getElementById("invoiceOffcanvasTitle").textContent = "New Invoice";
   document.getElementById("invoiceDate").value = new Date().toISOString().slice(0, 10);
   document.getElementById("invoiceStatus").value = "Unpaid";
+  document.getElementById("invoicePaymentMode").value = "Cash";
+  document.getElementById("invoiceDiscount").value = 0;
   document.getElementById("itemRows").innerHTML = "";
   addItemRow();
   updateTotalPreview();
@@ -203,6 +254,8 @@ function openEdit(id) {
   document.getElementById("invoicePartyId").value = inv.clientId || "";
   document.getElementById("invoiceDate").value = (inv.invoiceDate || "").slice(0, 10);
   document.getElementById("invoiceStatus").value = inv.status || "Unpaid";
+  document.getElementById("invoicePaymentMode").value = inv.paymentMode || "Cash";
+  document.getElementById("invoiceDiscount").value = inv.discount || 0;
   document.getElementById("invoiceNotes").value = inv.notes || "";
   document.getElementById("itemRows").innerHTML = "";
   (inv.items && inv.items.length ? inv.items : [{}]).forEach((it) => addItemRow(it));
@@ -232,6 +285,8 @@ async function onSave(e) {
     invoiceDate: document.getElementById("invoiceDate").value,
     clientId,
     items,
+    paymentMode: document.getElementById("invoicePaymentMode").value,
+    discount: Number(document.getElementById("invoiceDiscount").value) || 0,
     notes: document.getElementById("invoiceNotes").value.trim(),
     status: document.getElementById("invoiceStatus").value,
     createdBy: existing?.createdBy || session.id,
@@ -273,6 +328,7 @@ async function onDelete(id) {
 function wireEvents() {
   document.getElementById("addInvoiceBtn").addEventListener("click", openNew);
   document.getElementById("addItemRowBtn").addEventListener("click", () => addItemRow());
+  document.getElementById("invoiceDiscount").addEventListener("input", updateTotalPreview);
   document.getElementById("invoiceForm").addEventListener("submit", onSave);
   document.getElementById("invoiceSearch").addEventListener("input", renderTable);
   document.getElementById("invoiceStatusFilter").addEventListener("change", renderTable);
