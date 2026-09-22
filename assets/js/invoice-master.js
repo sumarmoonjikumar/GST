@@ -10,6 +10,8 @@ let clients = [];
 let invoices = [];
 let offcanvas;
 let isIgst = false; // whether GST splits as IGST (inter-state) or CGST+SGST, per Settings
+let settingsCache = null;
+let formItems = []; // items added to the invoice currently open in the form (mirrors index.html's current.items)
 
 async function init() {
   if (!session) return;
@@ -23,6 +25,7 @@ async function init() {
     DB.getSettings(),
   ]);
 
+  settingsCache = settings;
   isIgst = settings.gstType === "IGST";
   document.getElementById("tCgstLabel").textContent = isIgst ? "IGST" : "CGST";
   document.getElementById("tSgstLabel").textContent = isIgst ? "" : "SGST";
@@ -40,7 +43,7 @@ async function init() {
 function populatePartySelect() {
   const select = document.getElementById("invoicePartyId");
   select.innerHTML =
-    `<option value="">Select party…</option>` +
+    `<option value="">-- Select Client --</option>` +
     clients
       .slice()
       .sort((a, b) => a.businessName.localeCompare(b.businessName))
@@ -52,38 +55,49 @@ function clientName(id) {
   return clients.find((c) => c.id === id)?.businessName || "Unknown Party";
 }
 
-/** Taxable sub-total + GST for a single item, including any extra HSN splits. */
-function itemTax(it) {
-  const taxable = Number(it.amount) || 0;
-  const rate = Number(it.gstRate) || 0;
-  let tax = (taxable * rate) / 100;
-  let splitTaxable = 0;
-  (it.hsnBreakup || []).forEach((s) => {
-    splitTaxable += Number(s.taxableValue) || 0;
-    tax += Number(s.taxAmount) || 0;
-  });
-  return { taxable: taxable + splitTaxable, tax };
+/** Indian financial year label, e.g. "2025-26" (Apr–Mar) — mirrors db.js's private helper. */
+function currentFY() {
+  const d = new Date();
+  const startYear = d.getMonth() >= 3 ? d.getFullYear() : d.getFullYear() - 1;
+  return `${startYear}-${String((startYear + 1) % 100).padStart(2, "0")}`;
 }
 
-/** Full totals (sub total, cgst/sgst or igst, discount, grand total) for an invoice record. */
-function computeTotals(invoice) {
+/** Non-mutating preview of the number the next sale invoice WOULD get (does not touch the counter). */
+function peekNextInvoiceNo(settings) {
+  const prefix = settings.salesInvoicePrefix || "SI";
+  const liveFY = currentFY();
+  const rolledOver = settings.salesInvoiceFY && settings.salesInvoiceFY !== liveFY;
+  const fy = rolledOver ? liveFY : settings.salesInvoiceFY || liveFY;
+  const nextSeq = rolledOver ? 1 : (settings.salesInvoiceSeq || 0) + 1;
+  return `${prefix}/${fy}/${String(nextSeq).padStart(3, "0")}`;
+}
+
+/** Taxable value + GST for one item, at that item's own GST %. */
+function itemTax(it) {
+  const taxable = (Number(it.qty) || 0) * (Number(it.rate) || 0);
+  const tax = (taxable * (Number(it.gstRate) || 0)) / 100;
+  return { taxable, tax };
+}
+
+/** Sub total, CGST/SGST or IGST, discount and grand total for an item list. */
+function computeTotals(items, discount) {
   let sub = 0,
     tax = 0;
-  (invoice.items || []).forEach((it) => {
+  items.forEach((it) => {
     const t = itemTax(it);
     sub += t.taxable;
     tax += t.tax;
   });
-  const discount = Number(invoice.discount) || 0;
+  const disc = Number(discount) || 0;
   const cgst = isIgst ? 0 : tax / 2;
   const sgst = isIgst ? 0 : tax / 2;
   const igst = isIgst ? tax : 0;
-  const grand = sub + tax - discount;
-  return { sub, cgst, sgst, igst, tax, discount, grand };
+  const grand = sub + tax - disc;
+  return { sub, cgst, sgst, igst, tax, discount: disc, grand };
 }
 
 function computeTotal(invoice) {
-  return computeTotals(invoice).grand;
+  return computeTotals(invoice.items || [], invoice.discount).grand;
 }
 
 function renderTable() {
@@ -136,69 +150,59 @@ function renderTable() {
   document.getElementById("statInvoiceUnpaid").textContent = formatCurrency(unpaidTotal);
 }
 
-function addItemRow(item = {}) {
-  const tpl = document.getElementById("itemRowTemplate");
-  const node = tpl.content.firstElementChild.cloneNode(true);
-  node.querySelector(".item-desc").value = item.description || "";
-  node.querySelector(".item-hsn").value = item.hsn || "";
-  node.querySelector(".item-qty").value = item.qty ?? 1;
-  node.querySelector(".item-rate").value = item.rate ?? "";
-  node.querySelector(".item-gst").value = item.gstRate ?? 18;
-  node.querySelector(".item-amount").value = formatCurrency(item.amount || 0);
+/** Re-draws the item-details table from formItems — exactly the columns index.html's itemRows() renders. */
+function renderItemsTable() {
+  const tbody = document.getElementById("itemsTableBody");
+  tbody.innerHTML =
+    formItems
+      .map(
+        (it, n) => `
+      <tr>
+        <td>${n + 1}</td>
+        <td>${escapeHtml(it.description)}</td>
+        <td>${escapeHtml(it.hsn || "")}</td>
+        <td>${it.qty}</td>
+        <td>${formatCurrency(it.rate)}</td>
+        <td>${it.gstRate}%</td>
+        <td class="text-end">${formatCurrency(it.qty * it.rate)}</td>
+        <td><button type="button" class="btn btn-sm btn-outline-danger remove-item-btn" data-index="${n}"><i class="fa-solid fa-xmark"></i></button></td>
+      </tr>`
+      )
+      .join("") || `<tr><td colspan="8" class="text-center text-muted-soft py-2">Add items above.</td></tr>`;
 
-  const recalc = () => {
-    const qty = Number(node.querySelector(".item-qty").value) || 0;
-    const rate = Number(node.querySelector(".item-rate").value) || 0;
-    node.querySelector(".item-amount").value = formatCurrency(qty * rate);
-    updateTotalPreview();
-  };
-  node.querySelector(".item-qty").addEventListener("input", recalc);
-  node.querySelector(".item-rate").addEventListener("input", recalc);
-  node.querySelector(".item-gst").addEventListener("change", updateTotalPreview);
-  node.querySelector(".item-remove-btn").addEventListener("click", () => {
-    node.remove();
-    updateTotalPreview();
-  });
-
-  // "+" corner button — this single item actually covers 2+ HSN codes,
-  // so add another HSN/Taxable-Value/Tax split row nested under it.
-  const extraContainer = node.querySelector(".item-hsn-extra");
-  node.querySelector(".item-addhsn-btn").addEventListener("click", () => addHsnExtraRow(extraContainer));
-
-  // Restore any previously saved HSN splits (edit mode).
-  (item.hsnBreakup || []).forEach((split) => addHsnExtraRow(extraContainer, split));
-
-  document.getElementById("itemRows").appendChild(node);
+  tbody.querySelectorAll(".remove-item-btn").forEach((btn) =>
+    btn.addEventListener("click", () => {
+      formItems.splice(Number(btn.dataset.index), 1);
+      renderItemsTable();
+      updateTotalPreview();
+    })
+  );
 }
 
-/** Adds one nested "2nd/3rd HSN" row under an item, with its own taxable value + tax %. */
-function addHsnExtraRow(extraContainer, split = {}) {
-  const tpl = document.getElementById("hsnExtraRowTemplate");
-  const row = tpl.content.firstElementChild.cloneNode(true);
-  row.querySelector(".hsn-extra-code").value = split.hsn || "";
-  row.querySelector(".hsn-extra-taxable").value = split.taxableValue ?? "";
-  row.querySelector(".hsn-extra-rate").value = split.taxRate ?? "";
-  row.querySelector(".hsn-extra-taxamt").value = formatCurrency(split.taxAmount || 0);
+function addItemToForm() {
+  const description = document.getElementById("iname").value.trim();
+  const hsn = document.getElementById("ihsn").value.trim();
+  const qty = Number(document.getElementById("iqty").value);
+  const rate = Number(document.getElementById("irate").value);
+  const gstRate = Number(document.getElementById("igst").value);
 
-  const recalcTax = () => {
-    const taxable = Number(row.querySelector(".hsn-extra-taxable").value) || 0;
-    const rate = Number(row.querySelector(".hsn-extra-rate").value) || 0;
-    row.querySelector(".hsn-extra-taxamt").value = formatCurrency((taxable * rate) / 100);
-    updateTotalPreview();
-  };
-  row.querySelector(".hsn-extra-taxable").addEventListener("input", recalcTax);
-  row.querySelector(".hsn-extra-rate").addEventListener("input", recalcTax);
-  row.querySelector(".hsn-extra-remove-btn").addEventListener("click", () => {
-    row.remove();
-    updateTotalPreview();
-  });
+  if (!description || qty <= 0 || rate < 0) {
+    toast("Enter item, quantity and rate.", "error");
+    return;
+  }
 
-  extraContainer.appendChild(row);
+  formItems.push({ description, hsn, qty, rate, gstRate });
+  renderItemsTable();
+  updateTotalPreview();
+
+  // Reset the entry fields for the next item, same as index.html's re-rendered blank form.
+  resetEntryFields();
+  document.getElementById("iname").focus();
 }
 
 function updateTotalPreview() {
   const discount = Number(document.getElementById("invoiceDiscount").value) || 0;
-  const totals = computeTotals({ items: collectItems(), discount });
+  const totals = computeTotals(formItems, discount);
   document.getElementById("tSubTotal").textContent = formatCurrency(totals.sub);
   document.getElementById("tCgst").textContent = formatCurrency(isIgst ? totals.igst : totals.cgst);
   document.getElementById("tSgst").textContent = formatCurrency(totals.sgst);
@@ -206,42 +210,29 @@ function updateTotalPreview() {
   document.getElementById("invoiceTotalPreview").textContent = formatCurrency(totals.grand);
 }
 
-function collectItems() {
-  return Array.from(document.querySelectorAll("#itemRows .item-block"))
-    .map((block) => {
-      const row = block.querySelector(".item-row-grid");
-      const description = row.querySelector(".item-desc").value.trim();
-      const hsn = row.querySelector(".item-hsn").value.trim();
-      const qty = Number(row.querySelector(".item-qty").value) || 0;
-      const rate = Number(row.querySelector(".item-rate").value) || 0;
-      const gstRate = Number(row.querySelector(".item-gst").value) || 0;
-
-      const hsnBreakup = Array.from(block.querySelectorAll(".hsn-extra-row"))
-        .map((extra) => {
-          const exHsn = extra.querySelector(".hsn-extra-code").value.trim();
-          const taxableValue = Number(extra.querySelector(".hsn-extra-taxable").value) || 0;
-          const taxRate = Number(extra.querySelector(".hsn-extra-rate").value) || 0;
-          return { hsn: exHsn, taxableValue, taxRate, taxAmount: (taxableValue * taxRate) / 100 };
-        })
-        .filter((s) => s.hsn || s.taxableValue > 0);
-
-      const it = { description, hsn, qty, rate, gstRate, amount: qty * rate };
-      if (hsnBreakup.length) it.hsnBreakup = hsnBreakup;
-      return it;
-    })
-    .filter((it) => it.description || it.amount > 0);
+function resetEntryFields() {
+  document.getElementById("iname").value = "";
+  document.getElementById("ihsn").value = "";
+  document.getElementById("iqty").value = 1;
+  document.getElementById("irate").value = 0;
+  document.getElementById("igst").value = "18";
 }
 
 function openNew() {
   document.getElementById("invoiceForm").reset();
   document.getElementById("invoiceId").value = "";
   document.getElementById("invoiceOffcanvasTitle").textContent = "New Invoice";
+  document.getElementById("invoiceNo").value = peekNextInvoiceNo(settingsCache);
+  document.getElementById("invoiceNo").readOnly = false;
   document.getElementById("invoiceDate").value = new Date().toISOString().slice(0, 10);
+  document.getElementById("invoicePartyId").value = "";
   document.getElementById("invoiceStatus").value = "Unpaid";
   document.getElementById("invoicePaymentMode").value = "Cash";
   document.getElementById("invoiceDiscount").value = 0;
-  document.getElementById("itemRows").innerHTML = "";
-  addItemRow();
+  document.getElementById("invoiceNotes").value = "";
+  formItems = [];
+  resetEntryFields();
+  renderItemsTable();
   updateTotalPreview();
   offcanvas.show();
 }
@@ -251,14 +242,17 @@ function openEdit(id) {
   if (!inv) return;
   document.getElementById("invoiceId").value = inv.id;
   document.getElementById("invoiceOffcanvasTitle").textContent = `Edit ${inv.invoiceNo || "Invoice"}`;
+  document.getElementById("invoiceNo").value = inv.invoiceNo || "";
+  document.getElementById("invoiceNo").readOnly = true; // number is fixed once an invoice has been raised
   document.getElementById("invoicePartyId").value = inv.clientId || "";
   document.getElementById("invoiceDate").value = (inv.invoiceDate || "").slice(0, 10);
   document.getElementById("invoiceStatus").value = inv.status || "Unpaid";
   document.getElementById("invoicePaymentMode").value = inv.paymentMode || "Cash";
   document.getElementById("invoiceDiscount").value = inv.discount || 0;
   document.getElementById("invoiceNotes").value = inv.notes || "";
-  document.getElementById("itemRows").innerHTML = "";
-  (inv.items && inv.items.length ? inv.items : [{}]).forEach((it) => addItemRow(it));
+  formItems = (inv.items || []).map((it) => ({ ...it }));
+  resetEntryFields();
+  renderItemsTable();
   updateTotalPreview();
   offcanvas.show();
 }
@@ -270,8 +264,7 @@ async function onSave(e) {
     toast("Please select a party.", "error");
     return;
   }
-  const items = collectItems();
-  if (items.length === 0) {
+  if (formItems.length === 0) {
     toast("Add at least one item.", "error");
     return;
   }
@@ -279,12 +272,26 @@ async function onSave(e) {
   const id = document.getElementById("invoiceId").value;
   const existing = id ? invoices.find((i) => i.id === id) : null;
 
+  let invoiceNo = document.getElementById("invoiceNo").value.trim();
+  if (existing) {
+    invoiceNo = existing.invoiceNo; // never changes on edit
+  } else {
+    // Bump the shared, persisted counter regardless (keeps future suggestions correct
+    // even if staff typed a custom number over the suggested one shown).
+    const suggested = await DB.getNextSalesInvoiceNumber();
+    invoiceNo = invoiceNo || suggested;
+    if (invoices.some((i) => i.invoiceNo === invoiceNo)) {
+      toast(`Invoice number ${invoiceNo} is already in use.`, "error");
+      return;
+    }
+  }
+
   const record = {
     id: existing?.id || `si_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
-    invoiceNo: existing?.invoiceNo || (await DB.getNextSalesInvoiceNumber()),
+    invoiceNo,
     invoiceDate: document.getElementById("invoiceDate").value,
     clientId,
-    items,
+    items: formItems.map((it) => ({ ...it })),
     paymentMode: document.getElementById("invoicePaymentMode").value,
     discount: Number(document.getElementById("invoiceDiscount").value) || 0,
     notes: document.getElementById("invoiceNotes").value.trim(),
@@ -327,11 +334,20 @@ async function onDelete(id) {
 
 function wireEvents() {
   document.getElementById("addInvoiceBtn").addEventListener("click", openNew);
-  document.getElementById("addItemRowBtn").addEventListener("click", () => addItemRow());
+  document.getElementById("addItemBtn").addEventListener("click", addItemToForm);
   document.getElementById("invoiceDiscount").addEventListener("input", updateTotalPreview);
   document.getElementById("invoiceForm").addEventListener("submit", onSave);
   document.getElementById("invoiceSearch").addEventListener("input", renderTable);
   document.getElementById("invoiceStatusFilter").addEventListener("change", renderTable);
+
+  // Item-entry fields live inside <form id="invoiceForm">, unlike index.html's
+  // unwrapped markup — so Enter here must add the item, not submit the invoice.
+  document.querySelector(".item-entry").addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      addItemToForm();
+    }
+  });
 }
 
 function escapeHtml(str = "") {

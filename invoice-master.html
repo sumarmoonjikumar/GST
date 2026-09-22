@@ -16,20 +16,17 @@
 <link rel="stylesheet" href="assets/css/theme.css">
 <link rel="stylesheet" href="assets/css/dashboard.css">
 <style>
-  .item-row-grid { display:grid; grid-template-columns: minmax(0,1fr) 80px 60px 80px 64px 90px 64px; gap:8px; align-items:start; }
-  .item-row-grid input, .item-row-grid select { font-size: 12px; }
-  .item-row-actions { display:flex; gap:4px; }
-  .item-block + .item-block { margin-top:8px; padding-top:8px; border-top:1px dashed var(--border-color, #e2e2e2); }
-  .item-hsn-extra:empty { display:none; }
-  .item-hsn-extra { margin-top:6px; padding-left:14px; border-left:2px solid var(--border-color, #e2e2e2); }
-  .hsn-extra-row { display:grid; grid-template-columns: minmax(0,1fr) 110px 70px 90px 32px; gap:8px; align-items:start; margin-bottom:6px; }
-  .hsn-extra-row input { font-size: 12px; }
+  .item-entry { display:grid; grid-template-columns: 2fr 1fr 1fr 1fr 1fr auto; gap:8px; align-items:end; margin-bottom: 10px; }
+  .item-entry .form-label { font-size: 11px; margin-bottom: 4px; }
+  .items-table { width:100%; font-size:12.5px; margin-bottom: 6px; }
+  .items-table th, .items-table td { padding: 6px 8px; border-bottom: 1px solid var(--border-color, #e2e2e2); text-align:left; }
+  .items-table th { background: var(--soft-bg, #f8fafc); font-weight:700; }
+  .items-table td.text-end, .items-table th.text-end { text-align:right; }
   .invoice-totals-box { margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--border-color, #e2e2e2); }
   .invoice-totals-box .t-row { display:flex; justify-content:space-between; padding:3px 0; font-size: 13px; }
   .invoice-totals-box .t-row.grand { border-top: 2px solid var(--navy, #001839); margin-top: 6px; padding-top: 8px; font-size: 16px; font-weight: 700; }
   @media (max-width: 560px){
-    .item-row-grid{ grid-template-columns: 1fr 1fr 1fr; }
-    .hsn-extra-row{ grid-template-columns: 1fr 1fr; }
+    .item-entry{ grid-template-columns: 1fr 1fr; }
   }
 </style>
 </head>
@@ -171,24 +168,21 @@
     <form id="invoiceForm" novalidate>
       <input type="hidden" id="invoiceId">
 
-      <div class="mb-3">
-        <label class="form-label" for="invoicePartyId">Party (Client) *</label>
-        <select class="form-select" id="invoicePartyId" required>
-          <option value="">Select party…</option>
-        </select>
-      </div>
       <div class="row">
+        <div class="col-6 mb-3">
+          <label class="form-label" for="invoiceNo">Invoice Number</label>
+          <input type="text" class="form-control" id="invoiceNo" readonly>
+        </div>
         <div class="col-6 mb-3">
           <label class="form-label" for="invoiceDate">Invoice Date *</label>
           <input type="date" class="form-control" id="invoiceDate" required>
         </div>
-        <div class="col-6 mb-3">
-          <label class="form-label" for="invoiceStatus">Status</label>
-          <select class="form-select" id="invoiceStatus">
-            <option value="Unpaid">Unpaid</option>
-            <option value="Paid">Paid</option>
-          </select>
-        </div>
+      </div>
+      <div class="mb-3">
+        <label class="form-label" for="invoicePartyId">Party / Client *</label>
+        <select class="form-select" id="invoicePartyId" required>
+          <option value="">-- Select Client --</option>
+        </select>
       </div>
       <div class="row">
         <div class="col-6 mb-3">
@@ -201,19 +195,46 @@
           </select>
         </div>
         <div class="col-6 mb-3">
-          <label class="form-label" for="invoiceDiscount">Discount (₹)</label>
-          <input type="number" min="0" step="0.01" class="form-control" id="invoiceDiscount" value="0">
+          <label class="form-label" for="invoiceStatus">Status</label>
+          <select class="form-select" id="invoiceStatus">
+            <option value="Unpaid">Unpaid</option>
+            <option value="Paid">Paid</option>
+          </select>
         </div>
       </div>
 
-      <div class="section-divider">Items</div>
-      <div class="item-row-grid small text-muted-soft mb-1 d-none d-md-grid">
-        <span>Description</span><span>HSN/SAC</span><span>Qty</span><span>Rate</span><span>GST %</span><span>Amount</span><span></span>
+      <div class="section-divider">Item Details</div>
+      <div class="item-entry">
+        <div><label class="form-label" for="iname">Item / Description</label><input type="text" class="form-control form-control-sm" id="iname"></div>
+        <div><label class="form-label" for="ihsn">HSN/SAC</label><input type="text" class="form-control form-control-sm" id="ihsn"></div>
+        <div><label class="form-label" for="iqty">Qty</label><input type="number" step="0.01" class="form-control form-control-sm" id="iqty" value="1"></div>
+        <div><label class="form-label" for="irate">Rate</label><input type="number" step="0.01" class="form-control form-control-sm" id="irate" value="0"></div>
+        <div>
+          <label class="form-label" for="igst">GST %</label>
+          <select class="form-select form-select-sm" id="igst">
+            <option value="0">0</option>
+            <option value="5">5</option>
+            <option value="12">12</option>
+            <option value="18" selected>18</option>
+            <option value="28">28</option>
+          </select>
+        </div>
+        <button type="button" class="btn btn-success btn-sm" id="addItemBtn">Add</button>
       </div>
-      <div id="itemRows"></div>
-      <button type="button" class="btn btn-outline-secondary btn-sm mt-2" id="addItemRowBtn">
-        <i class="fa-solid fa-plus me-1"></i>Add Item
-      </button>
+
+      <div class="table-responsive">
+        <table class="items-table">
+          <thead>
+            <tr><th>#</th><th>Item</th><th>HSN</th><th>Qty</th><th>Rate</th><th>GST</th><th class="text-end">Taxable</th><th></th></tr>
+          </thead>
+          <tbody id="itemsTableBody"></tbody>
+        </table>
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label" for="invoiceDiscount">Discount (₹)</label>
+        <input type="number" min="0" step="0.01" class="form-control" id="invoiceDiscount" value="0">
+      </div>
 
       <div class="invoice-totals-box" id="invoiceTotalsBox">
         <div class="t-row"><span>Sub Total</span><b id="tSubTotal">₹0</b></div>
@@ -232,42 +253,6 @@
     </form>
   </div>
 </div>
-
-<!-- One item block template (cloned by JS): main row + optional extra-HSN split rows -->
-<template id="itemRowTemplate">
-  <div class="item-block">
-    <div class="item-row-grid">
-      <input type="text" class="form-control form-control-sm item-desc" placeholder="Description">
-      <input type="text" class="form-control form-control-sm item-hsn" placeholder="HSN/SAC">
-      <input type="number" min="0" step="1" class="form-control form-control-sm item-qty" placeholder="Qty" value="1">
-      <input type="number" min="0" step="0.01" class="form-control form-control-sm item-rate" placeholder="Rate">
-      <select class="form-select form-select-sm item-gst" title="GST %">
-        <option value="0">0%</option>
-        <option value="5">5%</option>
-        <option value="12">12%</option>
-        <option value="18" selected>18%</option>
-        <option value="28">28%</option>
-      </select>
-      <input type="text" class="form-control form-control-sm item-amount" placeholder="₹0" readonly tabindex="-1">
-      <div class="item-row-actions">
-        <button type="button" class="btn btn-sm btn-outline-secondary item-addhsn-btn" title="This item has more than one HSN — add a split"><i class="fa-solid fa-plus"></i></button>
-        <button type="button" class="btn btn-sm btn-outline-danger item-remove-btn" title="Remove item"><i class="fa-solid fa-xmark"></i></button>
-      </div>
-    </div>
-    <div class="item-hsn-extra"></div>
-  </div>
-</template>
-
-<!-- One extra-HSN split row (cloned by JS, appended inside .item-hsn-extra) -->
-<template id="hsnExtraRowTemplate">
-  <div class="hsn-extra-row">
-    <input type="text" class="form-control form-control-sm hsn-extra-code" placeholder="2nd HSN/SAC">
-    <input type="number" min="0" step="0.01" class="form-control form-control-sm hsn-extra-taxable" placeholder="Taxable Value">
-    <input type="number" min="0" step="0.01" class="form-control form-control-sm hsn-extra-rate" placeholder="Tax %">
-    <input type="text" class="form-control form-control-sm hsn-extra-taxamt" placeholder="₹0 Tax" readonly tabindex="-1">
-    <button type="button" class="btn btn-sm btn-outline-danger hsn-extra-remove-btn" title="Remove this HSN split"><i class="fa-solid fa-xmark"></i></button>
-  </div>
-</template>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script type="module" src="assets/js/invoice-master.js"></script>
