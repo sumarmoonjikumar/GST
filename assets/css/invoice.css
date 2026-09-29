@@ -191,15 +191,57 @@
 }
 
 @media print {
-  @page { margin: 0; }
+  /* A4, margins set on the page itself (NOT on body) so the content box is
+     exactly the printable area and never spills onto a 2nd blank page. */
+  @page { size: A4 portrait; margin: 8mm 10mm; }
+
+  /* theme.css sets html,body { height:100% } — with any print margin that
+     forces a 2nd (empty) page. Let the height follow the content instead. */
+  html, body {
+    height: auto !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #fff !important;
+    color: #000 !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  /* Always print in light colours, even if the app is in dark theme. */
+  :root, [data-theme="dark"] {
+    --surface: #fff; --bg-canvas: #fff; --text-primary: #000;
+    --text-muted: #333; --text-faint: #444;
+    --border: #000; --border-strong: #000;
+  }
+  * { transition: none !important; animation: none !important; box-shadow: none !important; text-shadow: none !important; filter: none !important; backdrop-filter: none !important; }
+
   .no-print { display: none !important; }
-  body { background: #fff; margin: 12mm 10mm; }
-  .invoice-wrap { margin: 0; max-width: 100%; padding: 0; }
-  .tally-invoice { border-color: #000; box-shadow: none !important; page-break-after: always; }
-  .tally-invoice:last-child { page-break-after: auto; }
+  .invoice-wrap { margin: 0 !important; max-width: 100% !important; width: 100% !important; padding: 0 !important; }
+
+  /* overflow:hidden + border-radius makes Chrome clip through a mask layer:
+     it cuts the top border and can rasterise the page into an image PDF
+     (text not selectable). Plain square box with real vector borders. */
+  .tally-invoice {
+    overflow: visible !important;
+    border-radius: 0 !important;
+    border: 1.5px solid #000 !important;
+    margin: 0 !important;
+    background: #fff !important;
+    break-inside: avoid;
+    page-break-inside: avoid;
+    page-break-after: always;
+    zoom: 0.94; /* small safety margin so one invoice always fits one A4 page */
+  }
+  .tally-invoice:last-child { page-break-after: auto !important; break-after: auto !important; }
+  .tally-table-wrap { overflow: visible !important; }
+  .tally-table { min-width: 0 !important; }
+  .tally-qr-box img { border-radius: 0 !important; }
+
   .tally-title, .tally-grid > .tally-box, .tally-table thead th, .tally-words, .tally-footer-note {
     border-color: #000 !important;
     background: #fff !important;
   }
+  .tally-title { border-bottom: 1.5px solid #000 !important; }
   .tally-table th, .tally-table td, .tally-bottom-grid > .tally-box { border-color: #000 !important; }
+  .tally-label, .tally-line, .tally-meta-row .k, .tally-title .tally-title-sub { color: #333 !important; }
 }

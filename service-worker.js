@@ -8,7 +8,7 @@
  * Chart.js / Font Awesome updates still come through when online.
  */
 
-const CACHE_NAME = "gst-master-shell-v12";
+const CACHE_NAME = "gst-master-shell-v13";
 
 const APP_SHELL = [
   "./",
