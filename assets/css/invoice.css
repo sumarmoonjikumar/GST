@@ -230,10 +230,14 @@
     break-inside: avoid;
     page-break-inside: avoid;
     page-break-after: always;
-    zoom: 0.94; /* small safety margin so one invoice always fits one A4 page */
+    width: 100% !important;
+    box-sizing: border-box !important;
   }
   .tally-invoice:last-child { page-break-after: auto !important; break-after: auto !important; }
-  .tally-table-wrap { overflow: visible !important; }
+  .tally-table-wrap { overflow: visible !important; border-top: 1px solid #000 !important; }
+  .tally-grid { border-bottom: 0 !important; }
+  .tally-grid + .tally-grid { border-top: 1px solid #000 !important; }
+  .tally-title + .tally-grid { border-top: 0 !important; }
   .tally-table { min-width: 0 !important; }
   .tally-qr-box img { border-radius: 0 !important; }
 
