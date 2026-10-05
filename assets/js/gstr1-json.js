@@ -3,6 +3,7 @@ import { requireSession } from "./auth.js";
 import { applyStoredTheme, toast, currentFY, fyList, initials } from "./utils.js";
 import { initAppChrome } from "./chrome.js";
 import { buildFilingMap, getFilingStatus, periodHasStarted, isQuarterEndMonth } from "./gst-status.js";
+console.info("[GSTR-1] build 2026-10-05b · paste into amount columns never comma-splits");
 
 applyStoredTheme();
 const session = requireSession(["admin", "staff"]);
@@ -366,12 +367,17 @@ function monthKeyToFp(monthKey) {
 /* =========================================================
    Paste parsing helpers
    ========================================================= */
-function splitPastedText(raw) {
+const NUMERIC_PASTE_COLS = new Set(["txval", "igst", "cgst", "sgst", "val", "qty", "rt", "total", "cancel"]);
+
+function splitPastedText(raw, startCol) {
+  // Pasting INTO an amount column: a line with no TAB is one amount, never
+  // comma-separated columns — so "68,400.00" can't become 68 | 400.00.
+  const numericStart = NUMERIC_PASTE_COLS.has(startCol);
   return raw
     .split(/\r\n|\r|\n/)
     .map((line) => line.trim())
     .filter((line) => line.length > 0)
-    .map((line) => splitPastedLine(line).map((cell) => cell.trim()));
+    .map((line) => (numericStart && !line.includes("\t") ? [line] : splitPastedLine(line)).map((cell) => cell.trim()));
 }
 
 /** Splits one pasted line into cells.
@@ -382,7 +388,7 @@ function splitPastedText(raw) {
  *  - Otherwise    -> treated as CSV text; commas inside "quotes" are kept. */
 function splitPastedLine(line) {
   if (line.includes("\t")) return line.split("\t");
-  if (/^[₹\s-]*\d{1,3}(,\d{2})*,\d{3}(\.\d+)?\s*$|^[₹\s-]*\d{1,3}(,\d{3})+(\.\d+)?\s*$/.test(line)) return [line];
+  if (/^\s*-?\s*(?:₹|rs\.?|inr)?\s*\d{1,3}(?:,\d{2})*,\d{3}(?:\.\d+)?\s*$|^\s*-?\s*(?:₹|rs\.?|inr)?\s*\d{1,3}(?:,\d{3})+(?:\.\d+)?\s*$/i.test(line)) return [line];
   const cells = [];
   let cur = "";
   let inQuotes = false;
@@ -740,7 +746,7 @@ function handleB2BGridPaste(e, tr, inputEl) {
   if (!text || !/\t|\r|\n/.test(text)) return; // single-cell paste — let the browser handle it normally
   e.preventDefault();
 
-  const gridRows = splitPastedText(text);
+  const gridRows = splitPastedText(text, inputEl.dataset.col);
   const body = document.getElementById("b2bGridBody");
   let rowsArr = Array.from(body.children);
   const startRowIdx = rowsArr.indexOf(tr);
@@ -762,6 +768,7 @@ function handleB2BGridPaste(e, tr, inputEl) {
     updateRowRate(targetRow);
   });
   renumberB2BRows();
+  toast(`Pasted ${gridRows.length} row(s) × ${Math.max(...gridRows.map((r) => r.length))} column(s).`, "success");
 }
 
 /** Reads and validates every non-empty row directly from the grid.
@@ -1101,7 +1108,7 @@ function handleGenericGridPaste(e, defKey, tr, inputEl) {
   e.preventDefault();
 
   const colKeys = GRID_DEFS[defKey].cols.map((c) => c.key);
-  const gridRows = splitPastedText(text);
+  const gridRows = splitPastedText(text, inputEl.dataset.col);
   const body = document.getElementById(GRID_DEFS[defKey].bodyId);
   let rowsArr = Array.from(body.children);
   const startRowIdx = rowsArr.indexOf(tr);
@@ -1122,6 +1129,7 @@ function handleGenericGridPaste(e, defKey, tr, inputEl) {
     });
   });
   renumberGridRows(defKey);
+  toast(`Pasted ${gridRows.length} row(s) × ${Math.max(...gridRows.map((r) => r.length))} column(s).`, "success");
 }
 
 function parseGridSection(defKey) {
