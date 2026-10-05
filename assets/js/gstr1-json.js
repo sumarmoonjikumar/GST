@@ -371,7 +371,32 @@ function splitPastedText(raw) {
     .split(/\r\n|\r|\n/)
     .map((line) => line.trim())
     .filter((line) => line.length > 0)
-    .map((line) => (line.includes("\t") ? line.split("\t") : line.split(",")).map((cell) => cell.trim()));
+    .map((line) => splitPastedLine(line).map((cell) => cell.trim()));
+}
+
+/** Splits one pasted line into cells.
+ *  - Tab present  -> Excel / Google Sheets paste: split on tabs only, so a
+ *    formatted amount like "68,400" or "1,20,000" stays in ONE cell.
+ *  - No tab       -> a single amount with thousands commas ("68,400",
+ *    "₹1,20,000.50") is one cell, NOT two (it used to become 68 | 400).
+ *  - Otherwise    -> treated as CSV text; commas inside "quotes" are kept. */
+function splitPastedLine(line) {
+  if (line.includes("\t")) return line.split("\t");
+  if (/^[₹\s-]*\d{1,3}(,\d{2})*,\d{3}(\.\d+)?\s*$|^[₹\s-]*\d{1,3}(,\d{3})+(\.\d+)?\s*$/.test(line)) return [line];
+  const cells = [];
+  let cur = "";
+  let inQuotes = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (ch === '"') {
+      if (inQuotes && line[i + 1] === '"') { cur += '"'; i++; } else inQuotes = !inQuotes;
+    } else if (ch === "," && !inQuotes) {
+      cells.push(cur);
+      cur = "";
+    } else cur += ch;
+  }
+  cells.push(cur);
+  return cells;
 }
 
 /** Drops a header row if the first cell looks like a label rather than data. */
@@ -1238,7 +1263,24 @@ function hsnAutofillFromB2B() {
     body.appendChild(tr);
   });
   renumberGridRows("hsn");
-  toast(`Pulled in ${grouped.size} HSN row(s) from ${rows.length} B2B invoice line(s).`, "success");
+
+  // Reconcile against the B2B sheet so a mismatch is never silent.
+  const allB2B = parsedRows.b2b || [];
+  const skipped = allB2B.filter((r) => r.errors.length || !r.raw.hsn);
+  const badTotals = rows.filter((r) => Math.abs((r.raw.val || 0) - round2(r.raw.txval + r.raw.igst + r.raw.cgst + r.raw.sgst)) > 1);
+  const warnings = [];
+  if (skipped.length) {
+    const skippedTaxable = skipped.reduce((a, r) => round2(a + (r.raw.txval || 0)), 0);
+    warnings.push(`${skipped.length} B2B row(s) skipped (error or missing HSN, taxable ₹${skippedTaxable}) — fix them on the B2B tab and Auto-fill again`);
+  }
+  if (badTotals.length) {
+    warnings.push(`B2B "Total" differs from Taxable+Tax for invoice ${badTotals.map((r) => r.raw.inum).join(", ")} — HSN Total Value uses Taxable+Tax`);
+  }
+  if (warnings.length) {
+    toast(`Pulled in ${grouped.size} HSN row(s). Mismatch: ${warnings.join(". ")}.`, "warning");
+  } else {
+    toast(`Pulled in ${grouped.size} HSN row(s) from ${rows.length} B2B invoice line(s). Totals match the B2B sheet.`, "success");
+  }
 }
 
 /* =========================================================
