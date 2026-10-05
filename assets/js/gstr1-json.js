@@ -948,11 +948,11 @@ const GRID_DEFS = {
       { key: "desc", label: "Description", type: "text", placeholder: "e.g. Accounting services" },
       { key: "uqc", label: "UQC", type: "text", placeholder: "NA / NOS / KGS" },
       { key: "qty", label: "Total Quantity", type: "text", placeholder: "0" },
-      { key: "val", label: "Total Value", type: "text", placeholder: "auto" },
       { key: "txval", label: "Taxable Value", type: "text", placeholder: "0" },
       { key: "igst", label: "IGST", type: "text", placeholder: "0" },
       { key: "cgst", label: "CGST", type: "text", placeholder: "0" },
       { key: "sgst", label: "SGST", type: "text", placeholder: "0" },
+      { key: "val", label: "Total Value", type: "text", placeholder: "auto" },
     ],
     isRowBlank: (v) => !v.hsn && !num(v.txval) && !num(v.igst) && !num(v.cgst) && !num(v.sgst),
     validateRow: (v) => {
