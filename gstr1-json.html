@@ -271,13 +271,13 @@
           <span class="small text-muted-soft">One workbook, one sheet per tab — name the sheets <b>B2B</b>, <b>B2C</b>, <b>HSN</b>, <b>Document</b> (any case, extra words fine) and each sheet's rows go straight into the matching tab below. Not sure of the columns? Download the sample above first — it has the header row already filled in on each tab, just add your rows below it.</span>
         </div>
         <div class="g1-error-banner mb-3" id="sheetImportPanel" style="display:none; background: var(--surface-raised); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 12px 14px;">
-          <label class="form-label small mb-1" for="sheetImportUrl">Published CSV link for the <b id="sheetImportSectionLabel">B2B</b> tab</label>
+          <label class="form-label small mb-1" for="sheetImportUrl">Google Sheet link for the <b id="sheetImportSectionLabel">B2B</b> tab</label>
           <div class="d-flex gap-2">
             <input type="url" class="form-control form-control-sm" id="sheetImportUrl" placeholder="https://docs.google.com/spreadsheets/d/e/…/pub?output=csv">
             <button type="button" class="btn btn-sm btn-navy text-nowrap" id="sheetImportFetchBtn">Fetch &amp; Fill</button>
             <button type="button" class="btn btn-sm btn-outline-secondary" id="sheetImportCancelBtn">Cancel</button>
           </div>
-          <div class="small text-muted-soft mt-1">In Google Sheets: <b>File → Share → Publish to web</b> → pick this sheet's tab → format <b>CSV</b> → Publish, then paste that link here. This fills the currently open tab (<span id="sheetImportSectionHint">B2B</span>) — switch tabs above for other sections.</div>
+          <div class="small text-muted-soft mt-1">Open the sheet tab that holds your invoices, set sharing to <b>Anyone with the link → Viewer</b>, then copy the address-bar link (it carries that tab's <code>#gid=</code>) and paste it here. A "Publish to web" CSV link also works. Only invoices dated in the month/quarter you are filing are imported; the link is remembered for next time. This fills the open tab (<span id="sheetImportSectionHint">B2B</span>).</div>
         </div>
         <div class="g1-tabs" id="g1Tabs">
           <button type="button" class="g1-tab-btn active" data-section="b2b"><i class="fa-solid fa-building"></i> B2B <span class="badge bg-secondary rounded-pill" id="countB2B">0</span></button>
@@ -332,6 +332,8 @@
                   <th style="min-width:130px;">Place of Supply</th>
                   <th style="min-width:100px;">Reverse Charge</th>
                   <th style="min-width:100px;">HSN/SAC Code</th>
+                  <th style="min-width:70px;" title="Quantity for this HSN line (used in HSN summary)">Qty</th>
+                  <th style="min-width:70px;" title="Unit code, e.g. NOS, KGS. Blank = NOS">UQC</th>
                   <th style="min-width:70px;">Rate %</th>
                   <th style="width:56px;"></th>
                 </tr>

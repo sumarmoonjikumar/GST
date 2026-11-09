@@ -57,6 +57,13 @@ const HSN_DESC_MAP = {
   "998213": "Legal documentation and certification services concerning patents, copyrights and other IP rights",
   "997156": "Financial consultancy services",
   "998719": "Maintenance and repair services of other goods",
+  // Goods codes seen on Maraan Crane Service invoices (descriptions checked
+  // against public HSN references — confirm against the CBIC tariff before filing).
+  "27101990": "Petroleum oils and oils obtained from bituminous minerals (other than crude) - other",
+  "84262000": "Tower cranes",
+  "84792090": "Machinery for extraction/preparation of animal or fixed vegetable fats or oils - other (machines with individual functions, n.e.s.)",
+  "84145120": "Fans - ceiling fans with self-contained electric motor of output not exceeding 125 W",
+  "73121020": "Stranded wire, ropes and cables - wire ropes, galvanised",
 };
 
 function lookupHsnDescription(code) {
@@ -329,7 +336,7 @@ function openBuilder(period) {
  *  that already has data stored, so the party's sales details can be viewed/edited/exported anytime. */
 function loadSavedSalesIntoBuilder(saved) {
   const sections = [
-    { key: "b2b", rows: (saved.b2b || []).map((r) => ({ inum: r.inum, gstin: r.gstin, cname: r.cname, idt: r.idt, txval: r.txval, igst: r.igst, cgst: r.cgst, sgst: r.sgst, val: r.val, pos: r.pos, rchrg: r.rchrg, hsn: r.hsn })) },
+    { key: "b2b", rows: (saved.b2b || []).map((r) => ({ inum: r.inum, gstin: r.gstin, cname: r.cname, idt: r.idt, txval: r.txval, igst: r.igst, cgst: r.cgst, sgst: r.sgst, val: r.val, pos: r.pos, rchrg: r.rchrg, hsn: r.hsn, qty: r.qty, uqc: r.uqc })) },
     { key: "b2cs", rows: (saved.b2cs || []).map((r) => ({ pos: r.pos, rt: r.rt, txval: r.txval, igst: r.igst, cgst: r.cgst, sgst: r.sgst })) },
     { key: "hsn", rows: (saved.hsn || []).map((r) => ({ hsn: r.hsn_sc, desc: r.desc, uqc: r.uqc, qty: r.qty, val: r.val, txval: r.txval, igst: r.igst, cgst: r.cgst, sgst: r.sgst })) },
     { key: "doc", rows: (saved.doc || []).map((r) => ({ nature: r.nature, from: r.from, to: r.to, total: r.totnum, cancel: r.cancel })) },
@@ -591,7 +598,7 @@ function isValidDMY(idt) {
    with Rate % worked out live. Paste from Excel fills across
    the row and adds new rows automatically.
    --------------------------------------------------------- */
-const B2B_COLS = ["inum", "gstin", "cname", "idt", "txval", "igst", "cgst", "sgst", "val", "pos", "rchrg", "hsn"];
+const B2B_COLS = ["inum", "gstin", "cname", "idt", "txval", "igst", "cgst", "sgst", "val", "pos", "rchrg", "hsn", "qty", "uqc"];
 
 function defaultClientPos() {
   const code = String(selectedClient?.gstin || "").slice(0, 2);
@@ -614,6 +621,8 @@ function createB2BRow() {
     <td><select class="b2b-cell-select" data-col="pos"></select></td>
     <td><select class="b2b-cell-select" data-col="rchrg"><option value="N">No</option><option value="Y">Yes</option></select></td>
     <td><input type="text" class="b2b-cell-input" data-col="hsn" placeholder="998314"></td>
+    <td><input type="text" class="b2b-cell-input" data-col="qty" placeholder="0"></td>
+    <td><input type="text" class="b2b-cell-input" data-col="uqc" placeholder="NOS" style="text-transform:uppercase;"></td>
     <td class="b2b-rate-cell" data-rate>—</td>
     <td class="text-nowrap">
       <button type="button" class="b2b-row-dup" data-dup title="Same invoice, next HSN/rate — copies GSTIN, Name, Date, POS, Reverse Charge into a new row below"><i class="fa-solid fa-copy"></i></button>
@@ -740,6 +749,47 @@ function setB2BCell(tr, colName, rawVal) {
   if (el) el.value = val;
 }
 
+/** For a pasted block with NO header row: guesses which grid field each column is
+ *  from what its cells look like (GSTIN, date, rate %, text, amounts, HSN). */
+function detectB2BColumnsByContent(rows) {
+  const ncols = Math.max(...rows.map((r) => r.length));
+  const sample = rows.slice(0, 30);
+  const colVals = (i) => sample.map((r) => (r[i] || "").trim()).filter(Boolean);
+  const share = (vals, re) => (vals.length ? vals.filter((v) => re.test(v)).length / vals.length : 0);
+  const map = {};
+  const used = new Set();
+  const claim = (i, key) => { map[i] = key; used.add(i); };
+  for (let i = 0; i < ncols; i++) {
+    const v = colVals(i);
+    if (!v.length) continue;
+    if (share(v, /^\d{2}[A-Z]{5}\d{4}[A-Z][A-Z0-9]Z[A-Z0-9]$/i) >= 0.6) claim(i, "gstin");
+    else if (share(v, /^\d{1,4}[-/.]\d{1,2}[-/.]\d{1,4}$/) >= 0.6) claim(i, "idt");
+    else if (share(v, /^\d+(\.\d+)?\s*%$/) >= 0.6) claim(i, "rt");
+  }
+  // Left-most remaining column = invoice number; next one holding letters = customer name.
+  const rest = [];
+  for (let i = 0; i < ncols; i++) if (!used.has(i) && colVals(i).length) rest.push(i);
+  if (rest.length) claim(rest.shift(), "inum");
+  const nameIdx = rest.find((i) => share(colVals(i), /[A-Za-z]{3}/) >= 0.6);
+  if (nameIdx !== undefined) { claim(nameIdx, "cname"); rest.splice(rest.indexOf(nameIdx), 1); }
+  // Remaining columns left to right (an all-blank column such as IGST still holds its place,
+  // so CGST/SGST don't slide into it). A column of whole 4/6/8-digit numbers is HSN, others are amounts.
+  const amountKeys = ["txval", "igst", "cgst", "sgst", "val"];
+  let lastFilled = -1;
+  for (let i = 0; i < ncols; i++) if (!used.has(i) && colVals(i).length) lastFilled = i;
+  const firstAmt = Math.min(...rest.concat([lastFilled + 1]));
+  for (let i = firstAmt; i <= lastFilled; i++) {
+    if (used.has(i)) continue;
+    const v = colVals(i);
+    if (v.length && share(v, /^(\d{4}|\d{6}|\d{8})$/) >= 0.8) { claim(i, "hsn"); continue; }
+    if (v.length && share(v, /^[A-Za-z]{2,5}$/) >= 0.8) { claim(i, "uqc"); continue; } // NOS / KGS / LTR ...
+    const k = amountKeys.shift();
+    if (k) claim(i, k);
+    else if (!Object.values(map).includes("qty") && v.length && share(v, /^\d+(\.\d+)?$/) >= 0.8) claim(i, "qty");
+  }
+  return map;
+}
+
 /** Excel-style paste: fills across the row from the pasted-into cell and adds new rows as needed. */
 function handleB2BGridPaste(e, tr, inputEl) {
   const text = (e.clipboardData || window.clipboardData).getData("text");
@@ -752,6 +802,47 @@ function handleB2BGridPaste(e, tr, inputEl) {
   const startRowIdx = rowsArr.indexOf(tr);
   const startColIdx = B2B_COLS.indexOf(inputEl.dataset.col);
   if (startRowIdx === -1 || startColIdx === -1) return;
+
+  // A whole sheet pasted in (header row copied, or several columns starting at the first cell)
+  // is matched to grid columns by HEADER NAME / cell CONTENT — not by position — because the
+  // sheet's column order (Invoice, Date, Customer, GSTIN, Rate ...) differs from the grid's.
+  const rawRows = text.split(/\r\n|\r|\n/).map((l) => l.trim()).filter(Boolean)
+    .map((l) => splitPastedLine(l).map((c) => c.trim()));
+  const hasHeader = looksLikeHeaderRow("b2b", rawRows[0]);
+  if (rawRows.length && (hasHeader || (startColIdx === 0 && rawRows[0].length >= 5))) {
+    let colMap, dataRows, how;
+    if (hasHeader) {
+      colMap = buildHeaderMap("b2b", rawRows[0]);
+      dataRows = rawRows.slice(1);
+      how = "by header names";
+    } else {
+      colMap = detectB2BColumnsByContent(rawRows);
+      dataRows = rawRows;
+      how = "by detecting column contents (no header row copied — check the columns, or copy WITH the header row)";
+    }
+    const keyed = dataRows.map((cells) => {
+      const o = {};
+      cells.forEach((v, i) => { if (colMap[i] && v !== "") o[colMap[i]] = v; });
+      return o;
+    }).filter((o) => Object.keys(o).length);
+    if (keyed.length) {
+      // Only the invoices dated in the return period being filed (e.g. Oct 2026) are brought in.
+      const inPeriod = keyed.filter((o) => {
+        const d = normalizeDate(o.idt || "");
+        if (!isValidDMY(d)) return true; // unreadable date: keep it so validation flags it
+        const [, mo, yr] = d.split("-").map((x) => parseInt(x, 10));
+        return isInReturnPeriod(mo, yr);
+      });
+      const skipped = keyed.length - inPeriod.length;
+      if (!inPeriod.length) {
+        toast(`No invoices dated in ${selectedPeriod?.label || "this period"} found in the pasted data (${skipped} row(s) belong to other months).`, "warning");
+        return;
+      }
+      populateGridFromKeyedRows("b2b", inPeriod);
+      toast(`Pasted ${inPeriod.length} invoice row(s) for ${selectedPeriod?.label || "this period"}${skipped ? `; ${skipped} row(s) from other months skipped` : ""}. Columns matched ${how}.`, hasHeader ? "success" : "warning");
+      return;
+    }
+  }
 
   gridRows.forEach((cells, rOffset) => {
     let targetRow = rowsArr[startRowIdx + rOffset];
@@ -782,6 +873,21 @@ function periodMonthYear(monthKey) {
   return { m: FY_MONTH_TO_NUM[name] ? parseInt(FY_MONTH_TO_NUM[name], 10) : 0, y: parseInt(year, 10) || 0 };
 }
 
+/** True if an invoice dated month `mo` / year `yr` falls inside the return period
+ *  being filed: just that month for monthly filers, the whole 3-month quarter
+ *  (ending in the period's month) for quarterly filers. */
+function isInReturnPeriod(mo, yr) {
+  const period = periodMonthYear(selectedPeriod?.monthKey);
+  if (!period.y) return true;
+  const span = selectedPeriod?.freq === "Quarterly" ? 3 : 1;
+  for (let i = 0; i < span; i++) {
+    let m = period.m - i, y = period.y;
+    if (m < 1) { m += 12; y -= 1; }
+    if (m === mo && y === yr) return true;
+  }
+  return false;
+}
+
 function parseB2BFromGrid() {
   const rows = Array.from(document.querySelectorAll("#b2bGridBody tr"));
   const out = [];
@@ -806,6 +912,8 @@ function parseB2BFromGrid() {
     const pos = resolvePosCode(tr.querySelector('[data-col="pos"]').value);
     const rchrg = tr.querySelector('[data-col="rchrg"]').value === "Y" ? "Y" : "N";
     const hsn = g("hsn").replace(/[,\s]/g, "");
+    const qtyNum = num(g("qty")) || 0;
+    const uqc = (g("uqc") || "NOS").toUpperCase();
 
     tr.classList.remove("row-error", "row-unregistered", "row-date-warn");
     const rowIsBlank = !inum && !gstin && !txvalNum && !igstNum && !cgstNum && !sgstNum;
@@ -836,6 +944,7 @@ function parseB2BFromGrid() {
     if (igstNum > 0 && (cgstNum > 0 || sgstNum > 0)) rowErrors.push("A row can't have both IGST and CGST/SGST");
     if (!/^\d{2}$/.test(pos) || !STATE_CODES[pos]) rowErrors.push("Invalid Place of Supply");
     if (!/^\d{4,8}$/.test(hsn) || ![4, 6, 8].includes(hsn.length)) rowErrors.push("HSN/SAC must be numeric, 4/6/8 digits");
+    if (typeof VALID_UQC !== "undefined" && !VALID_UQC.has(uqc)) rowErrors.push(`UQC "${uqc}" is not a valid unit code`);
 
     // GSTIN-based state check: recipient's GSTIN state code (first 2 digits) tells us
     // whether this is an interstate or intrastate sale, so CGST/SGST vs IGST can be
@@ -855,7 +964,7 @@ function parseB2BFromGrid() {
       const dparts = idt.split("-");
       const invMonth = parseInt(dparts[1], 10);
       const invYear = parseInt(dparts[2], 10);
-      if (invMonth !== period.m || invYear !== period.y) {
+      if (!isInReturnPeriod(invMonth, invYear)) {
         tr.classList.add("row-date-warn");
         dateWarnings.push(`Row ${i + 1}: Invoice date ${idt} is not in the return period ${selectedPeriod.label}`);
       }
@@ -877,12 +986,56 @@ function parseB2BFromGrid() {
     }
 
     out.push({
-      raw: { gstin, inum, cname, idt, val: valNum, pos, rchrg, hsn, txval: txvalNum, rt: rateNum, igst: igstNum, cgst: cgstNum, sgst: sgstNum },
+      raw: { gstin, inum, cname, idt, val: valNum, pos, rchrg, hsn, qty: qtyNum, uqc, txval: txvalNum, rt: rateNum, igst: igstNum, cgst: cgstNum, sgst: sgstNum },
       errors: rowErrors,
     });
   });
 
+  normalizeInvoiceValues(out);
   return { rows: out, unregistered, errors, dateWarnings, anyData };
+}
+
+/** One invoice can span several rows (one per HSN/rate). The GSTR-1 invoice
+ *  value is for the WHOLE invoice, so every row of the same invoice (same
+ *  GSTIN + Invoice No) is given that one value:
+ *   - if all its rows already carry the same Total and it covers the sum of
+ *     their Taxable+Tax, that is the full invoice value (round-off kept);
+ *   - otherwise the Totals are per-line amounts, so they are added up. */
+function normalizeInvoiceValues(rows) {
+  const groups = new Map();
+  rows.forEach((r) => {
+    const k = `${r.raw.gstin}|${r.raw.inum}`;
+    if (!groups.has(k)) groups.set(k, []);
+    groups.get(k).push(r);
+  });
+  groups.forEach((list) => {
+    if (list.length < 2) return;
+    const lineSum = round2(list.reduce((t, r) => t + r.raw.txval + r.raw.igst + r.raw.cgst + r.raw.sgst, 0));
+    const vals = list.map((r) => r.raw.val);
+    const allSame = vals.every((v) => Math.abs(v - vals[0]) < 0.005);
+    const invVal = allSame && vals[0] >= lineSum - 1 ? vals[0] : round2(vals.reduce((a, b) => a + b, 0));
+    list.forEach((r) => { r.raw.val = invVal; });
+  });
+}
+
+/** Merges the B2B rows of one invoice that share a tax rate into a single line,
+ *  because GSTR-1 B2B is reported rate-wise (HSN-wise detail goes in the HSN
+ *  summary). Returns [{...raw, txval, igst, cgst, sgst}] one per invoice+rate. */
+function mergeB2BByInvoiceRate(rows) {
+  const m = new Map();
+  rows.forEach((r) => {
+    const d = r.raw;
+    const k = `${d.gstin}|${d.inum}|${d.rt}`;
+    if (!m.has(k)) m.set(k, { ...d });
+    else {
+      const g = m.get(k);
+      g.txval = round2(g.txval + d.txval);
+      g.igst = round2(g.igst + d.igst);
+      g.cgst = round2(g.cgst + d.cgst);
+      g.sgst = round2(g.sgst + d.sgst);
+    }
+  });
+  return [...m.values()];
 }
 
 let lastUnregisteredB2B = [];
@@ -1240,10 +1393,11 @@ function hsnAutofillFromB2B() {
 
   const grouped = new Map(); // key = hsn|rt
   rows.forEach((r) => {
-    const { hsn, rt, txval, igst, cgst, sgst } = r.raw;
+    const { hsn, rt, txval, igst, cgst, sgst, qty, uqc } = r.raw;
     const key = `${hsn}|${rt}`;
-    if (!grouped.has(key)) grouped.set(key, { hsn, rt, txval: 0, igst: 0, cgst: 0, sgst: 0 });
+    if (!grouped.has(key)) grouped.set(key, { hsn, rt, uqc: uqc || "NOS", qty: 0, txval: 0, igst: 0, cgst: 0, sgst: 0 });
     const g = grouped.get(key);
+    g.qty = round2(g.qty + (qty || 0));
     g.txval = round2(g.txval + txval);
     g.igst = round2(g.igst + igst);
     g.cgst = round2(g.cgst + cgst);
@@ -1262,7 +1416,8 @@ function hsnAutofillFromB2B() {
     tr.querySelector('[data-col="hsn"]').value = g.hsn;
     const desc = lookupHsnDescription(g.hsn);
     if (desc) tr.querySelector('[data-col="desc"]').value = desc;
-    tr.querySelector('[data-col="uqc"]').value = "NOS";
+    tr.querySelector('[data-col="uqc"]').value = g.uqc || "NOS";
+    if (g.qty) tr.querySelector('[data-col="qty"]').value = g.qty;
     tr.querySelector('[data-col="txval"]').value = g.txval || "";
     tr.querySelector('[data-col="igst"]').value = g.igst || "";
     tr.querySelector('[data-col="cgst"]').value = g.cgst || "";
@@ -1275,7 +1430,15 @@ function hsnAutofillFromB2B() {
   // Reconcile against the B2B sheet so a mismatch is never silent.
   const allB2B = parsedRows.b2b || [];
   const skipped = allB2B.filter((r) => r.errors.length || !r.raw.hsn);
-  const badTotals = rows.filter((r) => Math.abs((r.raw.val || 0) - round2(r.raw.txval + r.raw.igst + r.raw.cgst + r.raw.sgst)) > 1);
+  // Compare per INVOICE (a multi-HSN invoice's Total covers all its lines).
+  const invLine = new Map();
+  rows.forEach((r) => {
+    const k = `${r.raw.gstin}|${r.raw.inum}`;
+    const e = invLine.get(k) || { inum: r.raw.inum, val: r.raw.val || 0, sum: 0 };
+    e.sum = round2(e.sum + r.raw.txval + r.raw.igst + r.raw.cgst + r.raw.sgst);
+    invLine.set(k, e);
+  });
+  const badTotals = [...invLine.values()].filter((e) => Math.abs(e.val - e.sum) > 1).map((e) => ({ raw: { inum: e.inum } }));
   const warnings = [];
   if (skipped.length) {
     const skippedTaxable = skipped.reduce((a, r) => round2(a + (r.raw.txval || 0)), 0);
@@ -1322,6 +1485,8 @@ const HEADER_ALIASES = {
     rchrg: ["reverse charge", "rcm"],
     hsn: ["hsn/sac code", "hsn sac code", "hsn code", "hsn/sac", "hsn", "sac code", "sac"],
     rt: ["rate", "rate %", "gst rate", "tax rate"],
+    qty: ["quantity", "qty", "total quantity"],
+    uqc: ["uqc", "unit", "unit code"],
   },
   b2cs: {
     pos: ["place of supply", "pos"],
@@ -1495,7 +1660,7 @@ function keyRowsForSection(section, rawRows) {
    grid — via a small post-processing step on the generated
    .xlsx (a free-tier xlsx writer can't add these directly).
    ========================================================= */
-const B2B_SAMPLE_LABELS = ["Invoice Number", "GSTIN", "Customer Name", "Invoice Date", "Taxable Amount", "IGST", "CGST", "SGST", "Total", "Place of Supply", "Reverse Charge", "HSN/SAC Code"];
+const B2B_SAMPLE_LABELS = ["Invoice Number", "GSTIN", "Customer Name", "Invoice Date", "Taxable Amount", "IGST", "CGST", "SGST", "Total", "Place of Supply", "Reverse Charge", "HSN/SAC Code", "Qty", "UQC"];
 
 function buildSampleSheet(headers, blankRowCount = 40) {
   const aoa = [headers];
@@ -1771,6 +1936,24 @@ function toGvizCsvExportUrl(url) {
   return url;
 }
 
+/** Candidate CSV URLs for a pasted link, best first. Published (pub?output=csv)
+ *  links are used as-is; normal edit/share links are turned into the tab's CSV. */
+function toSheetCsvUrls(url) {
+  const m = url.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
+  if (!m || /\/pub\?/.test(url) || /output=csv/.test(url)) return [url];
+  const gidMatch = url.match(/[?#&]gid=(\d+)/);
+  const gid = gidMatch ? gidMatch[1] : "0";
+  return [
+    `https://docs.google.com/spreadsheets/d/${m[1]}/gviz/tq?tqx=out:csv&gid=${gid}`,
+    `https://docs.google.com/spreadsheets/d/${m[1]}/export?format=csv&gid=${gid}`,
+  ];
+}
+
+/** Remembers the published-sheet link per party + tab, so re-syncing next month is one click. */
+function sheetUrlKey() {
+  return `gstSheetUrl|${selectedClient?.id || ""}|${activeSection}`;
+}
+
 async function handleSheetImportFetch() {
   const urlInput = document.getElementById("sheetImportUrl");
   const url = urlInput.value.trim();
@@ -1787,10 +1970,19 @@ async function handleSheetImportFetch() {
   btn.disabled = true;
   btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i>`;
   try {
-    const fetchUrl = toGvizCsvExportUrl(url);
-    const res = await fetch(fetchUrl);
-    if (!res.ok) throw new Error(`Google Sheets returned HTTP ${res.status} — make sure the sheet is published/shared as "Anyone with the link can view".`);
-    const csvText = await res.text();
+    // Try the browser-friendly gviz endpoint first, then the plain export URL.
+    let csvText = "";
+    let lastErr = null;
+    for (const fetchUrl of toSheetCsvUrls(url)) {
+      try {
+        const res = await fetch(fetchUrl);
+        if (!res.ok) throw new Error(`Google Sheets returned HTTP ${res.status} — make sure the sheet is shared as "Anyone with the link can view".`);
+        csvText = await res.text();
+        lastErr = null;
+        break;
+      } catch (e) { lastErr = e; }
+    }
+    if (lastErr) throw new Error(lastErr.message && /HTTP/.test(lastErr.message) ? lastErr.message : 'Couldn\'t reach the Google Sheet. Set sharing to "Anyone with the link → Viewer" and paste the link of the tab you want (open that tab first, then copy the address bar link).');
     if (/^<!DOCTYPE html/i.test(csvText.trim())) {
       throw new Error('Got a login/sharing page instead of CSV — publish this sheet (File → Share → Publish to web → CSV) or set sharing to "Anyone with the link".');
     }
@@ -1807,11 +1999,36 @@ async function handleSheetImportFetch() {
       throw new Error("Couldn't match any columns in that sheet to this tab's fields — check the column headers.");
     }
 
+    // The sheet keeps every month's invoices; only pull the ones dated in the
+    // return period being filed. Rows whose date can't be read are kept so the
+    // normal validation flags them instead of silently dropping them.
+    let skippedOtherMonths = 0;
+    if (activeSection === "b2b") {
+      const period = periodMonthYear(selectedPeriod?.monthKey);
+      if (period.y) {
+        const before = keyedRows.length;
+        keyedRows = keyedRows.filter((o) => {
+          const d = normalizeDate(o.idt || "");
+          if (!isValidDMY(d)) return true;
+          const [, mo, yr] = d.split("-").map((x) => parseInt(x, 10));
+          return isInReturnPeriod(mo, yr);
+        });
+        skippedOtherMonths = before - keyedRows.length;
+        if (!keyedRows.length) throw new Error(`No invoices dated in ${selectedPeriod.label} found in that sheet (${before} row(s) belong to other months).`);
+      }
+    }
+
+    // Re-syncing replaces what the last sync brought in (rows typed by hand are left alone),
+    // so syncing twice never doubles the invoices.
+    const bodyEl = document.getElementById(`${activeSection}GridBody`);
+    if (bodyEl) bodyEl.querySelectorAll('tr[data-sheet="1"]').forEach((tr) => tr.remove());
+    const existingRows = new Set(bodyEl ? Array.from(bodyEl.children) : []);
     const filled = populateGridFromKeyedRows(activeSection, keyedRows);
+    if (bodyEl) Array.from(bodyEl.children).forEach((tr) => { if (!existingRows.has(tr)) tr.dataset.sheet = "1"; });
     activeSection === "b2b" ? handleParseB2B() : handleParseGrid(activeSection);
-    toast(`Imported ${filled} row(s) from Google Sheets into ${activeSection === "b2cs" ? "B2C Small" : activeSection.toUpperCase()}.`, "success");
+    try { localStorage.setItem(sheetUrlKey(), url); } catch (e) { /* storage unavailable — link just won't be remembered */ }
+    toast(`Imported ${filled} row(s) from Google Sheets into ${activeSection === "b2cs" ? "B2C Small" : activeSection.toUpperCase()}.${skippedOtherMonths ? ` ${skippedOtherMonths} row(s) from other months were skipped.` : ""}`, "success");
     document.getElementById("sheetImportPanel").style.display = "none";
-    urlInput.value = "";
   } catch (err) {
     console.error("Google Sheet import failed:", err);
     toast(err.message || "Couldn't import from that Google Sheet link.", "danger");
@@ -1939,13 +2156,17 @@ function exportSalesToExcel() {
   const sum = (rows, key) => round2(rows.reduce((t, r) => t + (Number(r.raw[key]) || 0), 0));
 
   if (parsedRows.b2b.length) {
-    const rows = parsedRows.b2b;
+    // One row per invoice + tax rate (rows of the same invoice and rate are merged).
+    const rows = mergeB2BByInvoiceRate(parsedRows.b2b).map((raw) => ({ raw }));
     const recipients = new Set(rows.map((r) => r.raw.gstin)).size;
-    const invoices = new Set(rows.map((r) => r.raw.inum)).size;
+    const invoices = new Set(rows.map((r) => `${r.raw.gstin}|${r.raw.inum}`)).size;
+    const uniqueInvVal = new Map();
+    rows.forEach((r) => uniqueInvVal.set(`${r.raw.gstin}|${r.raw.inum}`, r.raw.val));
+    const totalInvValue = round2([...uniqueInvVal.values()].reduce((a, b) => a + b, 0));
     const sheet = buildOfficialSheet(
       "Summary For B2B, SEZ, DE (4A, 4B, 6B, 6C)",
       ["No. of Recipients", "No. of Invoices", "Total Invoice Value", "Total Taxable Value", "Total Cess"],
-      [recipients, invoices, sum(rows, "val"), sum(rows, "txval"), 0],
+      [recipients, invoices, totalInvValue, sum(rows, "txval"), 0],
       ["GSTIN/UIN of Recipient", "Receiver Name", "Invoice Number", "Invoice date", "Invoice Value", "Place Of Supply", "Reverse Charge", "Applicable % of Tax Rate", "Invoice Type", "E-Commerce GSTIN", "Rate", "Taxable Value", "Cess Amount"],
       rows.map((r) => [
         r.raw.gstin,
@@ -2034,8 +2255,7 @@ function buildGstr1Json() {
   // B2B — grouped by recipient GSTIN, then by invoice number.
   if (parsedRows.b2b.length) {
     const byCtin = new Map();
-    parsedRows.b2b.forEach((r) => {
-      const d = r.raw;
+    mergeB2BByInvoiceRate(parsedRows.b2b).forEach((d) => {
       if (!byCtin.has(d.gstin)) byCtin.set(d.gstin, new Map());
       const invMap = byCtin.get(d.gstin);
       if (!invMap.has(d.inum)) {
@@ -2238,6 +2458,7 @@ function wireEvents() {
     document.getElementById("sheetImportSectionLabel").textContent = SECTION_LABELS[activeSection] || activeSection;
     document.getElementById("sheetImportSectionHint").textContent = SECTION_LABELS[activeSection] || activeSection;
     document.getElementById("sheetImportPanel").style.display = "block";
+    try { document.getElementById("sheetImportUrl").value = localStorage.getItem(sheetUrlKey()) || ""; } catch (e) { /* ignore */ }
     document.getElementById("sheetImportUrl").focus();
   });
   document.getElementById("sheetImportCancelBtn").addEventListener("click", () => {
