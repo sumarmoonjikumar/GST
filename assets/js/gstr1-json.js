@@ -72,10 +72,61 @@ const HSN_DESC_MAP = {
   "84792090": "Machinery for extraction/preparation of animal or fixed vegetable fats or oils - other (machines with individual functions, n.e.s.)",
   "84145120": "Fans - ceiling fans with self-contained electric motor of output not exceeding 125 W",
   "73121020": "Stranded wire, ropes and cables - wire ropes, galvanised",
+  "34031100": "Lubricating preparations - preparations for the treatment of textile materials, leather, furskins or other materials (containing petroleum oils)",
+  "85369090": "Electrical apparatus for switching or protecting electrical circuits, or for making connections to or in electrical circuits, voltage not exceeding 1,000 V - other",
 };
 
+/** Descriptions you type yourself on the HSN Summary are remembered in this
+ *  browser, so a code missing from the built-in list only needs typing once. */
+const HSN_DESC_STORE_KEY = "gstHsnUserDescriptions";
+function loadUserHsnDescriptions() {
+  try { return JSON.parse(localStorage.getItem(HSN_DESC_STORE_KEY) || "{}") || {}; } catch (e) { return {}; }
+}
+function rememberHsnDescription(code, desc) {
+  const c = String(code || "").replace(/[,\s]/g, "");
+  const d = String(desc || "").trim();
+  if (!c || !d) return;
+  try {
+    const all = loadUserHsnDescriptions();
+    all[c] = d;
+    localStorage.setItem(HSN_DESC_STORE_KEY, JSON.stringify(all));
+  } catch (e) { /* storage unavailable — just won't be remembered */ }
+}
+
+/** Official GST HSN/SAC master (assets/js/hsn-master.js, built from HSN_SAC.xlsx):
+ *  code -> description, at 2/4/6/8-digit levels for goods and 4/6-digit for services. */
+const HSN_MASTER = (typeof window !== "undefined" && window.GST_HSN_MASTER) || {};
+const HSN_MASTER_LOADED = Object.keys(HSN_MASTER).length > 1000;
+
+/** True if the code is in the official master (always true if the master file didn't load). */
+function isKnownHsn(code) {
+  if (!HSN_MASTER_LOADED) return true;
+  return Object.prototype.hasOwnProperty.call(HSN_MASTER, String(code || "").replace(/[,\s]/g, ""));
+}
+
+/** Many 8-digit entries are just "OTHER" or "OTHERS", which says nothing on its
+ *  own, so such a code takes its parent's wording too (8 -> 7 -> 6 -> 5 -> 4 digits)
+ *  until a meaningful description is reached. A specific wording ("TOWER CRANES")
+ *  is used as it stands. Very long text is cut at a word boundary. */
+function composeMasterHsnDescription(c) {
+  if (!HSN_MASTER_LOADED || !c) return "";
+  if (c.startsWith("99")) return HSN_MASTER[c] || ""; // SAC — already a full sentence
+  const generic = (d) => /^other/i.test(d) || d.replace(/[^A-Za-z]/g, "").length <= 6;
+  const parts = [];
+  for (let len = Math.min(c.length, 8); len >= 4; len--) {
+    const d = HSN_MASTER[c.slice(0, len)];
+    if (!d || parts.includes(d)) continue;
+    parts.unshift(d);
+    if (!generic(d)) break;
+  }
+  let out = parts.join(" - ").replace(/\s*:\s*-\s*/g, " - ");
+  if (out.length > 160) out = out.slice(0, 157).replace(/\s+\S*$/, "") + "...";
+  return out;
+}
+
 function lookupHsnDescription(code) {
-  return HSN_DESC_MAP[String(code || "").replace(/[,\s]/g, "")] || "";
+  const c = String(code || "").replace(/[,\s]/g, "");
+  return loadUserHsnDescriptions()[c] || composeMasterHsnDescription(c) || HSN_DESC_MAP[c] || "";
 }
 const DOC_NATURE_MAP = [
   { key: 1, names: ["invoices for outward supply", "outward supply invoice", "invoice", "tax invoice"] },
@@ -630,7 +681,7 @@ function createB2BRow() {
     <td><select class="b2b-cell-select" data-col="rchrg"><option value="N">No</option><option value="Y">Yes</option></select></td>
     <td><input type="text" class="b2b-cell-input" data-col="hsn" placeholder="998314"></td>
     <td><input type="text" class="b2b-cell-input" data-col="qty" placeholder="0"></td>
-    <td><input type="text" class="b2b-cell-input" data-col="uqc" placeholder="NOS" style="text-transform:uppercase;"></td>
+    <td><select class="b2b-cell-select" data-col="uqc" title="Unit - NOS unless you pick another">${[...VALID_UQC].map((c) => `<option value="${c}"${c === "NOS-NUMBERS" ? " selected" : ""}>${c}</option>`).join("")}</select></td>
     <td class="b2b-rate-cell" data-rate>—</td>
     <td class="text-nowrap">
       <button type="button" class="b2b-row-dup" data-dup title="Same invoice, next HSN/rate — copies GSTIN, Name, Date, POS, Reverse Charge into a new row below"><i class="fa-solid fa-copy"></i></button>
@@ -751,6 +802,11 @@ function setB2BCell(tr, colName, rawVal) {
   }
   if (colName === "gstin") {
     tr.querySelector('[data-col="gstin"]').value = val.toUpperCase();
+    return;
+  }
+  if (colName === "uqc") {
+    const u = resolveUqc(val); // blank/unknown leaves the NOS default in place
+    if (u && val) tr.querySelector('[data-col="uqc"]').value = u;
     return;
   }
   const el = tr.querySelector(`[data-col="${colName}"]`);
@@ -953,6 +1009,7 @@ function parseB2BFromGrid() {
     if (igstNum > 0 && (cgstNum > 0 || sgstNum > 0)) rowErrors.push("A row can't have both IGST and CGST/SGST");
     if (!/^\d{2}$/.test(pos) || !STATE_CODES[pos]) rowErrors.push("Invalid Place of Supply");
     if (!/^\d{4,8}$/.test(hsn) || ![4, 6, 8].includes(hsn.length)) rowErrors.push("HSN/SAC must be numeric, 4/6/8 digits");
+    else if (!isKnownHsn(hsn)) rowErrors.push(`HSN/SAC ${hsn} is not in the GST master list — check the code`);
     if (!uqc) rowErrors.push(`UQC "${uqcRaw}" is not a valid unit code (use NOS, KGS, LTR, MTR, PCS ...)`);
 
     // GSTIN-based state check: recipient's GSTIN state code (first 2 digits) tells us
@@ -1153,6 +1210,7 @@ const GRID_DEFS = {
       const errors = [];
       const h = String(v.hsn || "").replace(/[,\s]/g, "");
       if (!/^\d{4,8}$/.test(h) || ![4, 6, 8].includes(h.length)) errors.push("HSN/SAC code must be numeric, 4/6/8 digits");
+      else if (!isKnownHsn(h)) errors.push(`HSN/SAC ${h} is not in the GST master list — check the code`);
       let u = String(v.uqc || "").trim().toUpperCase();
       if (h.startsWith("99") && (!u || u === "OTH-OTHERS")) u = "NA-NOT APPLICABLE";
       if (u && !u.includes("-")) {
@@ -1218,9 +1276,23 @@ function createGridRow(defKey) {
         const found = lookupHsnDescription(hsnInput.value);
         if (found) descInput.value = found;
       }
+      markMissingHsnDesc(descInput, hsnInput);
+    });
+    // A description typed by hand is remembered for this HSN next time.
+    descInput.addEventListener("change", () => {
+      rememberHsnDescription(hsnInput.value, descInput.value);
+      markMissingHsnDesc(descInput, hsnInput);
     });
   }
   return tr;
+}
+
+/** Highlights a description cell that is empty for a filled-in HSN, so it isn't missed. */
+function markMissingHsnDesc(descInput, hsnInput) {
+  if (!descInput) return;
+  const missing = !!hsnInput.value.trim() && !descInput.value.trim();
+  descInput.style.outline = missing ? "2px solid #e0a100" : "";
+  descInput.placeholder = missing ? "Type description once - it is remembered" : "e.g. Accounting services";
 }
 
 function renumberGridRows(defKey) {
@@ -1425,6 +1497,7 @@ function hsnAutofillFromB2B() {
     tr.querySelector('[data-col="hsn"]').value = g.hsn;
     const desc = lookupHsnDescription(g.hsn);
     if (desc) tr.querySelector('[data-col="desc"]').value = desc;
+    markMissingHsnDesc(tr.querySelector('[data-col="desc"]'), tr.querySelector('[data-col="hsn"]'));
     tr.querySelector('[data-col="uqc"]').value = g.uqc || "NOS";
     if (g.qty) tr.querySelector('[data-col="qty"]').value = g.qty;
     tr.querySelector('[data-col="txval"]').value = g.txval || "";
