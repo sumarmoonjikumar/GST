@@ -854,6 +854,36 @@ function detectB2BColumnsByContent(rows) {
   return map;
 }
 
+/** One-click repair for rows that are already in the grid with their values in the
+ *  wrong columns (e.g. an earlier paste put Date under GSTIN and "5%" under Taxable).
+ *  Those cells still hold the original sheet columns in order, so they are read back
+ *  left to right, matched by content again, and re-filled into the right columns.
+ *  Only invoices dated in the period being filed are kept. */
+function fixB2BColumnOrder() {
+  const body = document.getElementById("b2bGridBody");
+  const rows = Array.from(body.children).filter((tr) => !isB2BRowBlank(tr));
+  if (!rows.length) { toast("Nothing to fix — the B2B grid is empty.", "warning"); return; }
+  // Place of Supply / Reverse Charge / UQC are dropdowns and only ever hold defaults here.
+  const matrix = rows.map((tr) => B2B_COLS.map((c) => (c === "pos" || c === "rchrg" || c === "uqc" ? "" : tr.querySelector(`[data-col="${c}"]`).value.trim())));
+  const map = detectB2BColumnsByContent(matrix);
+  const keyed = matrix.map((cells) => {
+    const o = {};
+    cells.forEach((v, i) => { if (map[i] && v !== "") o[map[i]] = v; });
+    return o;
+  }).filter((o) => Object.keys(o).length);
+  const kept = keyed.filter((o) => {
+    const d = normalizeDate(o.idt || "");
+    if (!isValidDMY(d)) return true;
+    const [, mo, yr] = d.split("-").map((x) => parseInt(x, 10));
+    return isInReturnPeriod(mo, yr);
+  });
+  const skipped = keyed.length - kept.length;
+  if (!kept.length) { toast(`No invoices dated in ${selectedPeriod?.label || "this period"} found among these rows.`, "warning"); return; }
+  rows.forEach((tr) => tr.remove());
+  populateGridFromKeyedRows("b2b", kept);
+  toast(`Columns fixed: ${kept.length} row(s) kept for ${selectedPeriod?.label || "this period"}${skipped ? `, ${skipped} row(s) from other months removed` : ""}. Now check HSN/SAC and click Validate rows.`, "success");
+}
+
 /** Excel-style paste: fills across the row from the pasted-into cell and adds new rows as needed. */
 function handleB2BGridPaste(e, tr, inputEl) {
   const text = (e.clipboardData || window.clipboardData).getData("text");
@@ -873,7 +903,7 @@ function handleB2BGridPaste(e, tr, inputEl) {
   const rawRows = text.split(/\r\n|\r|\n/).map((l) => l.trim()).filter(Boolean)
     .map((l) => splitPastedLine(l).map((c) => c.trim()));
   const hasHeader = looksLikeHeaderRow("b2b", rawRows[0]);
-  if (rawRows.length && (hasHeader || (startColIdx === 0 && rawRows[0].length >= 5))) {
+  if (rawRows.length && (hasHeader || rawRows[0].length >= 6)) {
     let colMap, dataRows, how;
     if (hasHeader) {
       colMap = buildHeaderMap("b2b", rawRows[0]);
@@ -2566,6 +2596,7 @@ function wireEvents() {
   document.getElementById("docAddRows").addEventListener("click", () => addGridRows("doc", 5));
   document.getElementById("b2csSyncBtn").addEventListener("click", syncB2csFromUnregisteredB2B);
 
+  document.getElementById("b2bFixCols")?.addEventListener("click", fixB2BColumnOrder);
   document.querySelectorAll("[data-parse]").forEach((btn) =>
     btn.addEventListener("click", () => handleParse(btn.dataset.parse))
   );
