@@ -3,7 +3,7 @@ import { requireSession } from "./auth.js";
 import { applyStoredTheme, toast, currentFY, fyList, initials } from "./utils.js";
 import { initAppChrome } from "./chrome.js";
 import { buildFilingMap, getFilingStatus, periodHasStarted, isQuarterEndMonth } from "./gst-status.js";
-console.info("[GSTR-1] build 2026-10-05b · paste into amount columns never comma-splits");
+console.info("[GSTR-1] build 2026-11-10 · header/content-aware paste, month filter, Qty/UQC");
 
 applyStoredTheme();
 const session = requireSession(["admin", "staff"]);
@@ -30,11 +30,19 @@ const VALID_RATES = [0, 0.1, 0.25, 1, 1.5, 3, 5, 6, 7.5, 12, 18, 28];
 const VALID_UQC = new Set([
   "BAG-BAGS","BAL-BALE","BDL-BUNDLES","BKL-BUCKLES","BOU-BILLIONS OF UNITS","BOX-BOX","BTL-BOTTLES","BUN-BUNCHES",
   "CAN-CANS","CBM-CUBIC METERS","CCM-CUBIC CENTIMETERS","CMS-CENTIMETERS","CTN-CARTONS","DOZ-DOZENS","DRM-DRUMS",
-  "GGK-GREAT GROSS","GMS-GRAMMES","GRS-GROSS","GYD-GROSS YARDS","KGS-KILOGRAMS","KLR-KILOLITRE","KME-KILOMETRE",
+  "GGK-GREAT GROSS","GMS-GRAMMES","GRS-GROSS","GYD-GROSS YARDS","KGS-KILOGRAMS","KLR-KILOLITRE","KME-KILOMETRE","LTR-LITRES",
   "MLT-MILLILITRE","MTR-METERS","MTS-METRIC TON","NOS-NUMBERS","PAC-PACKS","PCS-PIECES","PRS-PAIRS","QTL-QUINTAL",
   "ROL-ROLLS","SET-SETS","SQF-SQUARE FEET","SQM-SQUARE METERS","SQY-SQUARE YARDS","TBS-TABLETS","TGM-TEN GROSS",
   "THD-THOUSANDS","TON-TONNES","TUB-TUBES","UGS-US GALLONS","UNT-UNITS","YDS-YARDS","OTH-OTHERS","NA-NOT APPLICABLE",
 ]);
+
+/** "NOS" / "KGS" / "nos-numbers" / blank -> the full portal code ("NOS-NUMBERS"); "" if unknown. Blank = NOS. */
+function resolveUqc(v) {
+  const u = String(v || "").trim().toUpperCase();
+  if (!u) return "NOS-NUMBERS";
+  if (VALID_UQC.has(u)) return u;
+  return [...VALID_UQC].find((code) => code.startsWith(u + "-")) || "";
+}
 
 /**
  * Small starter lookup so common codes auto-fill their Description on the
@@ -839,7 +847,7 @@ function handleB2BGridPaste(e, tr, inputEl) {
         return;
       }
       populateGridFromKeyedRows("b2b", inPeriod);
-      toast(`Pasted ${inPeriod.length} invoice row(s) for ${selectedPeriod?.label || "this period"}${skipped ? `; ${skipped} row(s) from other months skipped` : ""}. Columns matched ${how}.`, hasHeader ? "success" : "warning");
+      toast(`Pasted ${inPeriod.length} invoice row(s) for ${selectedPeriod?.label || "this period"}${skipped ? `; ${skipped} row(s) from other months skipped` : ""}. Columns matched ${how}. [build 10-Nov]`, hasHeader ? "success" : "warning");
       return;
     }
   }
@@ -913,7 +921,8 @@ function parseB2BFromGrid() {
     const rchrg = tr.querySelector('[data-col="rchrg"]').value === "Y" ? "Y" : "N";
     const hsn = g("hsn").replace(/[,\s]/g, "");
     const qtyNum = num(g("qty")) || 0;
-    const uqc = (g("uqc") || "NOS").toUpperCase();
+    const uqcRaw = (g("uqc") || "NOS").toUpperCase();
+    const uqc = resolveUqc(uqcRaw);
 
     tr.classList.remove("row-error", "row-unregistered", "row-date-warn");
     const rowIsBlank = !inum && !gstin && !txvalNum && !igstNum && !cgstNum && !sgstNum;
@@ -944,7 +953,7 @@ function parseB2BFromGrid() {
     if (igstNum > 0 && (cgstNum > 0 || sgstNum > 0)) rowErrors.push("A row can't have both IGST and CGST/SGST");
     if (!/^\d{2}$/.test(pos) || !STATE_CODES[pos]) rowErrors.push("Invalid Place of Supply");
     if (!/^\d{4,8}$/.test(hsn) || ![4, 6, 8].includes(hsn.length)) rowErrors.push("HSN/SAC must be numeric, 4/6/8 digits");
-    if (typeof VALID_UQC !== "undefined" && !VALID_UQC.has(uqc)) rowErrors.push(`UQC "${uqc}" is not a valid unit code`);
+    if (!uqc) rowErrors.push(`UQC "${uqcRaw}" is not a valid unit code (use NOS, KGS, LTR, MTR, PCS ...)`);
 
     // GSTIN-based state check: recipient's GSTIN state code (first 2 digits) tells us
     // whether this is an interstate or intrastate sale, so CGST/SGST vs IGST can be
