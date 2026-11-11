@@ -416,6 +416,8 @@ function switchSection(section) {
   document.querySelectorAll("[data-section-card]").forEach((card) => card.classList.toggle("active", card.dataset.sectionCard === section));
   document.getElementById("sheetImportPanel").style.display = "none";
 
+  if (section === "doc") autoFillDocumentsFromBills(); // opening the tab always shows the current bills
+
   if (section === "b2cs" && lastUnregisteredB2B.length) {
     const body = document.getElementById("b2csGridBody");
     const untouched = Array.from(body.querySelectorAll("tr")).every((tr) =>
@@ -2649,6 +2651,13 @@ function wireEvents() {
   document.getElementById("hsnAddRows").addEventListener("click", () => addGridRows("hsn", 5));
   document.getElementById("hsnAutofillFromB2B").addEventListener("click", hsnAutofillFromB2B);
   document.getElementById("docAddRows").addEventListener("click", () => addGridRows("doc", 5));
+  document.getElementById("docAutofillBtn")?.addEventListener("click", () => {
+    document.getElementById("docGridBody").dataset.autoSig = ""; // force a fresh fill
+    handleParseB2B(true); // also refreshes the document rows
+    autoFillDocumentsFromBills();
+    const n = document.querySelectorAll('#docGridBody tr[data-auto="1"]').length;
+    toast(n ? `Documents filled from your bills: ${n} series. Edit any row if a correction is needed.` : "No invoice numbers found on the B2B tab yet.", n ? "success" : "warning");
+  });
   document.getElementById("b2csSyncBtn").addEventListener("click", syncB2csFromUnregisteredB2B);
 
   document.querySelectorAll("[data-parse]").forEach((btn) =>
