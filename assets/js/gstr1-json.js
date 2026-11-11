@@ -854,36 +854,6 @@ function detectB2BColumnsByContent(rows) {
   return map;
 }
 
-/** One-click repair for rows that are already in the grid with their values in the
- *  wrong columns (e.g. an earlier paste put Date under GSTIN and "5%" under Taxable).
- *  Those cells still hold the original sheet columns in order, so they are read back
- *  left to right, matched by content again, and re-filled into the right columns.
- *  Only invoices dated in the period being filed are kept. */
-function fixB2BColumnOrder() {
-  const body = document.getElementById("b2bGridBody");
-  const rows = Array.from(body.children).filter((tr) => !isB2BRowBlank(tr));
-  if (!rows.length) { toast("Nothing to fix — the B2B grid is empty.", "warning"); return; }
-  // Place of Supply / Reverse Charge / UQC are dropdowns and only ever hold defaults here.
-  const matrix = rows.map((tr) => B2B_COLS.map((c) => (c === "pos" || c === "rchrg" || c === "uqc" ? "" : tr.querySelector(`[data-col="${c}"]`).value.trim())));
-  const map = detectB2BColumnsByContent(matrix);
-  const keyed = matrix.map((cells) => {
-    const o = {};
-    cells.forEach((v, i) => { if (map[i] && v !== "") o[map[i]] = v; });
-    return o;
-  }).filter((o) => Object.keys(o).length);
-  const kept = keyed.filter((o) => {
-    const d = normalizeDate(o.idt || "");
-    if (!isValidDMY(d)) return true;
-    const [, mo, yr] = d.split("-").map((x) => parseInt(x, 10));
-    return isInReturnPeriod(mo, yr);
-  });
-  const skipped = keyed.length - kept.length;
-  if (!kept.length) { toast(`No invoices dated in ${selectedPeriod?.label || "this period"} found among these rows.`, "warning"); return; }
-  rows.forEach((tr) => tr.remove());
-  populateGridFromKeyedRows("b2b", kept);
-  toast(`Columns fixed: ${kept.length} row(s) kept for ${selectedPeriod?.label || "this period"}${skipped ? `, ${skipped} row(s) from other months removed` : ""}. Now check HSN/SAC and click Validate rows.`, "success");
-}
-
 /** Excel-style paste: fills across the row from the pasted-into cell and adds new rows as needed. */
 function handleB2BGridPaste(e, tr, inputEl) {
   const text = (e.clipboardData || window.clipboardData).getData("text");
@@ -1170,6 +1140,7 @@ function handleParseB2B(silent = false) {
     errEl.classList.remove("show");
     errEl.innerHTML = "";
   }
+  autoFillDocumentsFromBills(); // Documents Issued follows the bills on this tab
   updateCounts();
   updateSummaryStrip();
   if (!silent) {
@@ -1242,7 +1213,8 @@ const GRID_DEFS = {
       if (!/^\d{4,8}$/.test(h) || ![4, 6, 8].includes(h.length)) errors.push("HSN/SAC code must be numeric, 4/6/8 digits");
       else if (!isKnownHsn(h)) errors.push(`HSN/SAC ${h} is not in the GST master list — check the code`);
       let u = String(v.uqc || "").trim().toUpperCase();
-      if (h.startsWith("99") && (!u || u === "OTH-OTHERS")) u = "NA-NOT APPLICABLE";
+      const isService = h.startsWith("99"); // SAC codes: unit is always NA, no quantity
+      if (isService) u = "NA-NOT APPLICABLE";
       if (u && !u.includes("-")) {
         const match = [...VALID_UQC].find((code) => code.startsWith(u + "-"));
         if (match) u = match;
@@ -1250,12 +1222,17 @@ const GRID_DEFS = {
       if (!VALID_UQC.has(u)) errors.push(`UQC "${v.uqc}" is not a valid unit code`);
       const qtyNum = num(v.qty);
       if (isNaN(qtyNum) || qtyNum < 0) errors.push("Quantity invalid");
+      else if (!isService && qtyNum === 0 && /^\d{4,8}$/.test(h)) errors.push(`Quantity is required for goods HSN ${h} (the portal rejects blank/0)`);
       const valNum = num(v.val);
       const txvalNum = num(v.txval);
       if (isNaN(txvalNum) || txvalNum < 0) errors.push("Taxable Value invalid");
       const igstNum = num(v.igst), cgstNum = num(v.cgst), sgstNum = num(v.sgst);
       if ([igstNum, cgstNum, sgstNum].some((n) => isNaN(n) || n < 0)) errors.push("Tax amounts invalid");
-      return { errors, raw: { hsn_sc: h, desc: v.desc || "", uqc: u, qty: qtyNum, val: valNum || round2(txvalNum + igstNum + cgstNum + sgstNum), txval: txvalNum, igst: igstNum, cgst: cgstNum, sgst: sgstNum } };
+      // The portal wants the GST rate on every HSN row; it is worked out from the tax and snapped to a valid slab.
+      const taxSum = (igstNum || 0) + (cgstNum || 0) + (sgstNum || 0);
+      const rateRaw = txvalNum > 0 ? round2((taxSum / txvalNum) * 100) : 0;
+      const rtHsn = txvalNum > 0 ? (nearestValidRate(rateRaw) ?? rateRaw) : 0;
+      return { errors, raw: { hsn_sc: h, desc: v.desc || "", uqc: u, qty: isService ? 0 : qtyNum, rt: rtHsn, val: valNum || round2(txvalNum + igstNum + cgstNum + sgstNum), txval: txvalNum, igst: igstNum, cgst: cgstNum, sgst: sgstNum } };
     },
   },
   doc: {
@@ -1273,6 +1250,7 @@ const GRID_DEFS = {
       const docNum = matchDocNature(v.nature);
       if (!docNum) errors.push(`Nature "${v.nature}" not recognised`);
       if (!v.from || !v.to) errors.push("Serial From/To missing");
+      else if (String(v.from).length > 16 || String(v.to).length > 16) errors.push("Serial From/To can be at most 16 characters");
       const totalNum = num(v.total);
       const cancelNum = num(v.cancel) || 0;
       if (isNaN(totalNum) || totalNum <= 0) errors.push("Total Number invalid");
@@ -1295,6 +1273,12 @@ function createGridRow(defKey) {
   tr.innerHTML = `<td class="b2b-row-num"></td>${cellsHtml}<td><button type="button" class="b2b-row-del" data-del title="Remove row"><i class="fa-solid fa-xmark"></i></button></td>`;
   tr.querySelectorAll("input[data-col]").forEach((inp) => inp.addEventListener("paste", (e) => handleGenericGridPaste(e, defKey, tr, inp)));
   tr.querySelector("[data-del]").addEventListener("click", () => { tr.remove(); renumberGridRows(defKey); handleParseGrid(defKey, true); });
+
+  // Documents grid: the moment you change an auto-filled row it becomes yours (never overwritten).
+  if (defKey === "doc") {
+    tr.addEventListener("input", () => { delete tr.dataset.auto; });
+    tr.addEventListener("change", () => { delete tr.dataset.auto; });
+  }
 
   // HSN Summary grid only: known codes auto-fill Description (never
   // overwrites text you've already typed there yourself).
@@ -1484,6 +1468,77 @@ function syncB2csFromUnregisteredB2B() {
   });
   renumberGridRows("b2cs");
   toast(`Pulled in ${grouped.size} consolidated row(s) from ${lastUnregisteredB2B.length} unregistered B2B invoice(s) this month.`, "success");
+}
+
+/** Documents Issued (Table 13), worked out from the bills on the B2B tab — registered
+ *  (B2B) and unregistered (B2C, blank GSTIN) alike. Invoice numbers are split into a
+ *  series prefix + running number ("MCS-2026-27/" + 28); each series becomes one row:
+ *  From = first number, To = last number, Total = To - From + 1, Cancelled = numbers
+ *  missing in between (counted as cancelled/unused). Runs on every B2B validate and
+ *  replaces only the rows it added earlier: once you edit a row it is yours and is
+ *  never overwritten, and a series you already typed by hand is not added again. */
+function autoFillDocumentsFromBills() {
+  const body = document.getElementById("docGridBody");
+  if (!body) return;
+  const nums = new Set();
+  document.querySelectorAll("#b2bGridBody tr").forEach((tr) => {
+    if (isB2BRowBlank(tr)) return;
+    const n = tr.querySelector('[data-col="inum"]').value.trim();
+    if (n) nums.add(n);
+  });
+
+  const split = (n) => {
+    const m = n.match(/^(.*?)(\d+)$/);
+    return m ? { prefix: m[1], digits: m[2], value: parseInt(m[2], 10), whole: n } : { prefix: n, digits: "", value: NaN, whole: n };
+  };
+  const series = new Map();
+  nums.forEach((n) => {
+    const p = split(n);
+    const key = isNaN(p.value) ? `\u0000${n}` : p.prefix; // a number with no digits is its own series
+    if (!series.has(key)) series.set(key, []);
+    series.get(key).push(p);
+  });
+
+  // Series the user has already filled in by hand are left to them.
+  const manualKeys = new Set();
+  Array.from(body.children).forEach((tr) => {
+    if (tr.dataset.auto === "1") return;
+    const f = tr.querySelector('[data-col="from"]').value.trim();
+    if (f) { const p = split(f); manualKeys.add(isNaN(p.value) ? `\u0000${f}` : p.prefix); }
+  });
+
+  const docs = [];
+  series.forEach((list, key) => {
+    if (manualKeys.has(key)) return;
+    list.sort((a, b) => (isNaN(a.value) ? 0 : a.value - b.value));
+    const first = list[0], last = list[list.length - 1];
+    const total = isNaN(first.value) ? 1 : last.value - first.value + 1;
+    const cancelled = Math.max(0, total - list.length);
+    docs.push({ from: first.whole, to: last.whole, total, cancel: cancelled });
+  });
+  docs.sort((a, b) => a.from.localeCompare(b.from, undefined, { numeric: true }));
+
+  const sig = JSON.stringify(docs);
+  const existingAuto = Array.from(body.querySelectorAll('tr[data-auto="1"]'));
+  const prevSig = body.dataset.autoSig || "[]";
+  if (sig === prevSig && existingAuto.length === docs.length) return; // nothing changed
+
+  existingAuto.forEach((tr) => tr.remove());
+  Array.from(body.children).forEach((tr) => { if (isGridRowBlank("doc", tr)) tr.remove(); });
+  const nature = DOC_NATURE_MAP[0].names[0];
+  docs.forEach((d) => {
+    const tr = createGridRow("doc");
+    tr.dataset.auto = "1";
+    tr.querySelector('[data-col="nature"]').value = nature;
+    tr.querySelector('[data-col="from"]').value = d.from;
+    tr.querySelector('[data-col="to"]').value = d.to;
+    tr.querySelector('[data-col="total"]').value = d.total;
+    tr.querySelector('[data-col="cancel"]').value = d.cancel || "";
+    body.appendChild(tr);
+  });
+  body.dataset.autoSig = sig;
+  renumberGridRows("doc");
+  handleParseGrid("doc", true);
 }
 
 /** "Auto-fill from B2B" button on the HSN Summary tab — groups every valid
@@ -2412,7 +2467,7 @@ function buildGstr1Json() {
         csamt: 0,
         desc: "",
         user_desc: r.raw.desc || "",
-        uqc: r.raw.uqc,
+        uqc: String(r.raw.uqc || "").split("-")[0], // JSON takes the short code (NOS, KGS, NA), not "NOS-NUMBERS"
         qty: r.raw.qty,
         rt: r.raw.rt,
       })),
@@ -2596,7 +2651,6 @@ function wireEvents() {
   document.getElementById("docAddRows").addEventListener("click", () => addGridRows("doc", 5));
   document.getElementById("b2csSyncBtn").addEventListener("click", syncB2csFromUnregisteredB2B);
 
-  document.getElementById("b2bFixCols")?.addEventListener("click", fixB2BColumnOrder);
   document.querySelectorAll("[data-parse]").forEach((btn) =>
     btn.addEventListener("click", () => handleParse(btn.dataset.parse))
   );
